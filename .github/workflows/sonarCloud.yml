@@ -1,0 +1,51 @@
+name: SonarCloud
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: ubuntu-latest
+    env:
+      BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: Check CVMFS Repositories
+        run: |
+          ls /cvmfs/
+          echo "--------------------------CVMFS-ROOT--------------------------"
+          ls /cvmfs/atlas.cern.ch/
+          echo "--------------------------/cvmfs/atlas.cern.ch/--------------------------"
+          ls /cvmfs/atlas-condb.cern/
+          echo "--------------------------/cvmfs/atlas-condb.cern/--------------------------"
+          ls /cvmfs/sft.cern.ch/
+          echo "--------------------------/cvmfs/sft.cern.ch/-------------------------"
+      - name: Check/Make Athena Externals
+        env:
+          ATLAS_LOCAL_ROOT_BASE: /cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
+        run: |
+          source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
+          asetup none,gcc112,cmakesetup
+          ./Projects/Athena/build_externals.sh -ck '-j $(nproc)'
+          echo "Athena Externals Have Been Built"
+      - name: Install sonar-scanner and build-wrapper
+        uses: SonarSource/sonarcloud-github-c-cpp@v1
+      - name: Run build-wrapper & build
+        env:
+          ATLAS_LOCAL_ROOT_BASE: /cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
+        run: |
+          source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
+          asetup none,gcc112,cmakesetup
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} ./Projects/Athena.build.sh -acmik '-j $(nproc)'
+      - name: Run sonar-scanner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
+
