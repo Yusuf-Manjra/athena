@@ -32,7 +32,7 @@ jobs:
       - name: Check/Make Athena Externals
         continue-on-error: true
         run: |
-          . $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
+          source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
           asetup none,gcc112,cmakesetup
           ./Projects/Athena/build_externals.sh -ck '-j $(nproc)'
           echo "Athena Externals Have Been Built"
@@ -41,7 +41,7 @@ jobs:
       - name: Run build-wrapper & build
         continue-on-error: true
         run: |
-          . $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
+          source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
           asetup none,gcc112,cmakesetup
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} ./Projects/Athena.build.sh -acmik '-j $(nproc)'
           echo "Athena Build Has Completed"
