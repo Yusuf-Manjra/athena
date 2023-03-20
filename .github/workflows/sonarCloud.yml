@@ -30,23 +30,21 @@ jobs:
           ls /cvmfs/sft.cern.ch/
           echo "--------------------------/cvmfs/sft.cern.ch/-------------------------"
       - name: Check/Make Athena Externals
-        continue-on-error: true
         run: |
           source /cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/user/atlasLocalSetup.sh
           asetup none,gcc112,cmakesetup
           ./Projects/Athena/build_externals.sh -ck '-j $(nproc)'
           echo "Athena Externals Have Been Built"
-        shell: bash
+        shell: bash --noprofile --norc -o
       - name: Install sonar-scanner and build-wrapper
         uses: SonarSource/sonarcloud-github-c-cpp@v1
       - name: Run build-wrapper & build
-        continue-on-error: true
         run: |
           source /cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/user/atlasLocalSetup.sh
           asetup none,gcc112,cmakesetup
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} ./Projects/Athena.build.sh -acmik '-j $(nproc)'
           echo "Athena Build Has Completed"
-        shell: bash
+        shell: bash --noprofile --norc -o
       - name: Run sonar-scanner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
