@@ -21,13 +21,16 @@ jobs:
           echo "--------------------------CVMFS-ROOT--------------------------"
           ls /cvmfs/atlas.cern.ch/
           echo "--------------------------/cvmfs/atlas.cern.ch/--------------------------"
-          ls /cvmfs/atlas-condb.cern/
-          echo "--------------------------/cvmfs/atlas-condb.cern/--------------------------"
+          ls /cvmfs/atlas-nightlies.cern.ch/
+          echo "--------------------------/cvmfs/atlas-nightlies.cern.ch/--------------------------"
+          ls /cvmfs/atlas-condb.cern.ch/
+          echo "--------------------------/cvmfs/atlas-condb.cern.ch/--------------------------"
           ls /cvmfs/sft.cern.ch/
           echo "--------------------------/cvmfs/sft.cern.ch/-------------------------"
       - name: Check/Make Athena Externals
         env:
           ATLAS_LOCAL_ROOT_BASE: /cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
+          G4PATH: /cvmfs/atlas-nightlies.cern.ch/repo/sw/master_Athena_x86_64-cento9-gcc11-opt/Geant4
         run: |
           source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
           asetup none,gcc112,cmakesetup
@@ -38,10 +41,12 @@ jobs:
       - name: Run build-wrapper & build
         env:
           ATLAS_LOCAL_ROOT_BASE: /cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
+          G4PATH: /cvmfs/atlas-nightlies.cern.ch/repo/sw/master_Athena_x86_64-cento9-gcc11-opt/Geant4  
         run: |
           source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
           asetup none,gcc112,cmakesetup
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} ./Projects/Athena.build.sh -acmik '-j $(nproc)'
+          echo "Athena Build Has Completed"
       - name: Run sonar-scanner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
