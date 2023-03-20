@@ -38,7 +38,7 @@ jobs:
           echo "Athena Externals Have Been Built"
         shell: bash --noprofile --norc -o pipefail {0}
       - name: Install sonar-scanner and build-wrapper
-        uses: SonarSource/sonarcloud-github-c-cpp@v1
+        uses: SonarSource/sonarcloud-github-action@master
       - name: Run build-wrapper & build
         run: |
           source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
