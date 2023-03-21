@@ -30,7 +30,7 @@ jobs:
           echo "--------------------------/cvmfs/atlas-condb.cern.ch/--------------------------"
           ls /cvmfs/sft.cern.ch/
           echo "--------------------------/cvmfs/sft.cern.ch/-------------------------"
-      -name: Remove previous builds and externals
+      - name: Remove previous builds and externals
         run: |
           rm -rf ../build
       - name: Check/Make Athena Externals
