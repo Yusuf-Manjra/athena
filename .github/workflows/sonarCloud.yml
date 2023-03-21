@@ -43,7 +43,7 @@ jobs:
         run: |
           source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
           asetup none,gcc112,cmakesetup
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} ./Projects/Athena/build.sh -acmk '-j $(nproc)'
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} ./Projects/Athena/build.sh -acm -x '--clean-first' -k '-j $(nproc) clean'
           echo "Athena Build Has Completed"
         shell: bash --noprofile --norc -o pipefail {0}
       - name: Run sonar-scanner
