@@ -30,6 +30,9 @@ jobs:
           echo "--------------------------/cvmfs/atlas-condb.cern.ch/--------------------------"
           ls /cvmfs/sft.cern.ch/
           echo "--------------------------/cvmfs/sft.cern.ch/-------------------------"
+      -name: Remove previous builds and externals
+        run: |
+          rm -rf ../build
       - name: Check/Make Athena Externals
         run: |
           source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
@@ -43,7 +46,7 @@ jobs:
         run: |
           source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
           asetup none,gcc112,cmakesetup
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} ./Projects/Athena/build.sh -acmk '-j $(nproc) clean'
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} ./Projects/Athena/build.sh -acmk '-j $(nproc)'
           echo "Athena Build Has Completed"
         shell: bash --noprofile --norc -o pipefail {0}
       - name: Run sonar-scanner
