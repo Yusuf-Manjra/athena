@@ -1,7 +1,7 @@
 # Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 from AthenaConfiguration.AthConfigFlags import AthConfigFlags
-from AthenaConfiguration.Enums import BeamType, LHCPeriod
+from AthenaConfiguration.Enums import BeamType
 
 def createInDetConfigFlags():
     icf = AthConfigFlags()
@@ -32,38 +32,15 @@ def createInDetConfigFlags():
     icf.addFlag("InDet.checkDeadElementsOnTrack", True)
     # Turn running of Event Info TRT Occupancy Filling Alg on and off (also whether it is used in TRT PID calculation)
     icf.addFlag("InDet.doTRTGlobalOccupancy", False)
-    icf.addFlag("InDet.noTRTTiming",
-                lambda prevFlags: prevFlags.Beam.Type is BeamType.SingleBeam)
-    icf.addFlag("InDet.doTRTPhase",
-                lambda prevFlags: prevFlags.Beam.Type is BeamType.Cosmics)
+    icf.addFlag("InDet.noTRTTiming", lambda prevFlags:
+                prevFlags.Beam.Type is BeamType.SingleBeam and
+                prevFlags.Detector.EnableTRT)
+    icf.addFlag("InDet.doTRTPhase", lambda prevFlags:
+                prevFlags.Beam.Type is BeamType.Cosmics and
+                prevFlags.Detector.EnableTRT)
 
     # Tracking parameters
 
-    # Turn on running of Brem Recovery in tracking
-    icf.addFlag("InDet.Tracking.doBremRecovery", lambda prevFlags: (
-        not (prevFlags.Tracking.doVtxLumi or
-             prevFlags.Tracking.doVtxBeamSpot or
-             prevFlags.Tracking.doLowMu or
-             prevFlags.Beam.Type is not BeamType.Collisions or
-             not prevFlags.BField.solenoidOn)))
-    # Brem Recover in tracking restricted to Calo ROIs
-    icf.addFlag("InDet.Tracking.doCaloSeededBrem", True)
-    # Use Recover SSS to Calo ROIs
-    icf.addFlag("InDet.Tracking.doHadCaloSeededSSS", False)
-    # Use Calo ROIs to seed specific cuts for the ambi
-    icf.addFlag("InDet.Tracking.doCaloSeededAmbi",
-                lambda prevFlags: prevFlags.Detector.EnableCalo)
-    # Try to split pixel clusters
-    icf.addFlag("InDet.Tracking.doPixelClusterSplitting",
-                lambda prevFlags: not(prevFlags.Beam.Type is BeamType.Cosmics))
-    # choose splitter type: NeuralNet or AnalogClus
-    icf.addFlag("InDet.Tracking.pixelClusterSplittingType", "NeuralNet")
-    # Cut value for splitting clusters into two parts
-    icf.addFlag("InDet.Tracking.pixelClusterSplitProb1",
-                lambda prevFlags: (0.5 if prevFlags.GeoModel.Run is LHCPeriod.Run1 else 0.55))
-    # Cut value for splitting clusters into three parts
-    icf.addFlag("InDet.Tracking.pixelClusterSplitProb2",
-                lambda prevFlags: (0.5 if prevFlags.GeoModel.Run is LHCPeriod.Run1 else 0.45))
     # use beam spot position in pixel NN
     icf.addFlag("InDet.Tracking.useBeamSpotInfoNN", True)
     # Enable check for dead modules and FEs
@@ -78,25 +55,33 @@ def createInDetConfigFlags():
     # Turn running of track segment creation in pixel on and off
     icf.addFlag("InDet.Tracking.doTrackSegmentsPixel",
                 lambda prevFlags: (
-                    prevFlags.Tracking.doMinBias or
-                    prevFlags.Tracking.doLowMu or
-                    prevFlags.Beam.Type is BeamType.Cosmics))
+                    prevFlags.Detector.EnablePixel and (
+                        prevFlags.Tracking.doMinBias or
+                        prevFlags.Tracking.doLowMu or
+                        prevFlags.Beam.Type is BeamType.Cosmics)))
     # Turn running of track segment creation in SCT on and off
     icf.addFlag("InDet.Tracking.doTrackSegmentsSCT",
-                lambda prevFlags: (prevFlags.Tracking.doLowMu or
-                                   prevFlags.Beam.Type is BeamType.Cosmics))
+                lambda prevFlags: (
+                    prevFlags.Detector.EnableSCT and (
+                        prevFlags.Tracking.doLowMu or
+                        prevFlags.Beam.Type is BeamType.Cosmics)))
     # Turn running of track segment creation in TRT on and off
     icf.addFlag("InDet.Tracking.doTrackSegmentsTRT",
-                lambda prevFlags: (prevFlags.Tracking.doLowMu or
-                                   prevFlags.Beam.Type is BeamType.Cosmics))
+                lambda prevFlags: (
+                    prevFlags.Detector.EnableTRT and
+                    (prevFlags.Tracking.doLowMu or
+                     prevFlags.Beam.Type is BeamType.Cosmics)))
     # turn on / off TRT extensions
-    icf.addFlag("InDet.Tracking.doTRTExtension", True)
+    icf.addFlag("InDet.Tracking.doTRTExtension",
+                lambda prevFlags: prevFlags.Detector.EnableTRT)
     # control to run TRT Segment finding (do it always after new tracking!)
     icf.addFlag("InDet.Tracking.doTRTSegments",
-                lambda prevFlags: (prevFlags.InDet.Tracking.doBackTracking or
-                                   prevFlags.InDet.Tracking.doTRTStandalone))
+                lambda prevFlags: (prevFlags.Detector.EnableTRT and
+                                   (prevFlags.InDet.Tracking.doBackTracking or
+                                    prevFlags.InDet.Tracking.doTRTStandalone)))
     # Turn running of backtracking on and off
     icf.addFlag("InDet.Tracking.doBackTracking", lambda prevFlags: (
+        prevFlags.Detector.EnableTRT and
         not(prevFlags.Beam.Type in [BeamType.SingleBeam, BeamType.Cosmics] or
             prevFlags.Reco.EnableHI or
             prevFlags.Tracking.doHighPileup or
@@ -109,6 +94,7 @@ def createInDetConfigFlags():
     icf.addFlag("InDet.Tracking.doVeryLowPt", False)
     # control TRT Standalone
     icf.addFlag("InDet.Tracking.doTRTStandalone", lambda prevFlags: (
+        prevFlags.Detector.EnableTRT and
         not(prevFlags.Reco.EnableHI or
             prevFlags.Tracking.doHighPileup or
             prevFlags.Tracking.doVtxLumi or

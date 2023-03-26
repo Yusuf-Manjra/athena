@@ -23,11 +23,7 @@
 //#include "FPTracker/readConfigData.h"
 #include "FPTracker/FPTrackerConstants.h"
 #include "FPTracker/Point.h"
-//Boost
-#include "boost/program_options/cmdline.hpp"
-#include "boost/program_options/options_description.hpp"
-#include "boost/program_options/parsers.hpp"
-#include "boost/program_options/variables_map.hpp"
+#include <memory>
 
 class ALFA_BeamTrack
 {
@@ -57,7 +53,7 @@ class ALFA_BeamTrack
   	int m_Magver;
 	
   	FPTracker::Side m_Side;
-  	boost::shared_ptr< std::ifstream >  m_Magfile;
+  	std::shared_ptr< std::ifstream >  m_Magfile;
   
   	//FPTracker::Particle m_Particle;
   	FPTracker::Point m_PosParticleRP;

@@ -531,7 +531,7 @@ else:
 
 
 if not 'doTileRawChannelTimeMonTool' in dir():
-    doTileRawChannelTimeMonTool = (TileRunType == 2) and TilePhysTiming and RUN2 and doTileFit
+    doTileRawChannelTimeMonTool = (TileRunType == 2) and TilePhysTiming and (RUN2 or RUN3) and doTileFit
 
 
 from IOVDbSvc.CondDB import conddb
@@ -633,7 +633,30 @@ jobproperties.print_JobProperties('tree&value')
 #=============================================================
 include( "TileConditions/TileConditions_jobOptions.py" )
 tileInfoConfigurator.OutputLevel = OutputLevel
-# use correct timing constants for different run types
+
+if RUN3 and 'SpecialDemoShape' in dir():
+    if TileRunType == 2:
+        # disable special treatment for demo in laser runs for the moment
+        SpecialDemoShape = -1
+    elif TileRunType == 8:
+        # put CIS pulse shape for Demo in laser and physics structures
+        SpecialDemoShape = 3
+        tileInfoConfigurator.filename_lo_las = "pulselo_cis_demo_100.dat"
+        tileInfoConfigurator.filename_hi_las = "pulsehi_cis_demo_100.dat"
+        tileInfoConfigurator.filename_lo_las_der = "dpulselo_cis_demo_100.dat"
+        tileInfoConfigurator.filename_hi_las_der = "dpulsehi_cis_demo_100.dat"
+        tileInfoConfigurator.filename_lo_phys = "pulselo_cis_demo_5p2.dat"
+        tileInfoConfigurator.filename_hi_phys = "pulsehi_cis_demo_5p2.dat"
+        tileInfoConfigurator.filename_lo_phys_der = "dpulselo_cis_demo_5p2.dat"
+        tileInfoConfigurator.filename_hi_phys_der = "dpulsehi_cis_demo_5p2.dat"
+    else:
+        # put physics pulse shape for Demo in laser structures
+        SpecialDemoShape = 2
+        tileInfoConfigurator.filename_lo_las = "pulselo_phys_demo.dat"
+        tileInfoConfigurator.filename_hi_las = "pulsehi_phys_demo.dat"
+        tileInfoConfigurator.filename_lo_las_der = "dpulselo_phys_demo.dat"
+        tileInfoConfigurator.filename_hi_las_der = "dpulsehi_phys_demo.dat"
+
 printfunc (tileInfoConfigurator)
 
 #============================================================
@@ -727,6 +750,8 @@ if doTileFit and tileRawChannelBuilderFitFilter:
     tileRawChannelBuilderFitFilter.MaxTimeFromPeak = 250.0; # recover behaviour of rel 13.0.30
     tileRawChannelBuilderFitFilter.RMSChannelNoise = 3;
     tileRawChannelBuilderFitFilter.UseDSPCorrection = not TileBiGainRun
+    if 'SpecialDemoShape' in dir() and SpecialDemoShape is not None:
+        tileRawChannelBuilderFitFilter.SpecialDemoShape = SpecialDemoShape
 
     printfunc (tileRawChannelBuilderFitFilter)
 
@@ -1073,12 +1098,14 @@ if doTileNtuple:
 
     TileNtuple.CheckDCS = TileUseDCS
 
-
-    beamElemContainer   = getattr (TileNtuple,
-                                   'TileBeamElemContainer',
-                                   TileNtuple.getDefaultProperty('TileBeamElemContainer'))
-    if str(beamElemContainer):
-        dqStatus.TileBeamElemContainer = beamElemContainer
+    if TilePhysTiming or TilePhysRun:
+        dqStatus.TileBeamElemContainer = ""
+    else:
+        beamElemContainer   = getattr (TileNtuple,
+                                       'TileBeamElemContainer',
+                                       TileNtuple.getDefaultProperty('TileBeamElemContainer'))
+        if str(beamElemContainer):
+            dqStatus.TileBeamElemContainer = beamElemContainer
 
     digitsContainer     = getattr (TileNtuple,
                                    'TileDigitsContainer',
@@ -1107,7 +1134,7 @@ if doTileMon:
             from AthenaConfiguration.ComponentAccumulator import CAtoGlobalWrapper
             from AthenaConfiguration.AllConfigFlags import ConfigFlags
 
-            runTypes = {0 : 'PHY', 1 : 'PHY', 2 : 'LAS', 4 : 'PHY', 8 : 'CIS'}
+            runTypes = {0 : 'PHY', 1 : 'PHY', 2 : 'LAS', 4 : 'PED', 8 : 'CIS'}
             runTypeName = runTypes[jobproperties.TileRecFlags.TileRunType()]
 
             ConfigFlags.Input.Files = FileNameVec
@@ -1218,6 +1245,7 @@ if doTileMon:
             theTileRawChannelMon.overlaphists = True
 
         theTileRawChannelMon.MinAmpForCorrectedTime = 0.1
+        theTileRawChannelMon.CalibUnit = 1
 
         TileMon.AthenaMonTools += [ theTileRawChannelMon ]
         printfunc (theTileRawChannelMon)
@@ -1476,6 +1504,8 @@ if doTileCalib:
             theTileRawChNoiseCalibAlg.doOpt   = False
             theTileRawChNoiseCalibAlg.doDsp   = True
             theTileRawChNoiseCalibAlg.UseforCells=3 # i.e. from TileRawChannelCnt (like DSP)
+        else:
+            theTileRawChNoiseCalibAlg.doDsp   = False
 
     elif TileCisRun:
         # CIS calibration using top calib alg

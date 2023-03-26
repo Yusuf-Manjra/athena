@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Run PrintSiDetectorElements
 
-Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 """
 import sys
 from argparse import ArgumentParser
@@ -14,8 +14,10 @@ parser.add_argument("detectors", metavar="detectors", type=str, nargs="*",
                     help="Specify the list of detectors")
 parser.add_argument("--localgeo", default=False, action="store_true",
                     help="Use local geometry XML files")
-parser.add_argument("--geometrytag",default="ATLAS-P2-RUN4-01-00-00", type=str,
+parser.add_argument("--geometrytag",default="ATLAS-P2-RUN4-01-01-00", type=str,
                     help="The geometry tag to use")
+parser.add_argument("--sqlitefile",default="", type=str,
+                    help="SQLite input file to use")                    
 args = parser.parse_args()
 
 
@@ -45,6 +47,10 @@ ConfigFlags.Input.Files = []
 
 if args.localgeo:
     ConfigFlags.ITk.Geometry.AllLocal = True
+
+elif args.sqlitefile != "":
+    print("Using SQLite input")
+    ConfigFlags.GeoModel.SQLiteDB = args.sqlitefile
 
 from AthenaConfiguration.DetectorConfigFlags import setupDetectorFlags
 setupDetectorFlags(ConfigFlags, args.detectors, toggle_geometry=True)

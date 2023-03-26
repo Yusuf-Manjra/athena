@@ -33,13 +33,13 @@ def InDetAmbiTrackSelectionToolCfg(flags, name="InDetAmbiTrackSelectionTool", **
     kwargs.setdefault("UseParameterization", False)
     kwargs.setdefault("Cosmics", flags.Beam.Type is BeamType.Cosmics)
     kwargs.setdefault("doPixelSplitting",
-                      flags.InDet.Tracking.doPixelClusterSplitting)
+                      flags.Tracking.doPixelClusterSplitting)
 
     if flags.InDet.Tracking.ActiveConfig.useTIDE_Ambi:
         kwargs.setdefault("sharedProbCut",
-                          flags.InDet.Tracking.pixelClusterSplitProb1)
+                          flags.Tracking.pixelClusterSplitProb1)
         kwargs.setdefault("sharedProbCut2",
-                          flags.InDet.Tracking.pixelClusterSplitProb2)
+                          flags.Tracking.pixelClusterSplitProb2)
         kwargs.setdefault("minSiHitsToAllowSplitting",
                           8 if flags.GeoModel.Run is LHCPeriod.Run1 else 9)
         kwargs.setdefault("minUniqueSCTHits", 4)
@@ -57,21 +57,19 @@ def InDetAmbiTrackSelectionToolCfg(flags, name="InDetAmbiTrackSelectionTool", **
         kwargs.setdefault("etaWidth", 0.05)
 
         # Only split in cluster in region of interest
-        kwargs.setdefault("doEmCaloSeed",
-                          flags.InDet.Tracking.doCaloSeededAmbi)
+        kwargs.setdefault("doEmCaloSeed", flags.Tracking.doCaloSeededAmbi)
         kwargs.setdefault("EMROIPhiRZContainer",
                           "InDetCaloClusterROIPhiRZ10GeV")
-        if flags.InDet.Tracking.doCaloSeededAmbi:
+        if flags.Tracking.doCaloSeededAmbi:
             from InDetConfig.InDetCaloClusterROISelectorConfig import (
                 CaloClusterROIPhiRZContainerMakerCfg)
             acc.merge(CaloClusterROIPhiRZContainerMakerCfg(flags))
 
         # Do special cuts in region of interest
-        kwargs.setdefault("doHadCaloSeed",
-                          flags.InDet.Tracking.doCaloSeededAmbi)
+        kwargs.setdefault("doHadCaloSeed", flags.Tracking.doCaloSeededAmbi)
         kwargs.setdefault("HadROIPhiRZContainer",
                           "InDetHadCaloClusterROIPhiRZBjet")
-        if flags.InDet.Tracking.doCaloSeededAmbi:
+        if flags.Tracking.doCaloSeededAmbi:
             from InDetConfig.InDetCaloClusterROISelectorConfig import (
                 HadCaloClusterROIPhiRZContainerMakerCfg)
             acc.merge(HadCaloClusterROIPhiRZContainerMakerCfg(flags))
@@ -83,7 +81,8 @@ def InDetAmbiTrackSelectionToolCfg(flags, name="InDetAmbiTrackSelectionTool", **
         kwargs.setdefault("phiWidthEM", 0.05)
         kwargs.setdefault("etaWidthEM", 0.05)
         # Skip ambi solver in hadronic ROI
-        kwargs.setdefault("doSkipAmbiInROI", flags.InDet.Tracking.doSkipAmbiROI)
+        kwargs.setdefault("doSkipAmbiInROI",
+                          flags.InDet.Tracking.doSkipAmbiROI)
 
         if (flags.Tracking.doTIDE_AmbiTrackMonitoring and
                 flags.InDet.Tracking.ActiveConfig.extension == ""):
@@ -96,7 +95,8 @@ def InDetAmbiTrackSelectionToolCfg(flags, name="InDetAmbiTrackSelectionTool", **
         kwargs.setdefault("sharedProbCut", 0.10)
 
     if flags.InDet.Tracking.ActiveConfig.useTIDE_Ambi:
-        AmbiTrackSelectionTool = CompFactory.InDet.InDetDenseEnvAmbiTrackSelectionTool
+        AmbiTrackSelectionTool = (
+            CompFactory.InDet.InDetDenseEnvAmbiTrackSelectionTool)
     else:
         AmbiTrackSelectionTool = CompFactory.InDet.InDetAmbiTrackSelectionTool
 
@@ -134,7 +134,7 @@ def InDetTRTAmbiTrackSelectionToolCfg(flags, name='InDetTRT_SeededAmbiTrackSelec
                       flags.InDet.Tracking.ActiveConfig.useParameterizedTRTCuts)
     kwargs.setdefault("Cosmics", flags.Beam.Type is BeamType.Cosmics)
     kwargs.setdefault("doPixelSplitting",
-                      flags.InDet.Tracking.doPixelClusterSplitting)
+                      flags.Tracking.doPixelClusterSplitting)
 
     acc.setPrivateTools(
         CompFactory.InDet.InDetAmbiTrackSelectionTool(name, **kwargs))
@@ -161,8 +161,8 @@ def InDetTrigTrackSelectionToolCfg(flags, name='InDetTrigAmbiTrackSelectionTool'
     kwargs.setdefault("Cosmics", False)  # there is a different instance
     kwargs.setdefault("UseParameterization", False)
 
-    acc.addPublicTool(CompFactory.InDet.InDetAmbiTrackSelectionTool(
-        name, **kwargs), primary=True)
+    acc.setPrivateTools(
+        CompFactory.InDet.InDetAmbiTrackSelectionTool(name, **kwargs))
     return acc
 
 
@@ -181,13 +181,13 @@ def ITkAmbiTrackSelectionToolCfg(flags, name="ITkAmbiTrackSelectionTool", **kwar
     kwargs.setdefault("UseParameterization", False)
     kwargs.setdefault("Cosmics", flags.Beam.Type is BeamType.Cosmics)
     kwargs.setdefault("doPixelSplitting",
-                      flags.ITk.Tracking.doPixelClusterSplitting)
+                      flags.Tracking.doPixelClusterSplitting)
     kwargs.setdefault("doITk", True)
 
     kwargs.setdefault("sharedProbCut",
-                      flags.ITk.Tracking.pixelClusterSplitProb1)
+                      flags.Tracking.pixelClusterSplitProb1)
     kwargs.setdefault("sharedProbCut2",
-                      flags.ITk.Tracking.pixelClusterSplitProb2)
+                      flags.Tracking.pixelClusterSplitProb2)
     kwargs.setdefault("minSiHitsToAllowSplitting", 9)
     kwargs.setdefault("minUniqueSCTHits", 4)
     kwargs.setdefault("minTrackChi2ForSharedHits", 3)
@@ -204,17 +204,17 @@ def ITkAmbiTrackSelectionToolCfg(flags, name="ITkAmbiTrackSelectionTool", **kwar
     kwargs.setdefault("etaWidth", 0.05)
 
     # Only split in cluster in region of interest
-    kwargs.setdefault("doEmCaloSeed", flags.ITk.Tracking.doCaloSeededAmbi)
+    kwargs.setdefault("doEmCaloSeed", flags.Tracking.doCaloSeededAmbi)
     kwargs.setdefault("EMROIPhiRZContainer", "ITkCaloClusterROIPhiRZ10GeV")
-    if flags.ITk.Tracking.doCaloSeededAmbi:
+    if flags.Tracking.doCaloSeededAmbi:
         from InDetConfig.InDetCaloClusterROISelectorConfig import (
             ITkCaloClusterROIPhiRZContainerMakerCfg)
         acc.merge(ITkCaloClusterROIPhiRZContainerMakerCfg(flags))
 
     # Do special cuts in region of interest
-    kwargs.setdefault("doHadCaloSeed", flags.ITk.Tracking.doCaloSeededAmbi)
+    kwargs.setdefault("doHadCaloSeed", flags.Tracking.doCaloSeededAmbi)
     kwargs.setdefault("HadROIPhiRZContainer", "ITkHadCaloClusterROIPhiRZBjet")
-    if flags.ITk.Tracking.doCaloSeededAmbi:
+    if flags.Tracking.doCaloSeededAmbi:
         from InDetConfig.InDetCaloClusterROISelectorConfig import (
             ITkHadCaloClusterROIPhiRZContainerMakerCfg)
         acc.merge(ITkHadCaloClusterROIPhiRZContainerMakerCfg(flags))

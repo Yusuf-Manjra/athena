@@ -506,8 +506,9 @@ def InDetTrackRecoCfg(flags):
                     InputCollections=InputCombinedInDetTracks,
                     ClusterSplitProbContainer=ClusterSplitProbContainer))
 
-                ClusterSplitProbContainer = "InDetTRT_SeededAmbiguityProcessorSplitProb" + \
-                    current_flags.InDet.Tracking.ActiveConfig.extension
+                ClusterSplitProbContainer = (
+                    "InDetTRT_SeededAmbiguityProcessorSplitProb" +
+                    current_flags.InDet.Tracking.ActiveConfig.extension)
                 TRTSeededTracks = "TRTSeededTracks"
                 ResolvedTRTSeededTracks = "ResolvedTRTSeededTracks"
                 InputCombinedInDetTracks += [ResolvedTRTSeededTracks]
@@ -527,21 +528,6 @@ def InDetTrackRecoCfg(flags):
 
                 from TrkConfig.TrkTruthTrackAlgsConfig import TruthTrackingCfg
                 result.merge(TruthTrackingCfg(current_flags))
-
-                # Old config only scheduled InDetTrackTruth for IdealPseudoTracking, while the TrackParticleCnvAlg requires it if "doTruth" is enabled
-                PseudoTracks = 'InDetPseudoTracks'
-                result.merge(InDetTrackTruthCfg(
-                    current_flags,
-                    Tracks=PseudoTracks,
-                    DetailedTruth=PseudoTracks + 'DetailedTruth',
-                    TrackTruth=PseudoTracks + 'TruthCollection'))
-
-                result.merge(TrackParticleCnvAlgPIDCheckCfg(
-                    current_flags,
-                    name="PseudoTrackParticleCnvAlg",
-                    TrackContainerName=PseudoTracks,
-                    xAODTrackParticlesFromTracksContainerName=(
-                        "InDetPseudoTrackParticles")))
 
             isPrimaryPass = False
 
@@ -578,6 +564,13 @@ def InDetTrackRecoCfg(flags):
     if flags.Tracking.doTruth:
         result.merge(InDetTrackTruthCfg(flags))
 
+        if (flags.InDet.Tracking.doPseudoTracking or
+            flags.InDet.Tracking.doIdealPseudoTracking):
+            result.merge(InDetTrackTruthCfg(
+                flags,
+                Tracks="InDetPseudoTracks",
+                DetailedTruth="InDetPseudoTracksDetailedTruth",
+                TracksTruth="InDetPseudoTracksTruthCollection"))
         if flags.Tracking.doTIDE_AmbiTrackMonitoring:
             result.merge(InDetTrackTruthCfg(
                 flags,
@@ -597,10 +590,23 @@ def InDetTrackRecoCfg(flags):
             flags),
         AssociationMapName="PRDtoTrackMapCombinedInDetTracks"))
 
+    if (flags.InDet.Tracking.doPseudoTracking or
+        flags.InDet.Tracking.doIdealPseudoTracking):
+        result.merge(TrackParticleCnvAlgCfg(
+            flags,
+            name="PseudoTrackParticleCnvAlg",
+            TrackContainerName="InDetPseudoTracks",
+            xAODTrackParticlesFromTracksContainerName=(
+                "InDetPseudoTrackParticles"),
+            AssociationMapName=(
+                "PRDtoTrackMapCombinedInDetTracks")))
     if flags.Tracking.doTIDE_AmbiTrackMonitoring:
         from xAODTrackingCnv.xAODTrackingCnvConfig import (
             ObserverTrackParticleCnvAlgCfg)
-        result.merge(ObserverTrackParticleCnvAlgCfg(flags))
+        result.merge(ObserverTrackParticleCnvAlgCfg(
+            flags,
+            AssociationMapName = (
+                "PRDtoTrackMapCombinedInDetTracks")))
 
     if flags.Tracking.doStoreTrackSeeds:
         from xAODTrackingCnv.xAODTrackingCnvConfig import (
@@ -630,8 +636,10 @@ def InDetTrackRecoCfg(flags):
             flags,
             name = "SiSPSeededTracksCnvAlg",
             TrackContainerName = TrackContainer,
-            xAODTrackParticlesFromTracksContainerName = \
-            "SiSPSeededTracksTrackParticles"))
+            xAODTrackParticlesFromTracksContainerName=(
+                "SiSPSeededTracksTrackParticles"),
+            AssociationMapName=(
+                "PRDtoTrackMapCombinedInDetTracks")))
 
     # ---------------------------------------
     # --- Primary vertexing
@@ -729,7 +737,7 @@ def InDetTrackRecoCfg(flags):
             result.addEventAlgo(
                 CompFactory.DerivationFramework.CommonAugmentation(
                     "SiSPInDetCommonKernel",
-                    AugmentationTools = [SiSPTrackStateOnSurfaceDecorator]))
+                    AugmentationTools=[SiSPTrackStateOnSurfaceDecorator]))
 
         if flags.Input.isMC:
             from InDetPhysValMonitoring.InDetPhysValDecorationConfig import (
@@ -817,7 +825,7 @@ def InDetTrackRecoOutputCfg(flags):
         "InDet::TRT_DriftCircleContainer#TRT_DriftCircles",
         "InDet::PixelGangedClusterAmbiguities#PixelClusterAmbiguitiesMap",
     ]
-    if flags.InDet.Tracking.doPixelClusterSplitting:
+    if flags.Tracking.doPixelClusterSplitting:
         toESD += ["InDet::PixelGangedClusterAmbiguities#SplitClusterAmbiguityMap"]
     toESD += ["IDCInDetBSErrContainer#SCT_FlaggedCondData"]
     toESD += ["Trk::ClusterSplitProbabilityContainer#" +
@@ -940,7 +948,8 @@ def InDetTrackRecoOutputCfg(flags):
             toAOD += ["DetailedTrackTruthCollection#ObservedDetailedTracksTruth"]
     if flags.InDet.Tracking.doStoreSiSPSeededTracks:
         toAOD += ["xAOD::TrackParticleContainer#SiSPSeededTracksTrackParticles"]
-        toAOD += [f"xAOD::TrackParticleAuxContainer#SiSPSeededTracksTrackParticlesAux.{excludedAuxData}"]
+        toAOD += [
+            f"xAOD::TrackParticleAuxContainer#SiSPSeededTracksTrackParticlesAux.{excludedAuxData}"]
 
     if flags.Tracking.doStoreTrackSeeds:
         toAOD += [

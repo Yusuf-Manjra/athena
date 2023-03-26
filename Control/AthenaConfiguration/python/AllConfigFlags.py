@@ -27,6 +27,7 @@ def initConfigFlags():
     acf.addFlag('Exec.MaxEvents',-1)
     acf.addFlag('Exec.SkipEvents',0)
     acf.addFlag('Exec.DebugStage','')
+    acf.addFlag('Exec.Interactive',"")
     acf.addFlag('Exec.FPE',0) #-2: No FPE check at all, -1: Abort with core-dump, 0: FPE Auditor w/o stack-tace (default) , >0: number of stack-trace printed by the job
 
     #Custom messaging for components, see Utils.setupLoggingLevels
@@ -230,6 +231,7 @@ def initConfigFlags():
     acf.addFlag('Output.AODFileName',  '')
     acf.addFlag('Output.HISTFileName', '')
 
+    acf.addFlag('Output.doWriteHITS', lambda prevFlags: bool(prevFlags.Output.HITSFileName)) # write out HITS file
     acf.addFlag('Output.doWriteRDO', lambda prevFlags: bool(prevFlags.Output.RDOFileName)) # write out RDO file
     acf.addFlag('Output.doWriteRDO_SGNL', lambda prevFlags: bool(prevFlags.Output.RDO_SGNLFileName)) # write out RDO_SGNL file
     acf.addFlag('Output.doWriteESD', lambda prevFlags: bool(prevFlags.Output.ESDFileName)) # write out ESD file
@@ -307,7 +309,7 @@ def initConfigFlags():
         acf.addFlag("IOVDb.RunToTimestampDict", lambda prevFlags: getRunToTimestampDict())
         acf.addFlag("IOVDb.DBConnection", lambda prevFlags : "sqlite://;schema=mycool.db;dbname=" + prevFlags.IOVDb.DatabaseInstance)
         #For HLT-jobs, the ring-size should be 0 (eg no cleaning at all since there are no IOV-updates during the job)
-        acf.addFlag("IOVDb.CleanerRingSize",lambda prevFlags : 0 if prevFlags.hasCategory("Trigger") and prevFlags.Trigger.doHLT else  2*max(1, prevFlags.Concurrency.NumConcurrentEvents))
+        acf.addFlag("IOVDb.CleanerRingSize",lambda prevFlags : 0 if prevFlags.Trigger.doHLT else 2*max(1, prevFlags.Concurrency.NumConcurrentEvents))
 #PoolSvc Flags:
     acf.addFlag("PoolSvc.MaxFilesOpen", lambda prevFlags : 2 if prevFlags.MP.UseSharedReader else 0)
 

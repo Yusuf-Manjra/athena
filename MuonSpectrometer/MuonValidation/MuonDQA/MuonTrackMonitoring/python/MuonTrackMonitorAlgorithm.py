@@ -3,9 +3,10 @@ Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 2020 Matthias Schott - Uni Mainz
 """
 
-
 from AthenaConfiguration.Enums import BeamType
-def MuonTrackConfig(inputFlags, isOld=False, **kwargs):
+
+
+def MuonTrackConfig(flags, isOld=False, **kwargs):
     if isOld:
         # Run-2 style configuration
         from AthenaMonitoring import AthMonitorCfgHelperOld as AthMonitorCfgHelper
@@ -15,14 +16,11 @@ def MuonTrackConfig(inputFlags, isOld=False, **kwargs):
         from AthenaConfiguration.ComponentFactory import CompFactory
         MuonTrackMonitorAlgorithm = CompFactory.MuonTrackMonitorAlgorithm
 
-    helper = AthMonitorCfgHelper(inputFlags, "MuonTrackMonitoringConfig")
-    if inputFlags.Beam.Type != BeamType.Collisions:
-         kwargs.setdefault("PrimaryVerticesKey", "")
-         kwargs.setdefault("RequireBeamSpot", False)
-    elif inputFlags.Output.doWriteESD or inputFlags.Output.doWriteAOD:
-        from xAODEventInfoCnv.EventInfoBeamSpotDecoratorAlgConfig import (
-            EventInfoBeamSpotDecoratorAlgCfg)
-        helper.resobj.merge(EventInfoBeamSpotDecoratorAlgCfg(inputFlags))
+    helper = AthMonitorCfgHelper(flags, "MuonTrackMonitoringConfig")
+    if flags.Beam.Type != BeamType.Collisions:
+        kwargs.setdefault("PrimaryVerticesKey", "")
+    if flags.Common.isOnline or flags.Beam.Type != BeamType.Collisions:
+        kwargs.setdefault("RequireBeamSpot", False)
 
     muonTrackAlg = helper.addAlgorithm(MuonTrackMonitorAlgorithm, "MuonTrackMonitorAlg", **kwargs)
 

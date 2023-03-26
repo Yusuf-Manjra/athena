@@ -12,7 +12,7 @@
 lastref_dir=last_results
 dcubeXml="/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/InDetPhysValMonitoring/dcube/config/IDPVMPlots_ITk_FastTrackFinder.xml"
 
-geometry=ATLAS-P2-RUN4-01-00-00
+geometry=ATLAS-P2-RUN4-01-01-00
 
 run () {
     name="${1}"
@@ -60,8 +60,7 @@ run "Reconstruction" \
     --outputAODFile AOD.root \
     --steering doRAWtoALL \
     --preInclude InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude \
-    --postInclude TrigFastTrackFinder.ITkFastTrackFinderStandaloneConfig.ITkFastTrackFinderStandaloneCfg \
-    --preExec "ConfigFlags.ITk.Tracking.doFastTracking=True"
+    --preExec "ConfigFlags.ITk.Tracking.useFTF=True"
 
 run "IDPVM" \
     runIDPVM.py \
@@ -69,8 +68,7 @@ run "IDPVM" \
     --outputFile idpvm.root \
     --doHitLevelPlots \
     --doExpertPlots \
-    --truthMinPt=1000 \
-    --validateExtraTrackCollections {'TrigFastTrackFinder_FTF_','TrigFastTrackFinder_IDTrig_'}
+    --truthMinPt=1000
 
 reco_rc=$?
 if [ $reco_rc != 0 ]; then

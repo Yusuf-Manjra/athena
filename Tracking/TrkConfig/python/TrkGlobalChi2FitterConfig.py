@@ -260,7 +260,9 @@ def MCTBFitterCfg(flags,
     result = MCTBExtrapolatorCfg(flags)
     kwargs.setdefault("GetMaterialFromTrack", True)
     kwargs.setdefault("ExtrapolationTool", result.popPrivateTools())
-    return MuonChi2TrackFitterCfg(flags, name=name, **kwargs)
+    result.setPrivateTools(result.popToolsAndMerge(
+        MuonChi2TrackFitterCfg(flags, name=name, **kwargs)))
+    return result
 
 def MCTBFitterMaterialFromTrackCfg(flags, name='MCTBFitterMaterialFromTrack', **kwargs):
     return MCTBFitterCfg(flags, name, GetMaterialFromTrack=True, **kwargs)
@@ -456,7 +458,7 @@ def ITkGlobalChi2FitterBaseCfg(flags,
             TrackingGeometryCondAlgCfg)
         geom_cond = TrackingGeometryCondAlgCfg(flags)
         geom_cond_key = geom_cond.getPrimary().TrackingGeometryWriteKey
-        acc.merge(acc)
+        acc.merge(geom_cond)
         kwargs.setdefault("TrackingGeometryReadKey", geom_cond_key)
 
     from TrkConfig.AtlasExtrapolatorConfig import AtlasExtrapolatorCfg

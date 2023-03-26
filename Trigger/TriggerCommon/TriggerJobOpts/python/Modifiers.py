@@ -41,17 +41,6 @@ class _modifier:
 # Detector maps and conditions
 ###############################################################
 
-class BunchSpacing25ns(_modifier):
-    """
-    ID (and other settings) related to 25ns bunch spacing
-    """
-    def preSetup(self, flags):
-        from AthenaCommon.BeamFlags import jobproperties
-        jobproperties.Beam.bunchSpacing = 25
-        flags.Beam.BunchSpacing = 25
-        from InDetTrigRecExample.InDetTrigFlags import InDetTrigFlags
-        InDetTrigFlags.InDet25nsec.set_Value_and_Lock(True)
-
 class SolenoidOff(_modifier):
     """
     Turn solenoid field OFF
@@ -70,22 +59,6 @@ class ToroidsOff(_modifier):
         condSeq = AthSequencer("AthCondSeq")
         condSeq.AtlasFieldMapCondAlg.MapToroCurrent = 0
 
-class BFieldFromDCS(_modifier):
-    """
-    Read B-field currents from DCS (also works for MC)
-    """
-    def postSetup(self, flags):
-        from IOVDbSvc.CondDB import conddb
-        conddb._SetAcc("DCS_OFL","COOLOFL_DCS")
-        conddb.addFolder("DCS_OFL","/EXT/DCS/MAGNETS/SENSORDATA",className="CondAttrListCollection")
-        from AthenaCommon.AlgSequence import AthSequencer
-        condSeq = AthSequencer("AthCondSeq")
-        # see ATLASRECTS-5604 for these settings:
-        condSeq.AtlasFieldMapCondAlg.LoadMapOnStart = False
-        condSeq.AtlasFieldMapCondAlg.UseMapsFromCOOL = True
-        condSeq.AtlasFieldCacheCondAlg.UseDCS = True
-        if hasattr(svcMgr,'HltEventLoopMgr'):
-            svcMgr.HltEventLoopMgr.setMagFieldFromPtree = False
 
 class BFieldAutoConfig(_modifier):
     """
@@ -249,14 +222,6 @@ class doValidation(_modifier):
     """
     def preSetup(self, flags):
         flags.Trigger.doValidationMonitoring = True
-
-class useDynamicAlignFolders(_modifier):
-    """
-    enable the new (2016-) alignment scheme
-    """
-    def preSetup(self, flags):
-        from AtlasGeoModel.InDetGMJobProperties import InDetGeometryFlags
-        InDetGeometryFlags.useDynamicAlignFolders.set_Value_and_Lock(True)
 
 
 class doRuntimeNaviVal(_modifier):

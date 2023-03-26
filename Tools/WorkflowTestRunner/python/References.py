@@ -11,7 +11,7 @@
 # Format is "test" : "version"
 references_map = {
     # Simulation
-    "s3761": "v12",
+    "s3761": "v13",
     "s3779": "v8",
     "s4005": "v8",
     "s4006": "v12",
@@ -25,5 +25,5 @@ references_map = {
     "q442": "v15",
     "q443": "v15",
     "q445": "v21",
-    "q449": "v26",
+    "q449": "v27",
 }

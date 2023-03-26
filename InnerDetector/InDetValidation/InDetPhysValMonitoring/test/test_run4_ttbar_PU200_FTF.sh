@@ -9,9 +9,9 @@
 
 lastref_dir=last_results
 dcubeXml="/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/InDetPhysValMonitoring/dcube/config/IDPVMPlots_ITk_FastTrackFinder.xml"
-rdo_23p0=/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/InDetPhysValMonitoring/inputs/601237_ttbar_allhad_PU200_ITk_master_v1.RDO.root
+rdo_23p0=/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/InDetPhysValMonitoring/inputs/ATLAS-P2-RUN4-01-01-00_ttbar_mu200.RDO.root
 
-geometry=ATLAS-P2-RUN4-01-00-00
+geometry=ATLAS-P2-RUN4-01-01-00
 
 run () {
     name="${1}"
@@ -31,8 +31,7 @@ run "Reconstruction" \
     --outputAODFile AOD.root \
     --steering doRAWtoALL \
     --preInclude InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude \
-    --postInclude TrigFastTrackFinder.ITkFastTrackFinderStandaloneConfig.ITkFastTrackFinderStandaloneCfg \
-    --preExec "ConfigFlags.ITk.Tracking.doFastTracking=True"
+    --preExec "ConfigFlags.ITk.Tracking.useFTF=True"
 
 
 run "IDPVM" \
@@ -42,7 +41,7 @@ run "IDPVM" \
     --doHitLevelPlots \
     --doExpertPlots \
     --truthMinPt=1000 \
-    --validateExtraTrackCollections {'TrigFastTrackFinder_FTF_','TrigFastTrackFinder_IDTrig_'}
+    --doMuonMatchedTracks
 
 reco_rc=$?
 if [ $reco_rc != 0 ]; then
