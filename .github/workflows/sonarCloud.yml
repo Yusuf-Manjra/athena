@@ -49,10 +49,19 @@ jobs:
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} ./Projects/Athena/build.sh -acmk '-j $(nproc)'
           echo "Athena Build Has Completed"
         shell: bash --noprofile --norc -o pipefail {0}
+      #- name: Run tests to generate coverage statistics
+      #  run: |
+      #    find ./build-linux/bin -maxdepth 1 -name "*Test*" -executable -exec '{}' ';'
+      #  shell: bash --noprofile --norc -o pipefail {0}
+      #- name: Collect coverage into one XML report
+      #  run: |
+      #    gcovr --sonarqube > coverage.xml
       - name: Run sonar-scanner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          sonar-scanner --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
+          sonar-scanner \
+          --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
+        #  --define sonar.coverageReportPaths=coverage.xml
 

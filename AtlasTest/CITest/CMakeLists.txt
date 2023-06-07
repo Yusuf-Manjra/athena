@@ -7,6 +7,8 @@
 # Declare the package name:
 atlas_subdir( CITest )
 
+set(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} --coverage")
+
 # CI tests are disabled by default:
 option( ATLAS_ENABLE_CI_TESTS "Set up tests in CITest package" OFF )
 if( NOT ATLAS_ENABLE_CI_TESTS )
