@@ -21,6 +21,7 @@ namespace {
   using FlavorTagDiscriminants::FTagTrackSequenceConfig;
   using FlavorTagDiscriminants::FTagInputConfig;
   using FlavorTagDiscriminants::FTagTrackInputConfig;
+  using FlavorTagDiscriminants::FlipTagConfig;
   // ____________________________________________________________________
   // High level adapter stuff
   //
@@ -52,11 +53,13 @@ namespace {
     const std::vector<std::pair<std::string, std::vector<std::string>>>& names,
     const TypeRegexes& type_regexes,
     const SortRegexes& sort_regexes,
-    const TrkSelRegexes& select_regexes);
+    const TrkSelRegexes& select_regexes,
+    const std::regex& re,
+    const FlipTagConfig& flip_config);
 
   // replace strings for flip taggers
   void rewriteFlipConfig(lwt::GraphConfig&, const StringRegexes&);
-  void flipSequenceSigns(lwt::GraphConfig&, const std::regex&);
+
 
   //_______________________________________________________________________
   // Implementation of the above functions
@@ -149,7 +152,9 @@ namespace {
     const std::vector<std::pair<std::string, std::vector<std::string>>>& names,
     const TypeRegexes& type_regexes,
     const SortRegexes& sort_regexes,
-    const TrkSelRegexes& select_regexes) {
+    const TrkSelRegexes& select_regexes,
+    const std::regex& re,
+    const FlipTagConfig& flip_config) {
     std::vector<FTagTrackSequenceConfig> nodes;
     for (const auto& name_node: names) {
       FTagTrackSequenceConfig node;
@@ -163,6 +168,12 @@ namespace {
         input.name = varname;
         input.type = match_first(type_regexes, varname,
                                  "track type matching");
+
+        input.flip_sign=false;
+        if ((flip_config != FlipTagConfig::STANDARD) && std::regex_match(varname, re)){
+          input.flip_sign=true;
+        }
+        
         node.inputs.push_back(input);
       }
       nodes.push_back(node);
@@ -191,17 +202,7 @@ namespace {
     config.outputs = new_outputs;
   }
 
-  void flipSequenceSigns(lwt::GraphConfig& config,
-                         const std::regex& re) {
-    for (auto& node: config.input_sequences) {
-      for (auto& var: node.variables) {
-        if (std::regex_match(var.name, re)) {
-          var.offset *= -1.0;
-          var.scale *= -1.0;
-        }
-      }
-    }
-  }
+
 
 }
 
@@ -553,6 +554,7 @@ namespace FlavorTagDiscriminants {
           case EDMType::CUSTOM_GETTER: {
             return customNamedSeqGetterWithDeps(
               cfg.name, options.track_prefix);
+
           }
           default: {
             throw std::logic_error("Unknown EDM type for tracks");
@@ -636,14 +638,23 @@ namespace FlavorTagDiscriminants {
       TrackLinkType track_link_type
     ){
 
+      // determine name based on flip config
+      std::string flip_name = "";
+      if (flip_config == FlipTagConfig::FLIP_SIGN) {
+        flip_name = "Flip";
+      }
+      if (flip_config == FlipTagConfig::NEGATIVE_IP_ONLY) {
+        flip_name = "Neg";
+      }
+
       // we rewrite the inputs if we're using flip taggers
       StringRegexes flip_converters {
-        {"(GN1[^_]*)"_r, "$1Flip"},
+        {"(GN1[^_]*|GN2[^_]*)"_r, "$1" + flip_name},
         {"(IP[23]D)_(.*)"_r, "$1Neg_$2"},
         {"(rnnip|dips[^_]*)_(.*)"_r, "$1flip_$2"},
         {"(JetFitter|SV1|JetFitterSecondaryVertex)_(.*)"_r, "$1Flip_$2"},
         {"(rnnip|dips[^_]*)"_r, "$1flip"},
-        {"^(DL1|DL1r[^_]*|DL1rmu|DL1d[^_]*)$"_r, "$1Flip"},
+        {"^(DL1|DL1r[^_]*|DL1rmu|DL1d[^_]*)$"_r, "$1" + flip_name},
         {"pt|abs_eta|eta"_r, "$&"},
         {"softMuon.*|smt.*"_r, "$&"}
       };
@@ -654,7 +665,6 @@ namespace FlavorTagDiscriminants {
 
       if (flip_config != FlipTagConfig::STANDARD) {
         rewriteFlipConfig(config, flip_converters);
-        flipSequenceSigns(config, flip_sequences);
       }
 
       // build the standard inputs
@@ -670,7 +680,7 @@ namespace FlavorTagDiscriminants {
         {"(rnnip|iprnn|dips[^_]*)(flip)?_p(b|c|u|tau)"_r, EDMType::FLOAT},
         {"(JetFitter|SV1|JetFitterSecondaryVertex)(Flip)?_[Nn].*"_r, EDMType::INT},
         {"(JetFitter|SV1|JetFitterSecondaryVertex).*"_r, EDMType::FLOAT},
-        {"(log_)?pt|abs_eta|eta|phi|energy"_r, EDMType::CUSTOM_GETTER},
+        {"(log_)?pt|abs_eta|eta|phi|energy|mass"_r, EDMType::CUSTOM_GETTER},
         {"softMuon_p[bcu]"_r, EDMType::FLOAT},
         {"softMuon_.*"_r, EDMType::FLOAT},
       };
@@ -692,7 +702,7 @@ namespace FlavorTagDiscriminants {
         {"iprnn_.*"_r, ""},
         {"smt_.*"_r, "softMuon_isDefaults"},
         {"softMuon_.*"_r, "softMuon_isDefaults"},
-        {"((log_)?pt|abs_eta|eta|phi|energy)"_r, ""}}; // no default for custom cases
+        {"((log_)?pt|abs_eta|eta|phi|energy|mass)"_r, ""}}; // no default for custom cases
 
       std::vector<FTagInputConfig> input_config;
       for (auto& node: config.inputs){
@@ -718,7 +728,10 @@ namespace FlavorTagDiscriminants {
       // build the track inputs
 
       std::vector<std::pair<std::string, std::vector<std::string> > > trk_names;
-      for (const auto& node: config.input_sequences) {
+      for (auto& node: config.input_sequences) {
+        remap_inputs(node.variables, remap_scalar,
+		     node.defaults);
+
         std::vector<std::string> names;
         for (const auto& var: node.variables) {
           names.push_back(var.name);
@@ -727,6 +740,11 @@ namespace FlavorTagDiscriminants {
       }
 
       TypeRegexes trk_type_regexes {
+        // Some innermost / next-to-innermost hit variables had a different
+        // definition in 21p9, recomputed here with customGetter to reuse
+        // existing training
+        // EDMType picked correspond to the first matching regex
+        {"numberOf.*21p9"_r, EDMType::CUSTOM_GETTER},
         {"numberOf.*"_r, EDMType::UCHAR},
         {"btagIp_(d0|z0SinTheta)Uncertainty"_r, EDMType::FLOAT},
         {"(numberDoF|chiSquared|qOverP|theta)"_r, EDMType::FLOAT},
@@ -760,7 +778,7 @@ namespace FlavorTagDiscriminants {
       };
 
       auto trk_config = get_track_input_config(
-        trk_names, trk_type_regexes, trk_sort_regexes, trk_select_regexes);
+        trk_names, trk_type_regexes, trk_sort_regexes, trk_select_regexes,flip_sequences,flip_config);
 
       // some additional options
       FTagOptions options;
@@ -819,13 +837,16 @@ namespace FlavorTagDiscriminants {
     // code for the track inputs is above.
     std::tuple<
       std::vector<internal::TrackSequenceBuilder>,
-      FTagDataDependencyNames>
+      FTagDataDependencyNames,
+      std::set<std::string>>
     createTrackGetters(
       const std::vector<FTagTrackSequenceConfig>& track_sequences,
       const FTagOptions& options)
     {
       FTagDataDependencyNames deps;
       std::vector<internal::TrackSequenceBuilder> trackSequenceBuilders;
+      std::map<std::string, std::string> remap = options.remap_scalar;
+      std::set<std::string> used_remap;
 
       for (const FTagTrackSequenceConfig& cfg: track_sequences) {
         internal::TrackSequenceBuilder track_getter(
@@ -839,15 +860,31 @@ namespace FlavorTagDiscriminants {
         for (const FTagTrackInputConfig& input_cfg: cfg.inputs) {
           auto [seqGetter, deps] = internal::get::seqFromTracks(
             input_cfg, options);
-          track_getter.sequencesFromTracks.push_back(seqGetter);
+
+          if(input_cfg.flip_sign){
+            auto seqGetter_flip=[g=seqGetter](const xAOD::Jet&jet, const internal::Tracks& trks){
+              auto [n,v] = g(jet,trks);
+              std::for_each(v.begin(), v.end(), [](double &n){ n=-1.0*n; });
+              return std::make_pair(n,v);
+            };
+            track_getter.sequencesFromTracks.push_back(seqGetter_flip);
+          }
+          else{
+            track_getter.sequencesFromTracks.push_back(seqGetter);
+          }
           track_data_deps.merge(deps);
+
+	  if (auto h = remap.extract(input_cfg.name)){
+            used_remap.insert(h.key());
+          }
+
         }
         trackSequenceBuilders.push_back(track_getter);
         deps.trackInputs.merge(track_data_deps);
         deps.bTagInputs.insert(options.track_link_name);
       }
 
-      return std::make_tuple(trackSequenceBuilders, deps);
+      return std::make_tuple(trackSequenceBuilders, deps, used_remap);
     }
 
 
@@ -889,6 +926,70 @@ namespace FlavorTagDiscriminants {
       }
 
       return std::make_tuple(decorators, deps, used_remap);
+    }
+
+    std::tuple<
+      internal::OutNode, internal::OutNodeVecChar,
+      internal::OutNodeVecFloat, internal::OutNodeTrackLinks,
+      FTagDataDependencyNames, std::set<std::string>>
+    createGNDecorators(
+      const GNNConfig::Config& config,
+      const FTagOptions& options)
+    {
+      FTagDataDependencyNames deps;
+      internal::OutNode decorators_f;
+      internal::OutNodeVecChar decorators_vc;
+      internal::OutNodeVecFloat decorators_vf;
+      internal::OutNodeTrackLinks decorators_tl;
+
+      std::map<std::string, std::string> remap = options.remap_scalar;
+      std::set<std::string> used_remap;
+
+      for (const auto& out_node: config.outputs) {
+
+        // let user rename the output
+        std::string name = out_node.label;
+        if (auto h = remap.extract(name)){
+          name = h.mapped();
+          used_remap.insert(h.key());
+        }
+        deps.bTagOutputs.insert(name);
+
+        switch (out_node.type) {
+          case GNNConfig::OutputNodeType::FLOAT: {
+            SG::AuxElement::Decorator<float> f(name);
+            decorators_f.emplace_back(out_node.label, f);
+            break;
+          }
+          case GNNConfig::OutputNodeType::VECCHAR: {
+            SG::AuxElement::Decorator<std::vector<char>> vc(name);
+            decorators_vc.emplace_back(out_node.label, vc);
+            break;
+          }
+          case GNNConfig::OutputNodeType::VECFLOAT: {
+            SG::AuxElement::Decorator<std::vector<float>> vf(name);
+            decorators_vf.emplace_back(out_node.label, vf);
+            break;
+          }
+          default:
+            throw std::logic_error("uknown outputnode type");
+        }
+      }
+
+      // TrackLinks decorator
+      if (decorators_vc.size() > 0 || decorators_vf.size() > 0){
+        std::string name = "TrackLinks";
+        if (auto h = remap.extract(name)){
+          name = h.mapped();
+          used_remap.insert(h.key());
+        }
+        deps.bTagOutputs.insert(name);
+
+        SG::AuxElement::Decorator<internal::TrackLinks> tl(name);
+        decorators_tl.emplace_back("TrackLinks", tl);
+      }
+
+      return std::make_tuple(decorators_f, decorators_vc, decorators_vf, decorators_tl, deps, used_remap);
     }
 
     // return a function to check IP validity
@@ -949,8 +1050,6 @@ namespace FlavorTagDiscriminants {
         throw std::logic_error("found unused output remapping(s): " + outputs);
       }
     }
-
-
   } // end of datapre namespace
 
 } // end of FlavorTagDiscriminants namespace

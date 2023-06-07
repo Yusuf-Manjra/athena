@@ -71,6 +71,7 @@ uint32_t jFEXFormTOBs::formTauTOB(int jFEX, int iPhi, int iEta, int EtClus, int 
 
 int jFEXFormTOBs::Get_calibrated_SRj_ET(int Energy, int jfex){
     
+/***********    MAYBE WILL BE NEEDED IN THE FUTURE... DO NOT REMOVE FOR NOW   
     int Et_edge[8] = {20,30,40,50,65,80,110,150};
     int et_range = -1;
     
@@ -89,6 +90,10 @@ int jFEXFormTOBs::Get_calibrated_SRj_ET(int Energy, int jfex){
     
     int et = (Energy * FEXAlgoSpaceDefs::SRJ_Calib_params[jfex][et_range]) >> 7;
     return et;
+*/
+
+    return Energy * FEXAlgoSpaceDefs::SRJ_Calib_params[jfex];
+
 }
 
 
@@ -139,10 +144,10 @@ uint32_t jFEXFormTOBs::formSRJetTOB(int jFEX, int iPhi, int iEta, int EtClus, in
     }
     
     // COMENTED FOR NOW, Appliying jet calibration
-    //jFEXSmallRJetTOBEt = Get_calibrated_SRj_ET(EtClus,jFEX)/Resolution;
+    jFEXSmallRJetTOBEt = Get_calibrated_SRj_ET(EtClus,jFEX)/Resolution;
     
     //In the firmware the calibration is not applied yet.
-    jFEXSmallRJetTOBEt = EtClus/Resolution;
+    //jFEXSmallRJetTOBEt = EtClus/Resolution;
     
     if(jFEXSmallRJetTOBEt > 0x7ff) {
         jFEXSmallRJetTOBEt = 0x7ff;
@@ -258,21 +263,19 @@ uint32_t jFEXFormTOBs::formMetTOB(int METX, int METY, int Resolution ) {
     int sat = 0;
     int res = 0;
 
-    int metX = METX/Resolution;
-    int metY = METY/Resolution;
+    int metX = std::floor(1.0*METX/Resolution);
+    int metY = std::floor(1.0*METY/Resolution);
 
     //0x7fff is 15 bits (decimal value 32767), however as MET is a signed value (can be negative) only 14 bits are allowed (16383) the MSB is the sign
     if (std::abs(metX) > 0x3fff) {
         ATH_MSG_DEBUG("sumEtlow saturated: " << metX );
-        metX = 0x7fff;
-        sat=1;
+        metX = 0x3fff;
     }
 
     
     if (std::abs(metY) > 0x3fff) { //0x7fff is 15 bits (decimal value 32767), however as MET is a signed value (can be negative) only 14 bits are allowed (16383)
         ATH_MSG_DEBUG("sumEthigh saturated: " << metY );
-        metY = 0x7fff;
-        sat=1;
+        metY = 0x3fff;
     }
 
     //create basic tobword with 32 bits

@@ -144,8 +144,8 @@ def TrigNavSlimmingMTCfg(flags):
     log.debug("Nothing to do as Trigger.doNavigationSlimming is False")
     return ca
 
-  # TODO remove when deprecated
-  from RecExConfig.RecFlags  import rec
+  doESD = flags.Output.doWriteESD
+  doAOD = flags.Output.doWriteAOD
 
   # NOTE: Derivations currently have a different configuration hook, see TrigNavSlimmingMTDerivationCfg above.
 
@@ -153,7 +153,7 @@ def TrigNavSlimmingMTCfg(flags):
   doESDSlim = not isCollectionInInputPOOLFile(flags, "HLTNav_Summary_ESDSlimmed")
   doAODSlim = not isCollectionInInputPOOLFile(flags, "HLTNav_Summary_AODSlimmed")
 
-  if (flags.Output.doWriteESD or rec.doWriteESD() or rec.doESD()) and doESDSlim:
+  if doESD and doESDSlim:
     tdt = ca.getPrimaryAndMerge(TrigDecisionToolCfg(flags))
     esdSlim = CompFactory.TrigNavSlimmingMTAlg('TrigNavSlimmingMTAlg_ESD')
     esdSlim.TrigDecisionTool = tdt
@@ -174,7 +174,7 @@ def TrigNavSlimmingMTCfg(flags):
   else:
     log.info("Will not create ESD Slimmed Trigger Navigation Collection in this job")
 
-  if (flags.Output.doWriteAOD or rec.doWriteAOD() or rec.doAOD()) and doAODSlim:
+  if doAOD and doAODSlim:
     tdt = ca.getPrimaryAndMerge(TrigDecisionToolCfg(flags))
     aodSlim = CompFactory.TrigNavSlimmingMTAlg('TrigNavSlimmingMTAlg_AOD')
     aodSlim.TrigDecisionTool = tdt

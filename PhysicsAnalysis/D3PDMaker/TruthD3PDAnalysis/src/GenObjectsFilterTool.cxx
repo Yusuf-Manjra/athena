@@ -10,16 +10,13 @@
 #include "AthenaKernel/errorcheck.h"
 #include "HepPDT/ParticleDataTable.hh"
 
-// Helper functors:
-#include "TruthHelper/IsGenStable.h"
-#include "TruthHelper/IsGenInteracting.h"
-
 // EDM include(s):
 #include "AtlasHepMC/GenEvent.h"
 #include "AtlasHepMC/GenParticle.h"
 #include "AtlasHepMC/GenVertex.h"
 #include "AtlasHepMC/Relatives.h"
 #include "AtlasHepMC/MagicNumbers.h"
+#include "TruthUtils/HepMCHelpers.h"
 #include "GeneratorObjects/McEventCollection.h"
 
 // Local include(s):
@@ -65,7 +62,6 @@ GenObjectsFilterTool::GenObjectsFilterTool( const std::string& type,
    declareProperty( "KeepBCHadrons",m_keepbcHadrons=false);
    declareProperty( "KeepBCHadronDecayChain",m_keepbcHadronDecayChain=false);
    declareProperty( "BCHadronsDescendantsPtCut",m_bcHadronsDescendantsPtCut=-1);
-   declareProperty( "BCHadronsDescendantsBarcodeCut",m_bcHadronsDescendantsBarcodeCut=-1); /// -1 for no cut
    declareProperty( "BCHadronsDescendantsEtaCut",m_bcHadronsDescendantsEtaCut=-1);/// -1 for no cut
    declareProperty( "KeepParticleWithPdgId",m_keepParticleWithPdgId);
 
@@ -129,7 +125,7 @@ bool GenObjectsFilterTool::pass( const HepMC::GenEvent* evt,
 
 
 
-bool GenObjectsFilterTool::isBCHadron(HepMC::ConstGenParticlePtr part) const{
+bool GenObjectsFilterTool::isBCHadron(const HepMC::ConstGenParticlePtr& part) const{
 
   if(HepMC::is_simulation_particle(part)) return false;
   int type = HadronClass::type(part->pdg_id()).second;
@@ -152,7 +148,7 @@ bool GenObjectsFilterTool::isKeep(int pdg) const{
   return false;
 }
 
-bool GenObjectsFilterTool::isLeptonicWZ(HepMC::ConstGenParticlePtr part) const{
+bool GenObjectsFilterTool::isLeptonicWZ(const HepMC::ConstGenParticlePtr& part) const{
 
   int pdg = part->pdg_id();
 
@@ -160,7 +156,7 @@ bool GenObjectsFilterTool::isLeptonicWZ(HepMC::ConstGenParticlePtr part) const{
   
   /// take into account W/Z->W/Z->lnu/ll
 
-  HepMC::ConstGenVertexPtr end = part->end_vertex();
+  const HepMC::ConstGenVertexPtr& end = part->end_vertex();
   if(end){
     for(const auto& Child: *end){
       int cpdg = Child->pdg_id();
@@ -177,7 +173,7 @@ bool GenObjectsFilterTool::isLeptonicWZ(HepMC::ConstGenParticlePtr part) const{
 
 }
 
-bool GenObjectsFilterTool::isRequested( HepMC::ConstGenParticlePtr part) const{
+bool GenObjectsFilterTool::isRequested(const HepMC::ConstGenParticlePtr& part) const{
 
 
    const HepMC::FourVector& p4 = part->momentum();
@@ -268,7 +264,6 @@ bool GenObjectsFilterTool::isRequested( HepMC::ConstGenParticlePtr part) const{
 
      if(pt>m_bcHadronsDescendantsPtCut){
        if(m_bcHadronsDescendantsEtaCut<0 || std::abs(eta)<m_bcHadronsDescendantsEtaCut){
-	 if(barcode < m_bcHadronsDescendantsBarcodeCut || m_bcHadronsDescendantsBarcodeCut<0){
 
 	   bool isfromhadron=false;
 #ifdef HEPMC3
@@ -289,7 +284,6 @@ bool GenObjectsFilterTool::isRequested( HepMC::ConstGenParticlePtr part) const{
 	   }
 #endif
 	   if(isfromhadron) return true;
-	 }
        }
      }
    }
@@ -389,7 +383,7 @@ bool GenObjectsFilterTool::isRequested( HepMC::ConstGenParticlePtr part) const{
    return false;
 }
 
-bool GenObjectsFilterTool::passParticleCuts( HepMC::ConstGenParticlePtr part) const{
+bool GenObjectsFilterTool::passParticleCuts( const HepMC::ConstGenParticlePtr& part) const{
 
   if(isRequested(part)) return true;
   if(m_removeUnrequestedParticles) return false;
@@ -407,7 +401,7 @@ bool GenObjectsFilterTool::passParticleCuts( HepMC::ConstGenParticlePtr part) co
 }
 
 
-bool GenObjectsFilterTool::pass( HepMC::ConstGenParticlePtr part,
+bool GenObjectsFilterTool::pass( const HepMC::ConstGenParticlePtr& part,
                                  const McEventCollection* coll ) const {
 
    // Check if the particle is coming from a "good" GenEvent:
@@ -419,11 +413,10 @@ bool GenObjectsFilterTool::pass( HepMC::ConstGenParticlePtr part,
    // If we don't want to specifically select charged truth tracks, then this
    // is already good enough:
    if( ! m_selectTruthTracks ) return true;
-   if (!HepMC::is_simulation_particle(part)) {
-     if( ! TruthHelper::IsGenStable()( part ) ) return false;
-     if( ! TruthHelper::IsGenInteracting()( part ) ) return false;
-   }
-
+    if (!HepMC::is_simulation_particle(part)) {
+      if( ! MC::isGenStable( part ) ) return false;
+      if( ! MC::isSimInteracting( part ) ) return false;
+    }
    int pdg = part->pdg_id();
    /// remove gluons and quarks of status 2 that pass IsGenStable!!!
    if( std::abs(pdg) < 7 || std::abs(pdg) == 21 ) return false;
@@ -442,7 +435,7 @@ bool GenObjectsFilterTool::pass( HepMC::ConstGenParticlePtr part,
    return true;
 }
 
-bool GenObjectsFilterTool::pass( HepMC::ConstGenVertexPtr vtx,
+bool GenObjectsFilterTool::pass( const HepMC::ConstGenVertexPtr& vtx,
                                  const McEventCollection* coll ) const {
 
   const HepMC::GenEvent* event = vtx->parent_event();

@@ -12,11 +12,10 @@
 #include "AtlasHepMC/GenParticle.h"
 #include "AtlasHepMC/GenVertex.h"
 #include "AthenaKernel/errorcheck.h"
-#include "barcodeOrder.h"
 #include "McParticleEvent/TruthParticle.h"
 #include "McParticleEvent/TruthParticleContainer.h"
 #include "GeneratorObjects/McEventCollection.h"
-#include "HepPID/ParticleIDMethods.hh"
+#include "TruthUtils/HepMCHelpers.h"
 #include <algorithm>
 
 namespace D3PD {
@@ -55,15 +54,11 @@ TruthLeptonParentAssociationTool::reset (const TruthParticle& p)
   // Just add the daughters in... but have to find it in the full record first
   const McEventCollection* mcec{nullptr};
   if (evtStore()->retrieve<McEventCollection>(mcec,"GEN_EVENT").isSuccess()){ // Always run on EVGEN anyway...
-    // Loop over GenEvent's.
-    for (const HepMC::GenEvent* ev_in : *mcec) {
-      if (!ev_in) continue;
-      auto Part = HepMC::barcode_to_particle(ev_in,p.barcode());
+      auto Part =p.genParticle();
       if (Part){
           // Found it!
           addLeptonParent( (Part) );
       }
-    } // Loop over events
   } // Successful retrieve
 
   const TruthParticleContainer* tpc{nullptr};
@@ -126,7 +121,7 @@ void TruthLeptonParentAssociationTool::addLeptonParent(HepMC::ConstGenParticlePt
          pdg == 24 || // W
          pdg == 25 || // Higgs
          (pdg == 15 && !m_primary_is_tau) || // Tau
-         HepPID::isHadron (pdg) // from a hadron!
+         MC::isHadron (pdg) // from a hadron!
         ){
       m_parent_barcodes.push_back( HepMC::barcode(*itrPar) ); 
     } else { // Will get to here if we are coming from the same lepton again

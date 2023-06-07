@@ -17,18 +17,9 @@
 //======= TFCSParametrizationBase =========
 //=============================================
 
-std::vector<TFCSParametrizationBase *> TFCSParametrizationBase::s_cleanup_list;
-
-#if defined(__FastCaloSimStandAlone__)
-TFCSParametrizationBase::TFCSParametrizationBase(const char *name,
-                                                 const char *title)
-    : TNamed(name, title), m_level(MSG::INFO), m_msg(&std::cout) {}
-#else
-
 TFCSParametrizationBase::TFCSParametrizationBase(const char *name,
                                                  const char *title)
     : TNamed(name, title) {}
-#endif
 
 void TFCSParametrizationBase::set_geometry(ICaloGeometry *geo) {
   for (unsigned int i = 0; i < size(); ++i)
@@ -70,47 +61,31 @@ void TFCSParametrizationBase::Print(Option_t *option) const {
                           << this);
     ATH_MSG(INFO) << optprint << "  PDGID: ";
     if (is_match_all_pdgid()) {
-      msg() << "all";
+      ATH_MSG(INFO) << "all";
     } else {
       for (std::set<int>::iterator it = pdgid().begin(); it != pdgid().end();
            ++it) {
         if (it != pdgid().begin())
-          msg() << ", ";
-        msg() << *it;
+          ATH_MSG(INFO) << ", ";
+        ATH_MSG(INFO) << *it;
       }
     }
     if (is_match_all_Ekin()) {
-      msg() << " ; Ekin=all";
+      ATH_MSG(INFO) << " ; Ekin=all";
     } else {
-      msg() << " ; Ekin=" << Ekin_nominal() << " [" << Ekin_min() << " , "
-            << Ekin_max() << ") MeV";
+      ATH_MSG(INFO) << " ; Ekin=" << Ekin_nominal() << " [" << Ekin_min()
+                    << " , " << Ekin_max() << ") MeV";
     }
     if (is_match_all_eta()) {
-      msg() << " ; eta=all";
+      ATH_MSG(INFO) << " ; eta=all";
     } else {
-      msg() << " ; eta=" << eta_nominal() << " [" << eta_min() << " , "
-            << eta_max() << ")";
+      ATH_MSG(INFO) << " ; eta=" << eta_nominal() << " [" << eta_min() << " , "
+                    << eta_max() << ")";
     }
-    msg() << endmsg;
+    ATH_MSG(INFO) << END_MSG(INFO);
   } else {
     ATH_MSG_INFO(optprint << GetTitle());
   }
-}
-
-void TFCSParametrizationBase::DoCleanup() {
-  std::scoped_lock lock(s_cleanup_mutex);
-  // Do cleanup only at the end of read/write operations
-  for (auto *ptr : s_cleanup_list)
-    if (ptr) {
-      delete ptr;
-    }
-  s_cleanup_list.resize(0);
-}
-
-void TFCSParametrizationBase::AddToCleanup(
-    const std::vector<TFCSParametrizationBase *> &garbage) {
-  std::scoped_lock lock(s_cleanup_mutex);
-  s_cleanup_list.insert(s_cleanup_list.end(), garbage.begin(), garbage.end());
 }
 
 void TFCSParametrizationBase::FindDuplicates(

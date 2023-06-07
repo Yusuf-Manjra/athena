@@ -27,7 +27,7 @@ class dbgEventInfo:
         self.HLT_Result                            = 'None'
         self.SuperMasterKey                        = 0
         self.HLTPrescaleKey                        = 0
-        self.HLT_Decision                          = False
+        self.HLT_Decision                          = 0
         self.L1_Chain_Names                        = []
         self.HLT_Chain_Names                       = []
         self.EventStatusNames                      = 'None'
@@ -179,8 +179,10 @@ class dbgEventInfo:
             if statusLen > 1:
                 # Skip first event - already analyzed
                 for i in range(1, statusLen):
-                    #If the first event status element is repeated skip over the next
-                    if int(event.status()[0]) == int(event.status()[i]):              
+                    #To protect against the repetition of the first event status element
+                    #If the integer value of the current event status element is greater than the length of the onlineErrorCode list
+                    #then skip over this element to the next
+                    if int(event.status()[i]) >= len(self.onlineErrorCode):
                          continue 
                     statusList.append(self.onlineErrorCode[int(event.status()[i])])
             else:
@@ -370,7 +372,7 @@ class dbgEventInfo:
             Int_t   Node_ID;\
             ULong_t   SuperMasterKey;\
             ULong_t   HLTPrescaleKey;\
-            Bool_t  HLT_Decision;\
+            Int_t  HLT_Decision;\
             Char_t  EventStatusNames[STRINGLENGTH];\
             };" )
   
@@ -388,7 +390,7 @@ class dbgEventInfo:
         self.event_info_tree.Branch('Node_ID',          addressof(self.Event_Info, 'Node_ID'),          'node_ID/I')
         self.event_info_tree.Branch('SuperMasterKey',   addressof(self.Event_Info, 'SuperMasterKey'),   'superMasterKey/I')
         self.event_info_tree.Branch('HLTPrescaleKey',   addressof(self.Event_Info, 'HLTPrescaleKey'),   'hltPrescaleKey/I')
-        self.event_info_tree.Branch('HLT_Decision',     addressof(self.Event_Info, 'HLT_Decision'),     'hLT_Decision/B')
+        self.event_info_tree.Branch('HLT_Decision',     addressof(self.Event_Info, 'HLT_Decision'),     'hLT_Decision/I')
         self.event_info_tree.Branch('EventStatusNames', addressof(self.Event_Info, 'EventStatusNames'), 'eventStatusNames/C')
 
         # Setup vector data

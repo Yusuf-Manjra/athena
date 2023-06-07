@@ -131,14 +131,11 @@ namespace ISF {
     //apply eta interpolation
     double interpolateEta(const double &eta, CLHEP::HepRandomEngine* rndmEngine) const;
 
-    //helper function to convert comma separated string into vector
-    static std::vector<std::string> str_to_list(std::string str);
-
     //get the infoMap from xml file based on the xmlpathname and also name of mainNode
     std::vector<std::map<std::string,std::string>> getInfoMap(std::string mainNode, const std::string &xmlFilePath);
 
     //decide the pca / cdf part to read based on pdgId and eta
-    static int passedParamIterator(int pid, double eta, std::vector<std::map<std::string,std::string>> mapvect);
+    int passedParamIterator(int pid, double eta, const std::vector<std::map<std::string,std::string>> &mapvect) const;
 
     //load inverse quantile transformer from XML
     StatusCode initializeInverseCDF(const std::string & quantileTransformerConfigFile);
@@ -198,11 +195,7 @@ namespace ISF {
     DoubleArrayProperty   m_numParticlesFactor{this, "NumParticlesFactor", {}, "scale the number of punch-through particles"};
     DoubleArrayProperty   m_energyFactor{this, "EnergyFactor", {}, "scale the energy of the punch-through particles"};
 
-    /*---------------------------------------------------------------------
-     *  Constants
-     *---------------------------------------------------------------------*/
-     const static double m_SQRT_0p5;
-     const static double m_SQRT_2;
+    
 
     /*---------------------------------------------------------------------
      *  ServiceHandles

@@ -21,6 +21,8 @@
 #include "AthenaBaseComps/AthAlgTool.h"
 #include "PathResolver/PathResolver.h"
 
+#include "AthenaMonitoringKernel/Monitored.h"
+
 // Gaudi includes
 #include "Gaudi/Property.h"
 
@@ -50,6 +52,11 @@ class jFexInputByteStreamTool : public extends<AthAlgTool, IL1TriggerByteStreamT
 
     private:
         // ------------------------- Properties --------------------------------------
+        
+        ToolHandle<GenericMonitoringTool> m_monTool{this,"MonTool","","Monitoring tool"};
+        bool m_UseMonitoring = false;
+        
+        
         // ROBIDs property required by the interface
         Gaudi::Property<std::vector<uint32_t>> m_robIds {this, "ROBIDs", {}, "List of ROB IDs required for conversion to/from xAOD RoI"};
         
@@ -62,8 +69,8 @@ class jFexInputByteStreamTool : public extends<AthAlgTool, IL1TriggerByteStreamT
         // Read handle keys for the L1Calo EDMs for xAOD->BS mode of operation
         SG::ReadHandleKey < xAOD::jFexTowerContainer> m_jTowersReadKey    {this,"jTowersReadKey"   ,"L1_jFexDataTowers","Read jFexEDM Trigger Tower container"};
 
-        std::array<uint32_t,3> jFEXtoRODTrailer  (uint32_t, uint32_t) const;
-        std::array<uint16_t,2> BulkStreamTrailer (uint32_t, uint32_t) const;
+        std::array<uint32_t,4> jFEXtoRODTrailer  (uint32_t, uint32_t) const;
+        std::array<uint16_t,2> BulkStreamTrailer (uint32_t, uint32_t, uint32_t) const;
         std::array<uint16_t,3> Dataformat1 (uint32_t ) const;
         std::array<uint16_t,4> Dataformat2 (uint32_t ) const;
         //bool m_verbose = 1;
@@ -74,8 +81,8 @@ class jFexInputByteStreamTool : public extends<AthAlgTool, IL1TriggerByteStreamT
         // hash the index into one integer in the format 0xJFCCT (hexadecimal)
         constexpr static unsigned int mapIndex(unsigned int jfex, unsigned int fpga, unsigned int channel, unsigned int tower);
         std::unordered_map<unsigned int, std::array<float,6> > m_Firm2Tower_map; /// {map index, {IDsimulation,eta,phi,source,iEta,iPhi}}
-        
-        
+
+        void printError(const std::string& location, const std::string& title, MSG::Level type, const std::string& detail) const;
         
 };
 

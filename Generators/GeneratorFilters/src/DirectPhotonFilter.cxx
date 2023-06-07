@@ -49,7 +49,7 @@ StatusCode DirectPhotonFilter::filterInitialize() {
   return StatusCode::SUCCESS;
 }
 
-bool DirectPhotonFilterCmpByPt(HepMC::ConstGenParticlePtr p1, HepMC::ConstGenParticlePtr p2) {
+bool DirectPhotonFilterCmpByPt(const HepMC::ConstGenParticlePtr& p1, const HepMC::ConstGenParticlePtr& p2) {
   return (p1->momentum().perp()>p2->momentum().perp());
 }
 
@@ -60,7 +60,7 @@ StatusCode DirectPhotonFilter::filterEvent() {
   for(const HepMC::GenEvent* genEvt : *events_const()) {
     ATH_MSG_DEBUG("----->>> Process : " << HepMC::signal_process_id(genEvt));
     // Find all prompt photons with within given eta range
-    for (auto pitr: *genEvt) {
+    for (const auto& pitr: *genEvt) {
       if (pitr->pdg_id() == 22 &&
           pitr->status() == 1 &&
           std::abs(pitr->momentum().pseudoRapidity()) <= m_EtaRange) {
@@ -69,7 +69,7 @@ StatusCode DirectPhotonFilter::filterEvent() {
         auto prodVtx = pitr->production_vertex();
         bool fromHadron(false);
 #ifdef HEPMC3
-        for (auto parent:  prodVtx->particles_in()) {
+        for (const auto& parent:  prodVtx->particles_in()) {
 #else
         for (auto parent_it = prodVtx->particles_begin(HepMC::parents); parent_it != prodVtx->particles_end(HepMC::parents); ++parent_it) {
           auto parent=*parent_it;
@@ -94,7 +94,7 @@ StatusCode DirectPhotonFilter::filterEvent() {
     setFilterPassed(false);
   }
   else {
-    for (auto photon: promptPhotonsInEta) {
+    for (const auto& photon: promptPhotonsInEta) {
 
       ATH_MSG_DEBUG("Found prompt photon with pt="<<photon->momentum().perp());
     }

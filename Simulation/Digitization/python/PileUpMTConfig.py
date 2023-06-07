@@ -6,6 +6,7 @@ from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.Enums import ProductionStep
 from AthenaPoolCnvSvc.PoolReadConfig import PoolReadCfg
+from SGComps.AddressRemappingConfig import InputRenameCfg
 from Digitization.RunDependentConfig import (
     maxNevtsPerXing,
     LumiProfileSvcCfg,
@@ -31,6 +32,16 @@ class PUBkgKind(Enum):
     CAVERN = 3
     BEAMGAS = 4
     BEAMHALO = 5
+
+
+def HSInputRenameCfg():
+    acc = ComponentAccumulator()
+    acc.merge(InputRenameCfg("xAOD::EventInfo", "EventInfo", "HSEventInfo"))
+    acc.merge(InputRenameCfg("xAOD::EventAuxInfo", "EventInfoAux.", "HSEventInfoAux."))
+    acc.merge(InputRenameCfg("EventInfo", "EventInfo", "HSEventInfo"))
+    acc.merge(InputRenameCfg("McEventCollection", "TruthEvent", "HSTruthEvent"))
+    acc.merge(InputRenameCfg("TrackRecordCollection", "MuonEntryLayer", "HSMuonEntryLayer"))
+    return acc
 
 
 def BatchedMinbiasSvcCfg(flags, name="LowPtMinbiasSvc", kind=PUBkgKind.LOWPT, **kwargs):
@@ -68,7 +79,7 @@ def BatchedMinbiasSvcCfg(flags, name="LowPtMinbiasSvc", kind=PUBkgKind.LOWPT, **
         kwargs.setdefault("OnDemandMB", False)
         # load enough events that the probability of running out for any given event is no more than 1e-5
         kwargs.setdefault(
-            "MBBatchSize", 8 * max(flags.Digitization.PU.NumberOfHighPtMinBias, 1) * n_bc
+            "MBBatchSize", 2 * max(flags.Digitization.PU.NumberOfHighPtMinBias, 1) * n_bc
         )
         kwargs.setdefault("NSimultaneousBatches", flags.Concurrency.NumConcurrentEvents)
         kwargs.setdefault("SkippedHSEvents", skip)
@@ -170,6 +181,7 @@ def PileUpMTAlgCfg(flags, **kwargs):
         "double event selection is not supported "
         "by PileUpMTAlg" % (not flags.Input.SecondaryFiles)
     )
+    acc.merge(HSInputRenameCfg())
     acc.merge(PoolReadCfg(flags))
     # add minbias service(s)
     if flags.Digitization.PU.LowPtMinBiasInputCols:

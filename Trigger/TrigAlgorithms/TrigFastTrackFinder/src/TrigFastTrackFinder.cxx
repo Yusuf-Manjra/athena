@@ -423,7 +423,7 @@ StatusCode TrigFastTrackFinder::execute(const EventContext& ctx) const {
 
   if (m_standaloneMode) {
     //the default fullscan TrigRoiDescriptor settings for beamspot width (z-range) are incorrect
-    const TrigRoiDescriptor internalRoI = TrigRoiDescriptor(0, -4.5, 4.5, 0, -M_PI, M_PI, 0, -168.0, 168.0);
+    const TrigRoiDescriptor internalRoI = TrigRoiDescriptor(0, -4.5, 4.5, 0, -M_PI, M_PI, 0, -150.0, 150.0);
 
     ATH_CHECK(findTracks(trackEventData, internalRoI, inputTracks, *outputTracks, ctx));
 
@@ -593,10 +593,20 @@ StatusCode TrigFastTrackFinder::findTracks(InDet::SiTrackMakerEventData_xk &trac
       seedGen.loadSpacePoints(convertedSpacePoints);
 
       if (m_doZFinder && m_doFastZVseeding) seedGen.createSeedsZv();
-      else seedGen.createSeeds(tmpRoi.get());
-    
-      seedGen.getSeeds(triplets);
- 
+      else {
+
+	std::vector<GNN_TrigTracklet> vGNN_Tracks;
+
+	seedGen.getTracklets(tmpRoi.get(), vGNN_Tracks);
+	
+	for(auto& track : vGNN_Tracks) {
+	  for(auto& seed : track.m_seeds) {
+	    triplets.emplace_back(seed);
+	  }
+	  ATH_MSG_DEBUG("GNN tracklet has " << track.m_track.size()<<" spacepoints");
+	}
+	vGNN_Tracks.clear();
+      }
     } else {
       TRIG_TRACK_SEED_GENERATOR seedGen(m_tcs);
       
@@ -2188,6 +2198,7 @@ StatusCode TrigFastTrackFinder::finddEdxTrk(const EventContext& ctx, const Track
    SG::WriteHandle<xAOD::TrigCompositeContainer> dEdxTrkHandle(m_dEdxTrkKey, ctx);
    ATH_CHECK( dEdxTrkHandle.record(std::make_unique<xAOD::TrigCompositeContainer>(), std::make_unique<xAOD::TrigCompositeAuxContainer>()) );
    auto dEdxTrkContainer = dEdxTrkHandle.ptr();
+   dEdxTrkContainer->reserve(outputTracks.size());
 
    SG::WriteHandle<xAOD::TrigCompositeContainer> dEdxHitHandle(m_dEdxHitKey, ctx);
    ATH_CHECK( dEdxHitHandle.record(std::make_unique<xAOD::TrigCompositeContainer>(), std::make_unique<xAOD::TrigCompositeAuxContainer>()) );
@@ -2256,7 +2267,6 @@ StatusCode TrigFastTrackFinder::finddEdxTrk(const EventContext& ctx, const Track
       if( ! hpt && ! lpt ) continue;
 
       xAOD::TrigComposite *dEdxTrk = new xAOD::TrigComposite();
-      dEdxTrk->makePrivateStore();
       dEdxTrkContainer->push_back(dEdxTrk);
       dEdxTrk->setDetail<int>  ("dEdxTrk_id",     i_track);
       dEdxTrk->setDetail<float>("dEdxTrk_pt",     pt);
@@ -2273,7 +2283,6 @@ StatusCode TrigFastTrackFinder::finddEdxTrk(const EventContext& ctx, const Track
 
       for(unsigned int i=0; i<v_pixhit_dedx.size(); i++) {
 	 xAOD::TrigComposite *dEdxHit = new xAOD::TrigComposite();
-	 dEdxHit->makePrivateStore();
 	 dEdxHitContainer->push_back(dEdxHit);
 	 dEdxHit->setDetail<int>  ("dEdxHit_trkid",   i_track);
 	 dEdxHit->setDetail<float>("dEdxHit_dedx",    v_pixhit_dedx[i]);

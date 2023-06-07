@@ -8,13 +8,12 @@
 // Author: S.Binet<binet@cern.ch>
 /////////////////////////////////////////////////////////////////// 
 
+#include "TruthUtils/MagicNumbers.h"
 
 // STL includes
 #include <cmath>
 
 // CLHEP includes
-#include "TruthHelper/IsGenerator.h"
-#include "TruthHelper/IsGenStable.h"
 #include "CLHEP/Units/SystemOfUnits.h"
 
 // McParticleKernel includes
@@ -25,11 +24,11 @@
 #include "copyBeamParticles.h"
 
 #include "AtlasHepMC/Flow.h"
+#include "TruthUtils/HepMCHelpers.h"
 /////////////////////////////////////////////////////////////////// 
 /// Public methods: 
 /////////////////////////////////////////////////////////////////// 
 
-using namespace TruthHelper;
 using CLHEP::GeV;
 
 /// Constructors
@@ -191,29 +190,26 @@ StatusCode EtaPtFilterTool::buildGenEvent( const HepMC::GenEvent* in, HepMC::Gen
   return StatusCode::SUCCESS;
 }
 
-bool EtaPtFilterTool::isAccepted( HepMC::ConstGenParticlePtr mc ) const
+bool EtaPtFilterTool::isAccepted( const HepMC::ConstGenParticlePtr& mc ) const
 {
   if ( ! mc ) {
     return false;
   }
   
   if ( m_butKeepAllGeneratorStable.value() ) {
-    static const IsGenStable isStable;
-    if ( isStable(mc) ) 
+    if ( MC::isGenStable(mc) ) 
       return true;
   }
 
   if ( m_onlyGenerator.value() ) {
     // helper class to know if a GenParticle has been produced at Generator 
     // level. ie: not at simulation level (Geant4)
-    static const IsGenerator ifs;
-    if ( !ifs(mc) ) {
+
+    if ( ! HepMC::is_truthhelper_generator_particle(mc) ) {
       return false;
     }
   }
 
-  // FIXME: this is generator dependent... 
-  //        one would need a TruthHelper predicate
   if ( m_keepDocumentaries.value() ) {
     if ( mc->status() == 3 ) {
       return true;
@@ -239,7 +235,7 @@ bool EtaPtFilterTool::isAccepted( HepMC::ConstGenParticlePtr mc ) const
   }
 }
 
-bool EtaPtFilterTool::isAccepted( HepMC::ConstGenVertexPtr vtx ) const
+bool EtaPtFilterTool::isAccepted( const HepMC::ConstGenVertexPtr& vtx ) const
 {
   if ( !vtx ) {
     return false;
@@ -262,7 +258,7 @@ bool EtaPtFilterTool::isAccepted( HepMC::ConstGenVertexPtr vtx ) const
   //
 #ifdef HEPMC3
   // check the parent branch
-  for ( auto p: vtx->particles_in() ) {
+  for ( const auto& p: vtx->particles_in() ) {
     if ( isAccepted(p) ) {
       return true;
     }
@@ -290,7 +286,7 @@ bool EtaPtFilterTool::isAccepted( HepMC::ConstGenVertexPtr vtx ) const
   return false;
 }
 
-bool EtaPtFilterTool::isSignalProcessVertex( HepMC::ConstGenVertexPtr vtx, const HepMC::GenEvent* evt )
+bool EtaPtFilterTool::isSignalProcessVertex(const HepMC::ConstGenVertexPtr& vtx, const HepMC::GenEvent* evt )
 {
   if (HepMC::signal_process_vertex(evt) == vtx) {
     ATH_MSG_DEBUG("Signal Process vertex found: " << vtx << " = ("
@@ -301,7 +297,7 @@ bool EtaPtFilterTool::isSignalProcessVertex( HepMC::ConstGenVertexPtr vtx, const
   return false;
 }
 
-StatusCode EtaPtFilterTool::addVertex( HepMC::ConstGenVertexPtr srcVtx, HepMC::GenEvent* evt,
+StatusCode EtaPtFilterTool::addVertex( const HepMC::ConstGenVertexPtr& srcVtx, HepMC::GenEvent* evt,
                                        VertexMap_t& vmap,
                                        ParticleMap_t& pmap,
 				       bool isSignalVertex) const
@@ -354,7 +350,7 @@ StatusCode EtaPtFilterTool::addVertex( HepMC::ConstGenVertexPtr srcVtx, HepMC::G
       p->set_generated_mass( child->generated_mass() );
       p->set_pdg_id( child->pdg_id() );
       if ( m_butKeepAllGeneratorStable && !isAccepted(child) && child->status() == 2 ) 
-        p->set_status( 10902 ) ;
+        p->set_status( HepMC::SPECIALSTATUS ) ;
       else
         p->set_status( child->status() );
       HepMC::set_flow(p, HepMC::flow(child) );
@@ -414,7 +410,7 @@ StatusCode EtaPtFilterTool::addVertex( HepMC::ConstGenVertexPtr srcVtx, HepMC::G
       p->set_generated_mass( (*child)->generated_mass() );
       p->set_pdg_id( (*child)->pdg_id() );
       if ( m_butKeepAllGeneratorStable && !isAccepted(*child) && (*child)->status() == 2 ) 
-	p->set_status( 10902 ) ;
+	p->set_status( HepMC::SPECIALSTATUS );
       else
 	p->set_status( (*child)->status() );
       p->set_flow( (*child)->flow() );
@@ -431,7 +427,7 @@ StatusCode EtaPtFilterTool::addVertex( HepMC::ConstGenVertexPtr srcVtx, HepMC::G
   return StatusCode::SUCCESS;
 }
 
-bool EtaPtFilterTool::isFromHardScattering( HepMC::ConstGenVertexPtr vtx ) const
+bool EtaPtFilterTool::isFromHardScattering( const HepMC::ConstGenVertexPtr& vtx ) const
 {
   if ( std::abs(HepMC::barcode(vtx)) <= m_maxHardScatteringVtxBarcode.value() &&
        m_ppFilter.isAccepted(vtx) &&

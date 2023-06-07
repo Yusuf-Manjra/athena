@@ -1,7 +1,7 @@
 # Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 import AthenaCommon.SystemOfUnits as Units
 
-from InDetConfig.TrackingPassFlags import createTrackingPassFlags,createITkTrackingPassFlags
+from TrkConfig.TrackingPassFlags import createTrackingPassFlags,createITkTrackingPassFlags
 from TrigEDMConfig.TriggerEDMRun3 import recordable
 
 def signatureSpecificSettingOfFlags(flags,mode):
@@ -9,11 +9,28 @@ def signatureSpecificSettingOfFlags(flags,mode):
   #temporary - to be reworked
   if mode=="InDet":
     flags.minPT = flags.pTmin   #hack to sync pT threshold used in offline and trigger
+    
+    flags.minClusters         = 7   #hardcoded to preserve trigger settings (not used for FTF config)
+    flags.minSiNotShared      = 5
+    flags.maxShared           = 2
     flags.Xi2max              = 9. if flags.input_name != "bjet" else 12.
     flags.Xi2maxNoAdd         = 25.
     flags.nHolesMax           = 2
     flags.nHolesGapMax        = 2
     flags.nWeightedClustersMin= 6
+    flags.roadWidth           =10.
+    if flags.input_name in ['jet','jetSuper','fullScan','fullScanUTT']:
+      flags.roadWidth =         5.
+    elif flags.input_name == 'cosmics':
+      flags.roadWidth =        75.
+      
+    flags.useNewParameterizationTRT = True
+    flags.minTRTonTrk          =9
+
+    #2023fix - it should read 2
+    flags.maxSiHoles           = 5
+    flags.maxSCTHoles          = 5
+    #end 
     
   else:                         #ITk specific settings can be done here while we rely on ConfigSettings
     flags.minPT = [flags.pTmin] #ITk flags have eta dependant settings
@@ -26,8 +43,13 @@ def signatureSpecificSettingOfFlags(flags,mode):
   flags.seedFilterLevel     = 0
   
   if flags.isLRT:
+    flags.minClusters         = 8
     flags.nHolesGapMax        = 1
     flags.nWeightedClustersMin= 8
+    flags.maxSiHoles          = 2
+    flags.maxSCTHoles         = 1
+    flags.maxPixelHoles       = 1
+    flags.maxDoubleHoles      = 0
     
   if flags.input_name=="cosmics":
     flags.nClustersMin        = 4
@@ -35,6 +57,7 @@ def signatureSpecificSettingOfFlags(flags,mode):
     flags.Xi2max              = 60.  if mode=="InDet" else [60.]
     flags.Xi2maxNoAdd         = 100. if mode=="InDet" else [100.]
     flags.nWeightedClustersMin= 8
+    flags.minTRTonTrk         = 20
 
   def collToRecordable(flags,name):
     ret = name
@@ -58,13 +81,15 @@ def signatureSpecificSettingOfFlags(flags,mode):
       
     return ret
 
-  flags.addFlag("trkTracks_FTF", f'HLT_IDTrkTrack_{flags.suffix}_FTF')
-  flags.addFlag("tracks_FTF", collToRecordable(flags, f'HLT_IDTrack_{flags.suffix}_FTF'))
+  flags.addFlag("trkTracks_FTF",    f'HLT_IDTrkTrack_{flags.suffix}_FTF')
   flags.addFlag("trkTracks_IDTrig", f'HLT_IDTrkTrack_{flags.suffix}_IDTrig')
-  flags.addFlag("tracks_IDTrig", collToRecordable(flags, f"HLT_IDTrack_{flags.suffix}_IDTrig"))
+  flags.addFlag("tracks_FTF",    
+                collToRecordable(flags, f'HLT_IDTrack_{flags.suffix}_FTF'))
+  flags.addFlag("tracks_IDTrig", 
+                collToRecordable(flags, "HLT_IDTrack_{}_IDTrig".format(flags.suffix if flags.input_name != "tauIso" else "Tau")))
 
-  flags.addFlag("refitROT", False) # should likely be moved to ConfigSettingsBase
-  flags.addFlag("trtExtensionType", "xf") # should likely be moved to ConfigSettingsBase
+  flags.addFlag("refitROT", True) 
+  flags.addFlag("trtExtensionType", "xf") 
 
 
     
@@ -123,18 +148,18 @@ class FlagsCopiedTest(unittest.TestCase):
         flags.Trigger.doID
         flags.Trigger.InDetTracking.Muon
         flags.Trigger.InDetTracking.Electron.minPT = 2.0 * Units.GeV
-        self.newflags = flags.cloneAndReplace('InDet.Tracking.ActiveConfig', 'Trigger.InDetTracking.Electron')
+        self.newflags = flags.cloneAndReplace('Tracking.ActiveConfig', 'Trigger.InDetTracking.Electron')
 
         self.newflags.dump(".*InDet")
 
     def runTest(self):
-        self.assertEqual(self.newflags.InDet.Tracking.ActiveConfig.minPT, 2.0 * Units.GeV, msg="Flags are not copied")
+        self.assertEqual(self.newflags.Tracking.ActiveConfig.minPT, 2.0 * Units.GeV, msg="Flags are not copied")
 
 
 
 class UnsetFlagsTest(FlagsCopiedTest):
     def runTest(self):
-        self.assertEqual(self.newflags.InDet.Tracking.ActiveConfig.vertex_jet, None)
+        self.assertEqual(self.newflags.Tracking.ActiveConfig.vertex_jet, None)
 
 
 if __name__ == "__main__":

@@ -52,20 +52,20 @@ public:
    virtual bool pass( const HepMC::GenEvent* evt,
                       const McEventCollection* coll = 0 ) const;
    /// Function selecting GenParticle objects
-   virtual bool pass( HepMC::ConstGenParticlePtr part,
+   virtual bool pass( const HepMC::ConstGenParticlePtr& part,
                       const McEventCollection* coll = 0 ) const;
    /// Function selecting GenVertex objects
-   virtual bool pass( HepMC::ConstGenVertexPtr vtx,
+   virtual bool pass( const HepMC::ConstGenVertexPtr& vtx,
                       const McEventCollection* coll = 0 ) const;
 
 private:
 
-  bool isBCHadron(HepMC::ConstGenParticlePtr part) const;
+  bool isBCHadron(const  HepMC::ConstGenParticlePtr& part) const;
   bool isBC(int pdg) const;
   bool isKeep(int pdg) const;
-  bool isRequested( HepMC::ConstGenParticlePtr part) const;
-  bool passParticleCuts( HepMC::ConstGenParticlePtr part) const;
-  bool isLeptonicWZ(HepMC::ConstGenParticlePtr part) const;
+  bool isRequested( const HepMC::ConstGenParticlePtr& part) const;
+  bool passParticleCuts( const HepMC::ConstGenParticlePtr& part) const;
+  bool isLeptonicWZ(const  HepMC::ConstGenParticlePtr& part) const;
 
 
 
@@ -89,7 +89,6 @@ private:
   bool m_keepbcHadrons; //// keep b/c hadrons
   bool m_keepbcHadronDecayChain; //// all particles from b/c hadrons including G4
   double m_bcHadronsDescendantsPtCut;
-  int m_bcHadronsDescendantsBarcodeCut;
   double m_bcHadronsDescendantsEtaCut;
   std::vector<int> m_keepParticleWithPdgId;
   bool m_keepLeptonicWZBosons; /// W/Z bosons decaying leptonically

@@ -4,13 +4,14 @@
 # No additional information is added
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
+from AthenaConfiguration.Enums import MetadataCategory
 
 def TRUTH0Cfg(ConfigFlags):
     """Main config for TRUTH0"""
     acc = ComponentAccumulator()
     
     # Ensure EventInfoCnvAlg is scheduled
-    if "EventInfo#EventInfo" in ConfigFlags.Input.TypedCollections and "xAOD::EventInfo#EventInfo" not in ConfigFlags.Input.TypedCollections:
+    if "EventInfo#McEventInfo" in ConfigFlags.Input.TypedCollections and "xAOD::EventInfo#EventInfo" not in ConfigFlags.Input.TypedCollections:
         from xAODEventInfoCnv.xAODEventInfoCnvConfig import EventInfoCnvAlgCfg
         acc.merge(EventInfoCnvAlgCfg(ConfigFlags, inputKey="McEventInfo", outputKey="EventInfo", disableBeamSpot=True))
  
@@ -37,12 +38,11 @@ def TRUTH0Cfg(ConfigFlags):
                                           'TruthVertices',
                                           'TruthParticles']
 
-    # Metadata
-    TRUTH0MetaDataItems = [ "xAOD::TruthMetaDataContainer#TruthMetaData", "xAOD::TruthMetaDataAuxContainer#TruthMetaDataAux." ]
-
     # Create output stream 
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     TRUTH0ItemList = TRUTH0SlimmingHelper.GetItemList()
-    acc.merge(OutputStreamCfg(ConfigFlags, "DAOD_TRUTH0", ItemList=TRUTH0ItemList, MetadataItemList=TRUTH0MetaDataItems))
- 
+    acc.merge(OutputStreamCfg(ConfigFlags, "DAOD_TRUTH0", ItemList=TRUTH0ItemList))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, "DAOD_TRUTH0", createMetadata=[MetadataCategory.CutFlowMetaData, MetadataCategory.TruthMetaData]))
+
     return acc

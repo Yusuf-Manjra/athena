@@ -28,7 +28,6 @@ FastChain_tf.py \
     --physicsList 'FTFP_BERT_ATL' \
     --useISF True \
     --jobNumber 1 \
-    --DataRunNumber 410000 \
     --randomSeed 123 \
     --digiSteeringConf "StandardSignalOnlyTruth" \
     --inputEVNTFile ${EVNT_File} \
@@ -41,7 +40,7 @@ FastChain_tf.py \
     --digiSeedOffset2 '727' \
     --geometryVersion 'ATLAS-R3S-2021-03-00-00' \
     --conditionsTag 'OFLCOND-MC21-SDR-RUN3-07' \
-    --preInclude 'Campaigns.MC21a' \
+    --preInclude 'Campaigns.MC21a' 'Campaigns.MC21SimulationNoIoV' \
     --postInclude 'PyJobTransforms.UseFrontier' 'Digitization.DigitizationSteering.DigitizationTestingPostInclude' \
     --postExec 'with open("ConfigCA.pkl", "wb") as f: cfg.store(f)' \
     --imf False
@@ -66,7 +65,6 @@ FastChain_tf.py \
     --physicsList 'FTFP_BERT_ATL' \
     --useISF True \
     --jobNumber 1 \
-    --DataRunNumber 410000 \
     --randomSeed 123 \
     --digiSteeringConf "StandardSignalOnlyTruth" \
     --inputEVNTFile ${EVNT_File} \
@@ -79,7 +77,7 @@ FastChain_tf.py \
     --digiSeedOffset2 '727' \
     --geometryVersion default:ATLAS-R3S-2021-03-00-00 \
     --conditionsTag default:OFLCOND-MC21-SDR-RUN3-07 \
-    --preInclude 'all:Campaigns/MC21a.py,Campaigns/PileUpMC21a.py' \
+    --preInclude 'all:Campaigns/MC21a.py,Campaigns/PileUpMC21a.py,Campaigns/MC21SimulationNoIoV.py' \
     --postInclude='PyJobTransforms/UseFrontier.py' \
     --postExec 'default:job+=CfgMgr.JobOptsDumperAlg(FileName="PileupLegacyConfig.txt");from AthenaCommon.ConfigurationShelve import saveToAscii;saveToAscii("LegacyConfig.txt")' \
     --athenaopts '"--config-only=ConfigCG.pkl"'\
@@ -101,7 +99,6 @@ FastChain_tf.py \
     --physicsList 'FTFP_BERT_ATL' \
     --useISF True \
     --jobNumber 1 \
-    --DataRunNumber 410000 \
     --randomSeed 123 \
     --digiSteeringConf "StandardSignalOnlyTruth" \
     --inputEVNTFile ${EVNT_File} \
@@ -160,13 +157,17 @@ ntup=-9999
 if [ ${cg} -eq 0 ]
 then
     # Reconstruction
-    Reco_tf.py --inputRDOFile run_cg/${RDO_File} \
+    Reco_tf.py \
+               --CA "all:True" "RDOtoRDOTrigger:False" \
+               --inputRDOFile run_cg/${RDO_File} \
                --outputAODFile ${AOD_File} \
                --steering 'doRDO_TRIG' 'doTRIGtoALL' \
                --maxEvents '-1' \
                --autoConfiguration=everything \
+               --geometryVersion default:ATLAS-R3S-2021-03-00-00 \
+               --conditionsTag default:OFLCOND-MC21-SDR-RUN3-07 \
                --athenaopts "all:--threads=1" \
-               --postExec 'RDOtoRDOTrigger:from AthenaCommon.ConfigurationShelve import saveToAscii;saveToAscii("RDOtoRDOTrigger_config.txt")' 'RAWtoALL:from AthenaCommon.ConfigurationShelve import saveToAscii;saveToAscii("RAWtoALL_config.txt")' \
+               --postExec 'RAWtoALL:from AthenaCommon.ConfigurationShelve import saveToAscii;saveToAscii("RAWtoALL_config.txt")' \
                --imf False
 
      rec=$?
@@ -176,6 +177,8 @@ then
          Reco_tf.py --inputAODFile ${AOD_File} \
                     --outputNTUP_PHYSVALFile ${NTUP_File} \
                     --maxEvents '-1' \
+                    --geometryVersion default:ATLAS-R3S-2021-03-00-00 \
+                    --conditionsTag default:OFLCOND-MC21-SDR-RUN3-07 \
                     --ignoreErrors True \
                     --validationFlags 'doInDet' \
                     --valid 'True'

@@ -36,9 +36,8 @@ filter_bs.args = '-s Main ' + find_file('*_HLTMPPy_output.*.data')
 
 # Tier-0 reco step (BS->AOD)
 tzrecoPreExec = ' '.join([
-  "from AthenaConfiguration.AllConfigFlags import ConfigFlags;",
-  "ConfigFlags.Trigger.triggerMenuSetup=\'Cosmic_run3_v1\';",
-  "ConfigFlags.Trigger.AODEDMSet=\'AODFULL\';",
+  "flags.Trigger.triggerMenuSetup=\'Cosmic_run3_v1\';",
+  "flags.Trigger.AODEDMSet=\'AODFULL\';",
 ])
 
 tzreco = ExecStep.ExecStep('Tier0Reco')
@@ -53,8 +52,7 @@ tzreco.args += ' --outputAODFile=AOD.pool.root'
 tzreco.args += ' --geometryVersion=\'ATLAS-R3S-2021-03-00-00\'' # RecExConfig AutoConfiguration use outdated default
 tzreco.args += ' --conditionsTag=\'CONDBR2-BLKPA-2022-08\''     # RecExConfig AutoConfiguration use outdated default
 tzreco.args += ' --preExec="{:s}"'.format(tzrecoPreExec)
-tzreco.args += ' --postInclude="TriggerTest/disableChronoStatSvcPrintout.py"'
-tzreco.args += ' --steering "doRAWtoALL"'
+tzreco.args += ' --CA'
 
 # Tier-0 monitoring step (AOD->HIST)
 tzmon = ExecStep.ExecStep('Tier0Mon')
@@ -63,7 +61,8 @@ tzmon.executable = 'Run3DQTestingDriver.py'
 tzmon.input = ''
 tzmon.args = '--threads=1'
 tzmon.args += ' --dqOffByDefault'
-tzmon.args += ' Input.Files="[\'AOD.pool.root\']" DQ.Steering.doHLTMon=True Trigger.triggerMenuSetup=\'Cosmic_run3_v1\''
+# HLT jet monitoring disabled as it requires offline PFlow jets which can't be reconstructed for cosmics
+tzmon.args += ' Input.Files="[\'AOD.pool.root\']" DQ.Steering.doHLTMon=True DQ.Steering.HLT.doJet=False Trigger.triggerMenuSetup=\'Cosmic_run3_v1\''
 
 # The full test
 test = Test.Test()

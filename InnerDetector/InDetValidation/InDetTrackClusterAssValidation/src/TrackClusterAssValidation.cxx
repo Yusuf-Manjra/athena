@@ -14,10 +14,6 @@
 #include "AtlasHepMC/GenVertex.h"
 #include "AtlasHepMC/GenParticle.h"
 
-#ifndef HEPMC3
-#include "AtlasHepMC/GenVertex.h"
-#endif
-
 #include <cmath>
 
 ///////////////////////////////////////////////////////////////////
@@ -27,6 +23,12 @@
 InDet::TrackClusterAssValidation::TrackClusterAssValidation
 (const std::string& name,ISvcLocator* pSvcLocator)
   : AthReentrantAlgorithm(name,pSvcLocator),
+    m_spacepointsSCTname("SCT_SpacePoints"),
+    m_spacepointsPixelname("PixelSpacePoints"),
+    m_spacepointsOverlapname("OverlapSpacePoints"),
+    m_clustersSCTname("SCT_Clusters"),
+    m_clustersPixelname("PixelClusters"),
+    m_clustersTRTname("TRT_DriftCircles"),
     m_truth_locationPixel( "PRD_MultiTruthPixel" ),
     m_truth_locationSCT(   "PRD_MultiTruthSCT" ),
     m_truth_locationTRT(   "PRD_MultiTruthTRT" )
@@ -34,12 +36,6 @@ InDet::TrackClusterAssValidation::TrackClusterAssValidation
 
   // TrackClusterAssValidation steering parameters
   //
-  m_spacepointsSCTname     = std::string("SCT_SpacePoints")   ;
-  m_spacepointsPixelname   = "PixelSpacePoints"               ;
-  m_spacepointsOverlapname = "OverlapSpacePoints"             ;
-  m_clustersPixelname      = "PixelClusters"                  ;
-  m_clustersSCTname        = std::string("SCT_Clusters")      ;
-  m_clustersTRTname        = "TRT_DriftCircles"               ;
   m_ptcut                  = 1000.                            ;
   m_ptcutmax               = 1.e20                            ;
   m_rapcut                 = 2.6                              ;
@@ -1278,7 +1274,7 @@ int InDet::TrackClusterAssValidation::kine
 
     int k = (*mc).second.barcode(); if(k<=0) continue;
 
-    HepMC::ConstGenParticlePtr pa = (*mc).second.cptr();
+    const HepMC::ConstGenParticlePtr pa = (*mc).second.cptr();
     if(!pa or !pa->production_vertex()) continue;
 
     int pdg = std::abs(pa->pdg_id()); if(m_pdg && m_pdg != pdg ) continue;
@@ -1450,7 +1446,7 @@ bool InDet::TrackClusterAssValidation::noReconstructedParticles(const InDet::Tra
 
       if(!Q) continue;
 
-      HepMC::ConstGenParticlePtr pa = (*mc).second.cptr();
+      const HepMC::ConstGenParticlePtr pa = (*mc).second.cptr();
 
       double           px =  pa->momentum().px();
       double           py =  pa->momentum().py();
@@ -1531,7 +1527,7 @@ int InDet::TrackClusterAssValidation::charge(const InDet::TrackClusterAssValidat
   for(; mc!=mce; ++mc) {
     if((*mc).second.barcode()==k) {
 
-      HepMC::ConstGenParticlePtr   pat  = (*mc).second.cptr();
+      const HepMC::ConstGenParticlePtr   pat  = (*mc).second.cptr();
 
       rap       = 0;
       double px =  pat->momentum().px();

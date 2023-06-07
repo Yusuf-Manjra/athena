@@ -44,10 +44,10 @@ dqconfig.filemap        = { 'RPCDQMFOFFLINE.db': '/afs/cern.ch/user/m/muoncali/w
                             'MDTDQMFOFFLINE_NOISY.db': '/afs/cern.ch/user/m/muoncali/w0/RPC/DQAresults',
                             'zrate.csv': 'root://eosatlas.cern.ch//eos/atlas/atlascerngroupdisk/data-dqm/zlumi',
                             'zlumi.root': 'root://eosatlas.cern.ch//eos/atlas/atlascerngroupdisk/data-dqm/zlumi',
-                            'zlumi.root_lumicomp.eps': 'root://eosatlas.cern.ch//eos/atlas/atlascerngroupdisk/data-dqm/zlumi',
+                            'zlumi.csv': 'root://eosatlas.cern.ch//eos/atlas/atlascerngroupdisk/data-dqm/zlumi',
                             }
 
-dqconfig.dbConnection  = "oracle://ATLAS_COOLWRITE;schema=ATLAS_COOLOFL_GLOBAL;dbname=CONDBR2;"
+dqconfig.dbConnection  = "oracle://ATLAS_COOLPROD;schema=ATLAS_COOLOFL_GLOBAL;dbname=CONDBR2;"
 dqconfig.dqmfOfl       = "/GLOBAL/DETSTATUS/DQMFOFL"
 dqconfig.dbTagName    = "DetStatusDQMFOFL-%(stream)s-pass1"
 dqconfig.dbTagNameESn       = "DetStatusDQMFOFL-%(stream)s-ES%(procpass)s"

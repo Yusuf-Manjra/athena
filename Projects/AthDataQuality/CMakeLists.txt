@@ -18,7 +18,7 @@ set( TDAQ-COMMON_ATROOT
 find_package( AtlasCMake REQUIRED )
 
 # Build the project against LCG:
-set( LCG_VERSION_POSTFIX "b_ATLAS_13"
+set( LCG_VERSION_POSTFIX "b_ATLAS_19"
    CACHE STRING "Version postfix for the LCG release to use" )
 set( LCG_VERSION_NUMBER 102
    CACHE STRING "Version number for the LCG release to use" )
@@ -38,6 +38,7 @@ find_package( TBB )
 find_package( TIFF )
 find_package( libffi )
 find_package( gl2ps )
+find_package( autopep8 )
 
 # Disable flake8.
 set( ATLAS_FLAKE8 true   # <- this is the shell builtin `true`

@@ -55,6 +55,13 @@ StatusCode ViewDataVerifier::initialize()
 
 StatusCode ViewDataVerifier::execute(const EventContext& ctx) const
 {  
+  // Don't actually test for data presence in normal running
+  // The VDV will just tell the scheduler that the data is available
+  // Downstream algs can then fail if this is incorrect
+  if ( ATH_LIKELY( !this->msgLvl( MSG::DEBUG ) ) ) {
+    return StatusCode::SUCCESS;
+  }
+
   // Retrieve the current view from the EventContext
   auto viewProxy = Atlas::getExtendedEventContext(ctx).proxy();
 
@@ -75,7 +82,7 @@ StatusCode ViewDataVerifier::execute(const EventContext& ctx) const
     {
       ATH_MSG_DEBUG( "Found " << obj.key() << " in " << viewProxy->name() );
     }
-    else if ( obj.key().find( "DetectorStore" ) != std::string::npos )
+    else if ( obj.key().rfind( "DetectorStore", 0 ) != std::string::npos )
     {
       ATH_MSG_DEBUG( "Ignoring DetectorStore data " << obj.key() );
     }

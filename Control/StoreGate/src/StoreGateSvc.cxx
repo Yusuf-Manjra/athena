@@ -9,6 +9,7 @@
 
 #include "StoreGate/StoreGateSvc.h"
 #include "StoreGate/tools/SGImplSvc.h"
+#include "SGTools/DataStore.h"
 
 #include "Gaudi/Interfaces/IOptionsSvc.h"
 #include "GaudiKernel/IAppMgrUI.h"
@@ -38,6 +39,7 @@ StoreGateSvc::StoreGateSvc(const std::string& name,ISvcLocator* svc) :
   //properties of SGImplSvc
   declareProperty("Dump", m_DumpStore=false, "Dump contents at EndEvent");
   declareProperty("ActivateHistory", m_ActivateHistory=false, "record DataObjects history");
+  declareProperty("DumpArena", m_DumpArena=false, "Dump Arena usage stats");
   declareProperty("ProxyProviderSvc", m_pPPSHandle);
   declareProperty("IncidentSvc", m_incSvc);
 

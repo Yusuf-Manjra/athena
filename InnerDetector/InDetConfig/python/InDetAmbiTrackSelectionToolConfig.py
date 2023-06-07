@@ -6,16 +6,19 @@ from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.Enums import BeamType, LHCPeriod
 
 
-def InDetAmbiTrackSelectionToolCfg(flags, name="InDetAmbiTrackSelectionTool", **kwargs):
+def InDetAmbiTrackSelectionToolCfg(
+        flags, name="InDetAmbiTrackSelectionTool", **kwargs):
     acc = ComponentAccumulator()
 
     if ('UseParameterization' in kwargs and
         kwargs.get('UseParameterization', False) and
-            "DriftCircleCutTool" not in kwargs):
+        "DriftCircleCutTool" not in kwargs):
         from InDetConfig.InDetTrackSelectorToolConfig import (
             InDetTRTDriftCircleCutToolCfg)
-        kwargs.setdefault("DriftCircleCutTool", acc.popToolsAndMerge(
-            InDetTRTDriftCircleCutToolCfg(flags)))
+        DriftCircleCutTool = acc.popToolsAndMerge(
+            InDetTRTDriftCircleCutToolCfg(flags))
+        acc.addPublicTool(DriftCircleCutTool)
+        kwargs.setdefault("DriftCircleCutTool", DriftCircleCutTool)
 
     if "AssociationTool" not in kwargs:
         from InDetConfig.InDetAssociationToolsConfig import (
@@ -23,19 +26,17 @@ def InDetAmbiTrackSelectionToolCfg(flags, name="InDetAmbiTrackSelectionTool", **
         kwargs.setdefault("AssociationTool", acc.popToolsAndMerge(
             InDetPRDtoTrackMapToolGangedPixelsCfg(flags)))
 
-    kwargs.setdefault("minHits",
-                      flags.InDet.Tracking.ActiveConfig.minClusters)
+    kwargs.setdefault("minHits", flags.Tracking.ActiveConfig.minClusters)
     kwargs.setdefault("minNotShared",
-                      flags.InDet.Tracking.ActiveConfig.minSiNotShared)
-    kwargs.setdefault("maxShared",
-                      flags.InDet.Tracking.ActiveConfig.maxShared)
+                      flags.Tracking.ActiveConfig.minSiNotShared)
+    kwargs.setdefault("maxShared", flags.Tracking.ActiveConfig.maxShared)
     kwargs.setdefault("minTRTHits", 0)  # used for Si only tracking !!!
     kwargs.setdefault("UseParameterization", False)
     kwargs.setdefault("Cosmics", flags.Beam.Type is BeamType.Cosmics)
     kwargs.setdefault("doPixelSplitting",
                       flags.Tracking.doPixelClusterSplitting)
 
-    if flags.InDet.Tracking.ActiveConfig.useTIDE_Ambi:
+    if flags.Tracking.ActiveConfig.useTIDE_Ambi:
         kwargs.setdefault("sharedProbCut",
                           flags.Tracking.pixelClusterSplitProb1)
         kwargs.setdefault("sharedProbCut2",
@@ -46,12 +47,6 @@ def InDetAmbiTrackSelectionToolCfg(flags, name="InDetAmbiTrackSelectionTool", **
         kwargs.setdefault("minTrackChi2ForSharedHits", 3)
         # Only allow split clusters on track withe pt greater than this MeV
         kwargs.setdefault("minPtSplit", 1000)
-        # Maximum number of shared modules for tracks in ROI
-        kwargs.setdefault("maxSharedModulesInROI", 3)
-        # Minimum number of unique modules for tracks in ROI
-        kwargs.setdefault("minNotSharedInROI", 2)
-        # Minimum number of Si hits to allow splittings for tracks in ROI
-        kwargs.setdefault("minSiHitsToAllowSplittingInROI", 8)
         # Split cluster ROI size
         kwargs.setdefault("phiWidth", 0.05)
         kwargs.setdefault("etaWidth", 0.05)
@@ -75,17 +70,15 @@ def InDetAmbiTrackSelectionToolCfg(flags, name="InDetAmbiTrackSelectionTool", **
             acc.merge(HadCaloClusterROIPhiRZContainerMakerCfg(flags))
 
         # Do special cuts in region of interest
-        kwargs.setdefault("minPtConv", 10000)
         kwargs.setdefault("minPtBjetROI", 10000)
         # Split cluster ROI size
         kwargs.setdefault("phiWidthEM", 0.05)
         kwargs.setdefault("etaWidthEM", 0.05)
         # Skip ambi solver in hadronic ROI
-        kwargs.setdefault("doSkipAmbiInROI",
-                          flags.InDet.Tracking.doSkipAmbiROI)
+        kwargs.setdefault("doSkipAmbiInROI", flags.Tracking.doSkipAmbiROI)
 
         if (flags.Tracking.doTIDE_AmbiTrackMonitoring and
-                flags.InDet.Tracking.ActiveConfig.extension == ""):
+                flags.Tracking.ActiveConfig.extension == ""):
             from TrkConfig.TrkValToolsConfig import TrkObserverToolCfg
             TrkObserverTool = acc.popToolsAndMerge(TrkObserverToolCfg(flags))
             acc.addPublicTool(TrkObserverTool)
@@ -94,26 +87,28 @@ def InDetAmbiTrackSelectionToolCfg(flags, name="InDetAmbiTrackSelectionTool", **
     else:
         kwargs.setdefault("sharedProbCut", 0.10)
 
-    if flags.InDet.Tracking.ActiveConfig.useTIDE_Ambi:
+    if flags.Tracking.ActiveConfig.useTIDE_Ambi:
         AmbiTrackSelectionTool = (
             CompFactory.InDet.InDetDenseEnvAmbiTrackSelectionTool)
     else:
         AmbiTrackSelectionTool = CompFactory.InDet.InDetAmbiTrackSelectionTool
 
-    InDetAmbiTrackSelectionTool = AmbiTrackSelectionTool(
-        name=name+flags.InDet.Tracking.ActiveConfig.extension, **kwargs)
-    acc.setPrivateTools(InDetAmbiTrackSelectionTool)
+    acc.setPrivateTools(AmbiTrackSelectionTool(
+        name=name+flags.Tracking.ActiveConfig.extension, **kwargs))
     return acc
 
 
-def InDetTRTAmbiTrackSelectionToolCfg(flags, name='InDetTRT_SeededAmbiTrackSelectionTool', **kwargs):
+def InDetTRTAmbiTrackSelectionToolCfg(
+        flags, name='InDetTRT_SeededAmbiTrackSelectionTool', **kwargs):
     acc = ComponentAccumulator()
 
     if "DriftCircleCutTool" not in kwargs:
         from InDetConfig.InDetTrackSelectorToolConfig import (
             InDetTRTDriftCircleCutToolCfg)
-        kwargs.setdefault("DriftCircleCutTool", acc.popToolsAndMerge(
-            InDetTRTDriftCircleCutToolCfg(flags)))
+        DriftCircleCutTool = acc.popToolsAndMerge(
+            InDetTRTDriftCircleCutToolCfg(flags))
+        acc.addPublicTool(DriftCircleCutTool)
+        kwargs.setdefault("DriftCircleCutTool", DriftCircleCutTool)
 
     if "AssociationTool" not in kwargs:
         from InDetConfig.InDetAssociationToolsConfig import (
@@ -123,15 +118,15 @@ def InDetTRTAmbiTrackSelectionToolCfg(flags, name='InDetTRT_SeededAmbiTrackSelec
 
     kwargs.setdefault("minScoreShareTracks", -1.)  # off !
     kwargs.setdefault("minHits",
-                      flags.InDet.Tracking.ActiveConfig.minSecondaryClusters)
+                      flags.Tracking.ActiveConfig.minSecondaryClusters)
     kwargs.setdefault("minNotShared",
-                      flags.InDet.Tracking.ActiveConfig.minSecondarySiNotShared)
+                      flags.Tracking.ActiveConfig.minSecondarySiNotShared)
     kwargs.setdefault("maxShared",
-                      flags.InDet.Tracking.ActiveConfig.maxSecondaryShared)
+                      flags.Tracking.ActiveConfig.maxSecondaryShared)
     kwargs.setdefault("minTRTHits",
-                      flags.InDet.Tracking.ActiveConfig.minSecondaryTRTonTrk)
+                      flags.Tracking.ActiveConfig.minSecondaryTRTonTrk)
     kwargs.setdefault("UseParameterization",
-                      flags.InDet.Tracking.ActiveConfig.useParameterizedTRTCuts)
+                      flags.Tracking.ActiveConfig.useParameterizedTRTCuts)
     kwargs.setdefault("Cosmics", flags.Beam.Type is BeamType.Cosmics)
     kwargs.setdefault("doPixelSplitting",
                       flags.Tracking.doPixelClusterSplitting)
@@ -141,11 +136,18 @@ def InDetTRTAmbiTrackSelectionToolCfg(flags, name='InDetTRT_SeededAmbiTrackSelec
     return acc
 
 
-def InDetTrigTrackSelectionToolCfg(flags, name='InDetTrigAmbiTrackSelectionTool', **kwargs):
+def InDetTrigAmbiTrackSelectionToolCfg(
+        flags, name='InDetTrigAmbiTrackSelectionTool', **kwargs):
     acc = ComponentAccumulator()
+    # TODO add AmbiTrackSelectionTool for cosmics
 
-    # TODO add configurations for beamgas and cosmic see: trackSelectionTool_getter
-    kwargs.setdefault("DriftCircleCutTool", None)
+    if "DriftCircleCutTool" not in kwargs:
+        from InDetConfig.InDetTrackSelectorToolConfig import (
+            InDetTrigTRTDriftCircleCutToolCfg)
+        DriftCircleCutTool = acc.popToolsAndMerge(
+            InDetTrigTRTDriftCircleCutToolCfg(flags))
+        acc.addPublicTool(DriftCircleCutTool)
+        kwargs.setdefault("DriftCircleCutTool", DriftCircleCutTool)
 
     if "AssociationTool" not in kwargs:
         from InDetConfig.InDetAssociationToolsConfig import (
@@ -153,10 +155,10 @@ def InDetTrigTrackSelectionToolCfg(flags, name='InDetTrigAmbiTrackSelectionTool'
         kwargs.setdefault("AssociationTool", acc.popToolsAndMerge(
             TrigPRDtoTrackMapToolGangedPixelsCfg(flags)))
 
-    kwargs.setdefault("minHits", flags.InDet.Tracking.ActiveConfig.minClusters)
+    kwargs.setdefault("minHits", flags.Tracking.ActiveConfig.minClusters)
     kwargs.setdefault("minNotShared",
-                      flags.InDet.Tracking.ActiveConfig.minSiNotShared)
-    kwargs.setdefault("maxShared", flags.InDet.Tracking.ActiveConfig.maxShared)
+                      flags.Tracking.ActiveConfig.minSiNotShared)
+    kwargs.setdefault("maxShared", flags.Tracking.ActiveConfig.maxShared)
     kwargs.setdefault("minTRTHits", 0)  # used for Si only tracking !!!
     kwargs.setdefault("Cosmics", False)  # there is a different instance
     kwargs.setdefault("UseParameterization", False)
@@ -166,7 +168,8 @@ def InDetTrigTrackSelectionToolCfg(flags, name='InDetTrigAmbiTrackSelectionTool'
     return acc
 
 
-def ITkAmbiTrackSelectionToolCfg(flags, name="ITkAmbiTrackSelectionTool", **kwargs):
+def ITkAmbiTrackSelectionToolCfg(
+        flags, name="ITkAmbiTrackSelectionTool", **kwargs):
     acc = ComponentAccumulator()
 
     kwargs.setdefault("DriftCircleCutTool", None)
@@ -182,7 +185,6 @@ def ITkAmbiTrackSelectionToolCfg(flags, name="ITkAmbiTrackSelectionTool", **kwar
     kwargs.setdefault("Cosmics", flags.Beam.Type is BeamType.Cosmics)
     kwargs.setdefault("doPixelSplitting",
                       flags.Tracking.doPixelClusterSplitting)
-    kwargs.setdefault("doITk", True)
 
     kwargs.setdefault("sharedProbCut",
                       flags.Tracking.pixelClusterSplitProb1)
@@ -193,12 +195,6 @@ def ITkAmbiTrackSelectionToolCfg(flags, name="ITkAmbiTrackSelectionTool", **kwar
     kwargs.setdefault("minTrackChi2ForSharedHits", 3)
     # Only allow split clusters on track withe pt greater than this MeV
     kwargs.setdefault("minPtSplit", 1000)
-    # Maximum number of shared modules for tracks in ROI
-    kwargs.setdefault("maxSharedModulesInROI", 3)
-    # Minimum number of unique modules for tracks in ROI
-    kwargs.setdefault("minNotSharedInROI", 2)
-    # Minimum number of Si hits to allow splittings for tracks in ROI
-    kwargs.setdefault("minSiHitsToAllowSplittingInROI", 8)
     # Split cluster ROI size
     kwargs.setdefault("phiWidth", 0.05)
     kwargs.setdefault("etaWidth", 0.05)
@@ -220,19 +216,20 @@ def ITkAmbiTrackSelectionToolCfg(flags, name="ITkAmbiTrackSelectionTool", **kwar
         acc.merge(ITkHadCaloClusterROIPhiRZContainerMakerCfg(flags))
 
     # Only allow split clusters on track withe pt greater than this MeV
-    kwargs.setdefault("minPtConv", 10000)
     kwargs.setdefault("minPtBjetROI", 10000)
     # Split cluster ROI size
     kwargs.setdefault("phiWidthEM", 0.05)
     kwargs.setdefault("etaWidthEM", 0.05)
+    # Skip ambi solver in hadronic ROI
+    kwargs.setdefault("doSkipAmbiInROI", flags.Tracking.doSkipAmbiROI)
 
     if 'InDetEtaDependentCutsSvc' not in kwargs:
         from InDetConfig.InDetEtaDependentCutsConfig import (
             ITkEtaDependentCutsSvcCfg)
         acc.merge(ITkEtaDependentCutsSvcCfg(flags))
         kwargs.setdefault("InDetEtaDependentCutsSvc", acc.getService(
-            "ITkEtaDependentCutsSvc"+flags.ITk.Tracking.ActiveConfig.extension))
+            "ITkEtaDependentCutsSvc"+flags.Tracking.ActiveConfig.extension))
 
     acc.setPrivateTools(CompFactory.InDet.InDetDenseEnvAmbiTrackSelectionTool(
-        name=name+flags.ITk.Tracking.ActiveConfig.extension, **kwargs))
+        name=name+flags.Tracking.ActiveConfig.extension, **kwargs))
     return acc

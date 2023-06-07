@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 # All derivation framework formats must be listed here
 
 # Example formats
@@ -58,6 +58,9 @@ from DerivationFrameworkBPhys.BPHY16 import BPHY16Cfg
 from DerivationFrameworkBPhys.BPHY18 import BPHY18Cfg
 from DerivationFrameworkBPhys.BPHY21 import BPHY21Cfg
 from DerivationFrameworkBPhys.BPHY22 import BPHY22Cfg
+from DerivationFrameworkBPhys.BPHY23 import BPHY23Cfg
+from DerivationFrameworkBPhys.BPHY24 import BPHY24Cfg
+
 
 # STDM derivations
 from DerivationFrameworkSM.STDM7 import STDM7Cfg
@@ -76,6 +79,8 @@ from DerivationFrameworkEGamma.EGAM7 import EGAM7Cfg
 from DerivationFrameworkEGamma.EGAM8 import EGAM8Cfg
 from DerivationFrameworkEGamma.EGAM9 import EGAM9Cfg
 from DerivationFrameworkEGamma.EGAM10 import EGAM10Cfg
+from DerivationFrameworkEGamma.EGAM11 import EGAM11Cfg
+from DerivationFrameworkEGamma.EGAM12 import EGAM12Cfg
 
 # FTAG derivations
 from DerivationFrameworkFlavourTag.FTAG1 import FTAG1Cfg
@@ -108,6 +113,9 @@ from DerivationFrameworkJetEtMiss.JETM14 import JETM14Cfg
 # TRIG8: ID trigger performance (extra trigger info eg online tracks and RoIs [idperf chain skimming])
 from DerivationFrameworkTrigger.TRIG8 import TRIG8Cfg
 
+# L1CALO1 derivation - runs primarily on RAWD
+from DerivationFrameworkL1Calo.L1CALO1 import L1CALO1Cfg
+
 # Avoids compilation warnings from Flake8
 __all__ = ['TEST1Cfg','TEST2Cfg','TEST3Cfg','TEST4Cfg','TEST5Cfg','TEST6Cfg',
            'TRUTH0Cfg','TRUTH1Cfg','TRUTH3Cfg',
@@ -121,12 +129,12 @@ __all__ = ['TEST1Cfg','TEST2Cfg','TEST3Cfg','TEST4Cfg','TEST5Cfg','TEST6Cfg',
            'BPHY6Cfg',
            'BPHY10Cfg', 'BPHY12Cfg', 'BPHY13Cfg', 'BPHY15Cfg',
            'BPHY16Cfg', 'BPHY18Cfg',
-           'BPHY21Cfg', 'BPHY22Cfg',
+           'BPHY21Cfg', 'BPHY22Cfg', 'BPHY23Cfg', 'BPHY24Cfg',
            'STDM7Cfg',
            'TCAL1Cfg', 'TCAL2Cfg',
            'EGAM1Cfg', 'EGAM2Cfg', 'EGAM3Cfg', 'EGAM4Cfg', 'EGAM5Cfg',
-           'EGAM7Cfg', 'EGAM8Cfg', 'EGAM9Cfg', 'EGAM10Cfg',
+           'EGAM7Cfg', 'EGAM8Cfg', 'EGAM9Cfg', 'EGAM10Cfg', 'EGAM11Cfg', 'EGAM12Cfg',
            'JETM1Cfg','JETM2Cfg','JETM3Cfg','JETM4Cfg','JETM5Cfg','JETM6Cfg',
            'JETM10Cfg','JETM11Cfg','JETM12Cfg','JETM14Cfg',
-           'TRIG8Cfg'
+           'TRIG8Cfg','L1CALO1Cfg'
            ]

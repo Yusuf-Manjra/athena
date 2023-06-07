@@ -74,11 +74,11 @@ def MuonBytestream2RdoConfig(flags):
     acc.addEventAlgo(TgcRawDataProvider)
     # for sTGC
     if flags.Detector.GeometrysTGC:
-        Muon__STGC_ROD_Decoder=CompFactory.Muon.STGC_ROD_Decoder
-        STGCRodDecoder = Muon__STGC_ROD_Decoder(name = "sTgcROD_Decoder"+postFix)
         Muon__STGC_RawDataProviderToolMT=CompFactory.Muon.STGC_RawDataProviderToolMT
+        from MuonConfig.MuonBytestreamDecodeConfig import sTgcRODDecoderCfg
         MuonsTgcRawDataProviderTool = Muon__STGC_RawDataProviderToolMT(name    = "STGC_RawDataProviderToolMT"+postFix,
-                                                                       Decoder = STGCRodDecoder,
+                                                                       Decoder = acc.popToolsAndMerge(sTgcRODDecoderCfg(flags,
+                                                                                                     name = "sTgcROD_Decoder"+postFix)),
                                                                        RdoLocation = "sTGCRDO_L1")
         Muon__sTgcRawDataProvider=CompFactory.Muon.sTgcRawDataProvider
         sTgcRawDataProvider = Muon__sTgcRawDataProvider(name       = "sTgcRawDataProvider"+postFix,
@@ -87,11 +87,11 @@ def MuonBytestream2RdoConfig(flags):
 
     # for MM
     if flags.Detector.GeometryMM:
-        Muon__MmROD_Decoder=CompFactory.Muon.MM_ROD_Decoder
-        MMRodDecoder = Muon__MmROD_Decoder(name="MmROD_Decoder"+postFix)
+        from MuonConfig.MuonBytestreamDecodeConfig import MmRDODDecoderCfg
         Muon_MM_RawDataProviderToolMT = CompFactory.Muon.MM_RawDataProviderToolMT
         MuonMmRawDataProviderTool = Muon_MM_RawDataProviderToolMT(name  = "MM_RawDataProviderToolMT"+postFix,
-                                                                  Decoder = MMRodDecoder,
+                                                                  Decoder = acc.popToolsAndMerge(MmRDODDecoderCfg(flags, 
+                                                                                                 name="MM_RODDecoder"+postFix)),
                                                                   RdoLocation = "MMRDO_L1")
         Muon__MmRawDataProvider = CompFactory.Muon.MM_RawDataProvider
         MmRawDataProvider = Muon__MmRawDataProvider(name = "MmRawDataProvider"+postFix, ProviderTool = MuonMmRawDataProviderTool )
@@ -193,6 +193,7 @@ def MuonRdoToMuonDigitToolCfg(flags, name="MuonRdoToMuonDigitTool", **kwargs ):
     result = ComponentAccumulator()
     kwargs.setdefault("DecodeSTGC_RDO", flags.Detector.GeometrysTGC)
     kwargs.setdefault("DecodeMM_RDO", flags.Detector.GeometryMM)
+    kwargs.setdefault("DecodeNrpcRDO", flags.Muon.enableNRPC)
     from MuonConfig.MuonByteStreamCnvTestConfig import STgcRdoDecoderCfg, MMRdoDecoderCfg, MdtRdoDecoderCfg
     kwargs.setdefault( "stgcRdoDecoderTool", result.popToolsAndMerge(STgcRdoDecoderCfg(flags))
                          if flags.Detector.GeometrysTGC else "" )
@@ -206,6 +207,8 @@ def MuonRdoToMuonDigitToolCfg(flags, name="MuonRdoToMuonDigitTool", **kwargs ):
 def MuonRdo2DigitConfig(flags):
     acc = ComponentAccumulator()
 
+    from MagFieldServices.MagFieldServicesConfig import AtlasFieldCacheCondAlgCfg
+    acc.merge( AtlasFieldCacheCondAlgCfg(flags) )
     # Read RPCPAD and TGCRDO from the input POOL file (for BS it comes from [Rpc|Tgc]RawDataProvider)
     suffix = "" if flags.Input.Format is Format.POOL else "_L1"
     RPCRdoName = "RPCPAD"+suffix
@@ -223,6 +226,11 @@ def MuonRdo2DigitConfig(flags):
                 ('Muon::MM_RawDataContainer','MMRDO'),
                 ('Muon::STGC_RawDataContainer','sTGCRDO')
             ]
+        if flags.Muon.enableNRPC:
+            rdoInputs += [
+                ('xAOD::NRPCRDOContainer' , 'NRPCRDO'),
+                ('xAOD::NRPCRDOAuxContainer',  'NRPCRDOAux.')
+            ]
         from SGComps.SGInputLoaderConfig import SGInputLoaderCfg
         acc.merge(SGInputLoaderCfg(flags, Load=rdoInputs))
 
@@ -232,10 +240,7 @@ def MuonRdo2DigitConfig(flags):
     MuonRdoToMuonDigitTool = acc.popToolsAndMerge(MuonRdoToMuonDigitToolCfg(flags,DecodeRpcRDO = True,
                                                                  DecodeTgcRDO = True,
                                                                  DecodeCscRDO = False,
-                                                                 DecodeMdtRDO = False,
-                                                                 mdtRdoDecoderTool="",
-                                                                 cscRdoDecoderTool="",
-                                                                 cscCalibTool = "",
+                                                                 DecodeMdtRDO = False,                                                                
                                                                  RpcRdoContainer = RPCRdoName,
                                                                  TgcRdoContainer = TGCRdoName,
                                                                  sTgcRdoContainer = sTGCRdoName,

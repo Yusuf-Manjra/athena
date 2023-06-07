@@ -6,9 +6,6 @@
 # Purpose: Regression tests CaloCluterCorrection configuration
 #
 
-from __future__ import print_function
-
-
 from PyUtils import coverage
 c = coverage.Coverage ('CaloClusterCorrection.common')
 
@@ -44,6 +41,13 @@ class TestTool:
                     print ('match fail: ', self.__class__.__name__, self.name, k, p, v)
                 assert p == v
             del props[k]
+
+        # Ignore properties that are set to their default values
+        defaults = config.getDefaultProperties().items()
+        for k in list(props):
+            if (k, props[k]) in defaults:
+                del props[k]
+
         assert not props
         return
 
@@ -160,7 +164,7 @@ def test1 (flags_in):
 
 
     checkTools \
-      (ca._conditionsAlgs,
+      (ca.getCondAlgos(),
        [ToolConstantsCondAlg ('ToolConstantsCondAlg_CaloSwClusterCorrections_rfac-v5',
                               DetStoreKey='CaloSwClusterCorrections.rfac-v5',
                               ToolConstantsKey='CaloSwClusterCorrections.rfac-v5'),
@@ -288,7 +292,7 @@ def test2 (flags_in):
         ])
 
     checkTools \
-      (ca._conditionsAlgs,
+      (ca.getCondAlgos(),
        [CondInputLoader ('CondInputLoader',
                          Load=[['CaloRec::ToolConstants',
                                 '/CALO/Ofl/CaloSwClusterCorrections/rfac'],

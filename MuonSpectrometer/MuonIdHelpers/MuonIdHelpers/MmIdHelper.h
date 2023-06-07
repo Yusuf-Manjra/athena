@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 // ******************************************************************************
@@ -93,6 +93,14 @@ public:
     Identifier multilayerID(const Identifier& moduleID, int multilayer) const;
     Identifier multilayerID(const Identifier& moduleID, int multilayer, bool& isValid) const;
 
+    Identifier pcbID(int stationName, int stationEta, int stationPhi, int multilayer, int gasGap, int pcb) const;
+    Identifier pcbID(int stationName, int stationEta, int stationPhi, int multilayer, int gasGap, int pcb, bool& isValid) const;
+    Identifier pcbID(std::string& stationName, int stationEta, int stationPhi, int multilayer, int gasGap, int pcb) const;
+    Identifier pcbID(std::string& stationName, int stationEta, int stationPhi, int multilayer, int gasGap, int pcb, bool& isValid) const;
+    Identifier pcbID(const Identifier& channelID, int pcb) const;
+    Identifier pcbID(const Identifier& channelID, int pcb, bool& isValid) const;
+    Identifier pcbID(const Identifier& channelID) const;
+
     // for an Identifier id, get the list of the daughter readout channel ids
     void idChannels(const Identifier& id, std::vector<Identifier>& vect) const;
 
@@ -139,12 +147,30 @@ public:
     bool validElement(const Identifier& id) const;
 
 private:
+    int getFirstPcbChnl(int stationEta, int pcb) const;
     bool isStNameInTech(const std::string& stationName) const override;
 
     int init_id_to_hashes();
-    unsigned int m_module_hashes[60][20][48]{};             // Nektar Probably need to change this
-    unsigned int m_detectorElement_hashes[60][20][8][3]{};  // Nektar Probably need to change this
+    /// Small and big wedges
+    static constexpr unsigned int s_stDim = 2;
+    /// -2, -1 , 1, 2
+    static constexpr unsigned int s_etaDim = 4;
+    /// 8 phi station
+    static constexpr unsigned int s_phiDim = 8;
+    /// 2 multilayer
+    static constexpr unsigned int s_mlDim = 2;
 
+    static constexpr unsigned int s_modHashDim = s_stDim * s_etaDim * s_phiDim;
+    static constexpr unsigned int s_detHashDim = s_modHashDim * s_mlDim;
+    
+    std::array<unsigned int, s_modHashDim> m_module_hashes{};    
+    std::array<unsigned int, s_detHashDim> m_detectorElement_hashes{};
+
+    unsigned int moduleHashIdx(const Identifier& id) const;
+    unsigned int detEleHashIdx(const Identifier& id) const;
+    /// Minimal station index found
+    unsigned int m_stationShift{std::numeric_limits<unsigned int>::max()};
+ 
     // compact id indices
     size_type m_GASGAP_INDEX{6};
 

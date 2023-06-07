@@ -6,6 +6,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.Enums import MetadataCategory
 
 # Main algorithm config
 def JETM3SkimmingToolCfg(ConfigFlags):
@@ -93,10 +94,11 @@ def JETM3KernelCfg(ConfigFlags, name='JETM3Kernel', **kwargs):
     # Include inner detector tracks associated with photons
     JETM3PhotonTPThinningTool = acc.getPrimaryAndMerge(EgammaTrackParticleThinningCfg(
         ConfigFlags,
-        name                    = "JETM3PhotonTPThinningTool",
-        StreamName              = kwargs['StreamName'],
-        SGKey                   = "Photons",
-        InDetTrackParticlesKey  = "InDetTrackParticles"))
+        name                     = "JETM3PhotonTPThinningTool",
+        StreamName               = kwargs['StreamName'],
+        SGKey                    = "Photons",
+        InDetTrackParticlesKey   = "InDetTrackParticles",
+        GSFConversionVerticesKey = "GSFConversionVertices"))
 
     # Include inner detector tracks associated with taus
     JETM3TauTPThinningTool = acc.getPrimaryAndMerge(TauTrackParticleThinningCfg(
@@ -218,6 +220,7 @@ def JETM3Cfg(ConfigFlags):
     # Define contents of the format
     # =============================
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     
     JETM3SlimmingHelper = SlimmingHelper("JETM3SlimmingHelper", NamesAndTypes = ConfigFlags.Input.TypedCollections, ConfigFlags = ConfigFlags)
@@ -296,9 +299,10 @@ def JETM3Cfg(ConfigFlags):
     from DerivationFrameworkJetEtMiss.JetCommonConfig import addJetsToSlimmingTool
     addJetsToSlimmingTool(JETM3SlimmingHelper, jetOutputList, JETM3SlimmingHelper.SmartCollections)
 
-    # Output stream    
+    # Output stream
     JETM3ItemList = JETM3SlimmingHelper.GetItemList()
     acc.merge(OutputStreamCfg(ConfigFlags, "DAOD_JETM3", ItemList=JETM3ItemList, AcceptAlgs=["JETM3Kernel"]))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, "DAOD_JETM3", AcceptAlgs=["JETM3Kernel"], createMetadata=[MetadataCategory.CutFlowMetaData]))
 
     return acc
 

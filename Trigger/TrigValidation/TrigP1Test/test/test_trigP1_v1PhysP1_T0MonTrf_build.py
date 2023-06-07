@@ -18,6 +18,7 @@ hlt.type = 'Trig_reco_tf'
 hlt.forks = 1
 hlt.threads = 4
 hlt.concurrent_events = 4
+hlt.input = 'data'
 hlt.max_events = 50
 hlt.args = f'--precommand=\\\"setMenu=\\\'{triggermenu}\\\'\\;doL1Sim=True\\;rewriteLVL1=True\\;\\\"'
 hlt.args += ' --prodSysBSRDO True'
@@ -25,40 +26,47 @@ hlt.args += ' --outputBSFile=RAW.pool.root'
 hlt.args += ' --outputHIST_HLTMONFile=hltmon.root'
 hlt.args += ' --outputDRAW_TRIGCOSTFile=TRIGCOST.pool.root'
 hlt.args += ' --outputNTUP_TRIGCOSTFile=cost.ntup.root'
-hlt.args += ' --runNumber 431885'  # RunNumber is set by Panda, but ignored by Trf to avoid changes from !48070
-hlt.input = 'data'
+hlt.args += ' --runNumber 440499'  # RunNumber is set by Panda, but ignored by Trf to avoid changes from !48070
 
 #====================================================================================================
-# Tier-0 reco step BS->ESD->AOD
+# Tier-0 reco step (BS->AOD)
 tzrecoPreExec = ' '.join([
- "from AthenaConfiguration.AllConfigFlags import ConfigFlags;",
- f"ConfigFlags.Trigger.triggerMenuSetup=\'{triggermenu}\';",
- "ConfigFlags.Trigger.AODEDMSet=\'AODFULL\';",
- "from AthenaMonitoring.DQMonFlags import DQMonFlags;",
- "DQMonFlags.set_All_Off();",
- "DQMonFlags.doDataFlowMon=True;",
- "DQMonFlags.doHLTMon=True;",
- "DQMonFlags.doLVL1CaloMon=True;",
- "DQMonFlags.doGlobalMon=True;", 
- "DQMonFlags.doLVL1InterfacesMon=True;",
- "DQMonFlags.doCTPMon=True;"
+  f"flags.Trigger.triggerMenuSetup=\'{triggermenu}\';",
+  "flags.Trigger.AODEDMSet=\'AODFULL\';",
+  "from AthenaMonitoring.DQConfigFlags import allSteeringFlagsOff;",
+  "allSteeringFlagsOff(flags);",
+  "flags.DQ.Steering.doDataFlowMon=True;",
+  "flags.DQ.Steering.doHLTMon=True;",
+  "flags.DQ.Steering.doLVL1CaloMon=True;",
+  "flags.DQ.Steering.doGlobalMon=True;",
+  "flags.DQ.Steering.doLVL1InterfacesMon=True;",
+  "flags.DQ.Steering.doCTPMon=True;",
+  "flags.DQ.Steering.HLT.doBjet=True;",
+  "flags.DQ.Steering.HLT.doInDet=True;",
+  "flags.DQ.Steering.HLT.doBphys=True;",
+  "flags.DQ.Steering.HLT.doCalo=True;",
+  "flags.DQ.Steering.HLT.doEgamma=True;",
+  "flags.DQ.Steering.HLT.doJet=True;",
+  "flags.DQ.Steering.HLT.doMET=True;",
+  "flags.DQ.Steering.HLT.doMinBias=True;",
+  "flags.DQ.Steering.HLT.doMuon=True;",
+  "flags.DQ.Steering.HLT.doTau=True;",
 ])
 
 tzreco = ExecStep.ExecStep('Tier0Reco')
 tzreco.type = 'Trig_reco_tf'
 tzreco.threads = 4
 tzreco.concurrent_events = 4
-tzreco.explicit_input = True
 tzreco.input = ''
+tzreco.explicit_input = True
 tzreco.max_events = 50
 tzreco.args = '--inputBSFile=RAW.pool.root'  # output of the previous step
-# TODO: add RAWtoALL steering (ATR-26605)
 tzreco.args += ' --outputAODFile=AOD.pool.root'
 tzreco.args += ' --outputNTUP_TRIGRATEFile=rate.ntup.root'
 tzreco.args += ' --outputHISTFile=hist.root'
 tzreco.args += ' --conditionsTag=\'CONDBR2-BLKPA-2022-08\' --geometryVersion=\'ATLAS-R3S-2021-03-00-00\''
 tzreco.args += ' --preExec="{:s}"'.format(tzrecoPreExec)
-tzreco.args += ' --postInclude="TriggerTest/disableChronoStatSvcPrintout.py"'
+tzreco.args += ' --CA'
 
 #====================================================================================================
 # Merging NTUP_TRIGRATE/COST

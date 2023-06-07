@@ -5,7 +5,7 @@
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 
-muFastInfo="MuonL2SAInfo"
+muFastInfo="HLT_MuonL2SAInfo"
 muCombInfo="HLT_MuonL2CBInfo"
 
 def muCombCfg(flags, postFix="", useBackExtrp=True):
@@ -50,18 +50,19 @@ def muCombCfg(flags, postFix="", useBackExtrp=True):
     return acc, muCombAlg
 
     
-def l2MuCombRecoCfg(flags, name="L2MuCombReco"):
+def l2MuCombRecoCfg(flags, name="L2MuCombReco", is_probe_leg=False):
 
     from TriggerMenuMT.HLT.Config.MenuComponents import InViewRecoCA
     ViewCreatorFetchFromViewROITool=CompFactory.ViewCreatorFetchFromViewROITool
     reco = InViewRecoCA(name, 
                         RequireParentView = True, 
-                        RoITool = ViewCreatorFetchFromViewROITool(RoisWriteHandleKey="Roi_L2SAMuon", InViewRoIs = "forID", ViewToFetchFrom = "L2MuFastRecoViews"))
+                        RoITool = ViewCreatorFetchFromViewROITool(RoisWriteHandleKey="Roi_L2SAMuon", InViewRoIs = "RoIs_fromL2SAViews"),
+                        isProbe=is_probe_leg)
 
     acc, alg = muCombCfg(flags)
     alg.L2StandAloneMuonContainerName=muFastInfo
     alg.L2CombinedMuonContainerName = muCombInfo
-    alg.TrackParticlesContainerName= flags.InDet.Tracking.ActiveConfig.tracks_FTF
+    alg.TrackParticlesContainerName = flags.Tracking.ActiveConfig.tracks_FTF
 
     muCombAcc = ComponentAccumulator()
     muCombAcc.addEventAlgo(alg)

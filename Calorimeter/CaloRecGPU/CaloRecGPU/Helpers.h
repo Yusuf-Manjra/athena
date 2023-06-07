@@ -1,6 +1,8 @@
+//
+// Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
+//
 // Dear emacs, this is -*- c++ -*-
 //
-// Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 #ifndef CALORECGPU_HELPERS_H
 #define CALORECGPU_HELPERS_H
@@ -10,13 +12,14 @@
 #include <cstring>
 //For memcpy, of all things...
 #include <string>
-#include <algorithm>
 #include <cstdio>
 #include <iostream>
 #include <thread>
 #include <mutex>
 #include <memory>
 #include <vector>
+#include <climits>
+#include <new>
 
 #if __cpp_lib_math_constants
   #include <numbers>
@@ -25,7 +28,7 @@
 //but we provide a more manual alternative.
 //Of course, there's also M_PI,
 //but we wanted to ensure the type matched
-//to prevent any GPU-based shenanigans.
+//to prevent any GPU-based casting shenanigans.
 
 namespace CaloRecGPU
 {
@@ -46,6 +49,7 @@ namespace CaloRecGPU
 
 #if CUDA_AVAILABLE
 
+#define CUDA_HOS_DEV __host__ __device__
 
 
   /*!
@@ -53,34 +57,69 @@ namespace CaloRecGPU
 
     \remark Standard CUDA definition that can be found almost everywhere...
   */
-  inline void CUDA_gpu_assert(cudaError_t code, const char * file, int line, bool abort = true)
+  CUDA_HOS_DEV inline void CUDA_gpu_assert(cudaError_t code, const char * file, int line, bool abort = true)
   {
     if (code != cudaSuccess)
       {
         printf("GPU Error: %s (%s %d)\n", cudaGetErrorString(code), file, line);
         if (abort)
           {
+#ifdef __CUDA_ARCH__
+            asm("trap;");
+#else
             exit(code);
+#endif
           }
       }
   }
-
-#define CUDA_HOS_DEV __host__ __device__
 
   /*!
     \brief Wraps up a `CUDA_gpu_assert` using `__FILE__` and `__LINE__`
     to improve error reporting (and debugging) capabilities.
   */
-#define CUDA_ERRCHECK(ans) { CUDA_gpu_assert((ans), __FILE__, __LINE__); }
+#define CUDA_ERRCHECK(...) CUDA_ERRCHECK_HELPER(__VA_ARGS__, true)
+
+#define CUDA_ERRCHECK_HELPER(ans, ...) do { ::CaloRecGPU::CUDA_gpu_assert((ans), __FILE__, __LINE__, CUDA_ERRCHECK_GET_FIRST(__VA_ARGS__, true) ); } while(0)
+#define CUDA_ERRCHECK_GET_FIRST(x, ...) x
 
 #else
 
 #define CUDA_HOS_DEV
+#define CUDA_ERRCHECK(...)
 
 #endif
 
   namespace CUDA_Helpers
   {
+
+    struct CUDAStreamPtrHolder
+    {
+      void * ptr = nullptr;
+
+
+      operator void * () const
+      {
+        return ptr;
+      }
+
+      template <class T>
+      operator T * () const
+      {
+        return (T *) ptr;
+      }
+
+      template <class T>
+      CUDAStreamPtrHolder (T * p) : ptr(p)
+      {
+      }
+
+      CUDAStreamPtrHolder() = default;
+    };
+    //Can't do much more than this
+    //since cudaStream_t is a typedef...
+    //Though not typesafe, it is still
+    //semantically more safe than a naked void *...
+
     /*!
       \brief Allocates and returns the address of \p num bytes from GPU memory.
     */
@@ -92,19 +131,51 @@ namespace CaloRecGPU
     void deallocate(void * address);
 
     /*!
-      \brief Copies \p num byte from \p source in GPU memory to \p dest in CPU memory.
+      \brief Allocates and returns the address of \p num bytes from CPU pinned memory.
+    */
+    void * allocate_pinned(const size_t num);
+
+    /*!
+      \brief Deallocates \p address in CPU pinned memory.
+    */
+    void deallocate_pinned(void * address);
+
+
+    /*!
+      \brief Copies \p num bytse from \p source in GPU memory to \p dest in CPU memory.
     */
     void GPU_to_CPU(void * dest, const void * const source, const size_t num);
 
     /*!
-      \brief Copies \p num byte from \p source in CPU memory to \p dest in GPU memory.
+      \brief Copies \p num bytes from \p source in CPU memory to \p dest in GPU memory.
     */
     void CPU_to_GPU(void * dest, const void * const source, const size_t num);
 
     /*!
-      \brief Copies \p num byte from \p source to \p dest, both in GPU memory.
+      \brief Copies \p num bytes from \p source to \p dest, both in GPU memory.
     */
     void GPU_to_GPU(void * dest, const void * const source, const size_t num);
+
+
+    /*!
+      \brief Copies \p num bytes from \p source in GPU memory to \p dest in CPU memory, asynchronously.
+    */
+    void GPU_to_CPU_async(void * dest, const void * const source, const size_t num, CUDAStreamPtrHolder stream = {});
+
+    /*!
+      \brief Copies \p num bytes from \p source in CPU memory to \p dest in GPU memory, asynchronously.
+    */
+    void CPU_to_GPU_async(void * dest, const void * const source, const size_t num, CUDAStreamPtrHolder stream = {});
+
+    /*!
+      \brief Copies \p num bytes from \p source to \p dest, both in GPU memory, asynchronously.
+    */
+    void GPU_to_GPU_async(void * dest, const void * const source, const size_t num, CUDAStreamPtrHolder stream = {});
+
+    /*!
+      \brief Synchronizes the \p stream. If called with no value, synchronizes with @c cudaStreamPerThread.
+    */
+    void GPU_synchronize(CUDAStreamPtrHolder stream = {});
   }
 
   namespace Helpers
@@ -114,6 +185,12 @@ namespace CaloRecGPU
     inline constexpr int int_ceil_div(const int num, const int denom)
     {
       return num / denom + (num % denom != 0);
+    }
+
+    /// \brief Returns the floor of num/denom, with proper rounding.
+    inline constexpr int int_floor_div(const int num, const int denom)
+    {
+      return num / denom;
     }
 
     /// \brief Returns 2 to the power of \p exp.
@@ -142,6 +219,60 @@ namespace CaloRecGPU
     //Since it's compile-time, this being a trifle slower is meaningless.
 
 
+    /*! Calculates a Pearson hash from @ number.
+    */
+    template <class T>
+    inline constexpr unsigned char Pearson_hash(const T number)
+    {
+      constexpr unsigned char initial_value = 42;
+      //The answer.
+
+      constexpr unsigned char c_mult = 7;
+      constexpr unsigned char c_add = 1;
+      //For our "look up table": table[i] = c_mult * i + c_add
+      //For an appropriate choice of constants (such as this),
+      //this will be bijective (modulo 255), as required.
+
+      unsigned char ret = initial_value;
+
+      for (unsigned int i = 0; i < sizeof(T); i += sizeof(unsigned char))
+        {
+          const unsigned char to_hash = number >> (i * CHAR_BIT);
+          const unsigned char operand = ret ^ to_hash;
+          ret = c_mult * operand + c_add;
+        }
+
+      return ret;
+    }
+
+
+    /*! Calculates a 16-bit Pearson hash from @ number.
+    */
+    template <class T>
+    inline constexpr unsigned short Pearson_hash_16_bit(const T number)
+    {
+      constexpr unsigned short initial_value = 42754;
+      //The answer and the standard.
+
+      constexpr unsigned short c_mult = 7;
+      constexpr unsigned short c_add = 1;
+      //For our "look up table": table[i] = c_mult * i + c_add
+      //For an appropriate choice of constants (such as this),
+      //this will be bijective (modulo 255), as required.
+
+      unsigned short ret = initial_value;
+
+      for (unsigned int i = 0; i < sizeof(T); i += sizeof(unsigned short))
+        {
+          const unsigned short to_hash = number >> (i * CHAR_BIT);
+          const unsigned short operand = ret ^ to_hash;
+          ret = c_mult * operand + c_add;
+        }
+
+      return ret;
+    }
+
+
     ///! \brief Just a wapper around constants with fallback.
     namespace Constants
     {
@@ -153,7 +284,75 @@ namespace CaloRecGPU
   inline constexpr T pi = T(3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679821480865132823066470938446095505822317253594081284811174502841027019385211055596446229489549303819644288109756659334461284756482337867831652712019091456485669234603486104543266482133936072602491412737245870066063155881748815209209628292540917153643678925903600113305305488204665213841469519415116094330572703657595919530921861173819326117931051185480744623799627495673518857527248912279381830119491298336733624L);
 #endif
     }
+    
+    CUDA_HOS_DEV static inline
+    float regularize_angle(const float b, const float a = 0.f)
+    //a. k. a. proxim in Athena code.
+    {
+      using namespace std;
+      const float diff = b - a;
+      const float divi = (fabsf(diff) - Helpers::Constants::pi<float>) / (2 * Helpers::Constants::pi<float>);
+      return b - ceilf(divi) * ((b > a + Helpers::Constants::pi<float>) - (b < a - Helpers::Constants::pi<float>)) * 2 * Helpers::Constants::pi<float>;
+    }
+    
+    CUDA_HOS_DEV static inline
+    double regularize_angle(const double b, const double a = 0.)
+    //a. k. a. proxim in Athena code.
+    {
+      using namespace std;
+      const float diff = b - a;
+      const float divi = (fabs(diff) - Helpers::Constants::pi<double>) / (2 * Helpers::Constants::pi<double>);
+      return b - ceil(divi) * ((b > a + Helpers::Constants::pi<double>) - (b < a - Helpers::Constants::pi<double>)) * 2 * Helpers::Constants::pi<double>;
+    }
+    
+    template <class T>
+    CUDA_HOS_DEV static inline
+    T angular_difference(const T x, const T y)
+    {
+      return regularize_angle(x - y, T(0));
+      //Might be problematic if x and y have a significant difference
+      //in terms of factors of pi, in which case one should add
+      //a regularize_angle(x) and regularize_angle(y) in there.
+      //For our use case, I think this will be fine.
+      //(The Athena ones are even worse,
+      // being a branchy thing that only
+      // takes care of one factor of 2 pi...)
+    }
+    
+    CUDA_HOS_DEV static inline
+    float eta_from_coordinates(const float x, const float y, const float z)
+    {
+      using namespace std;
+      const float rho2 = x * x + y * y;
+      if (rho2 > 0.)
+        {
+          const float m = sqrtf(rho2 + z * z);
+          return 0.5 * logf((m + z) / (m - z));
+        }
+      else
+        {
+          constexpr float s_etaMax = 22756.0; 
+          return z + ((z > 0) - (z < 0)) * s_etaMax;
+        }
+    }
 
+    CUDA_HOS_DEV static inline
+    double eta_from_coordinates(const double x, const double y, const double z)
+    {
+      using namespace std;
+      const double rho2 = x * x + y * y;
+      if (rho2 > 0.)
+        {
+          const double m = sqrt(rho2 + z * z);
+          return 0.5 * log((m + z) / (m - z));
+        }
+      else
+        {
+          constexpr double s_etaMax = 22756.0; 
+          return z + ((z > 0) - (z < 0)) * s_etaMax;
+        }
+    }
+    
     ///! Holds dummy classes just to identify the place in which memory lives.
     namespace MemoryContext
     {
@@ -164,6 +363,10 @@ namespace CaloRecGPU
       struct CUDAGPU
       {
         constexpr static char const * name = "CUDA GPU";
+      };
+      struct CUDAPinnedCPU
+      {
+        constexpr static char const * name = "CUDA Pinned CPU";
       };
     }
 
@@ -201,6 +404,20 @@ namespace CaloRecGPU
         }
       };
 
+
+      template <class dummy> struct unary_helper<MemoryContext::CUDAPinnedCPU, dummy>
+      {
+        static inline T * allocate(const indexer size)
+        {
+          return static_cast<T *>(CUDA_Helpers::allocate_pinned(sizeof(T) * size));
+        }
+
+        static inline void deallocate(T *& arr)
+        {
+          CUDA_Helpers::deallocate_pinned(arr);
+        }
+      };
+
       template <class C1, class C2, class dummy = void> struct copy_helper;
 
       template <class dummy> struct copy_helper<MemoryContext::CPU, MemoryContext::CPU, dummy>
@@ -228,6 +445,46 @@ namespace CaloRecGPU
       };
 
       template <class dummy> struct copy_helper<MemoryContext::CUDAGPU, MemoryContext::CPU, dummy>
+      {
+        static inline void copy (T * dest, const T * const source, const indexer sz)
+        {
+          CUDA_Helpers::CPU_to_GPU(dest, source, sizeof(T) * sz);
+        }
+      };
+
+      template <class dummy> struct copy_helper<MemoryContext::CUDAPinnedCPU, MemoryContext::CPU, dummy>
+      {
+        static inline void copy (T * dest, const T * const source, const indexer sz)
+        {
+          std::memcpy(dest, source, sizeof(T) * sz);
+        }
+      };
+
+      template <class dummy> struct copy_helper<MemoryContext::CPU, MemoryContext::CUDAPinnedCPU, dummy>
+      {
+        static inline void copy (T * dest, const T * const source, const indexer sz)
+        {
+          std::memcpy(dest, source, sizeof(T) * sz);
+        }
+      };
+
+      template <class dummy> struct copy_helper<MemoryContext::CUDAPinnedCPU, MemoryContext::CUDAPinnedCPU, dummy>
+      {
+        static inline void copy (T * dest, const T * const source, const indexer sz)
+        {
+          std::memcpy(dest, source, sizeof(T) * sz);
+        }
+      };
+
+      template <class dummy> struct copy_helper<MemoryContext::CUDAPinnedCPU, MemoryContext::CUDAGPU, dummy>
+      {
+        static inline void copy (T * dest, const T * const source, const indexer sz)
+        {
+          CUDA_Helpers::GPU_to_CPU(dest, source, sizeof(T) * sz);
+        }
+      };
+
+      template <class dummy> struct copy_helper<MemoryContext::CUDAGPU, MemoryContext::CUDAPinnedCPU, dummy>
       {
         static inline void copy (T * dest, const T * const source, const indexer sz)
         {
@@ -266,8 +523,8 @@ namespace CaloRecGPU
           {
             ret = unary_helper<Context>::allocate(size);
           }
-#if CALOREC_HELPERS_DEBUG
-        std::cerr << "ALLOCATED " << size << " in " << Context::name << ": " << ret << std::endl;
+#if CALORECGPU_HELPERS_DEBUG
+        std::cerr << "ALLOCATED " << size << " x " << sizeof(T) << " in " << Context::name << ": " << ret << std::endl;
 #endif
         return ret;
       }
@@ -276,13 +533,13 @@ namespace CaloRecGPU
       template <class Context> static inline void deallocate(T *& arr)
       {
         if (arr == nullptr)
-        //This check is to ensure the code behaves on non-CUDA enabled platforms
-        //where some destructors might still be called with nullptr.
-        {
-          return;
-        }
+          //This check is to ensure the code behaves on non-CUDA enabled platforms
+          //where some destructors might still be called with nullptr.
+          {
+            return;
+          }
         unary_helper<Context>::deallocate(arr);
-#if CALOREC_HELPERS_DEBUG
+#if CALORECGPU_HELPERS_DEBUG
         std::cerr << "DEALLOCATED in " << Context::name << ": " << arr << std::endl;
 #endif
         arr = nullptr;
@@ -297,7 +554,7 @@ namespace CaloRecGPU
           {
             copy_helper<DestContext, SourceContext>::copy(dest, source, sz);
           }
-#if CALOREC_HELPERS_DEBUG
+#if CALORECGPU_HELPERS_DEBUG
         std::cerr << "COPIED " << sz << " from " << SourceContext::name << " to " << DestContext::name << ": " << source << " to " << dest << std::endl;
 #endif
       }
@@ -311,7 +568,7 @@ namespace CaloRecGPU
       template <class DestContext, class SourceContext>
       static inline void move(T *& dest,  T *& source, const indexer sz)
       {
-#if CALOREC_HELPERS_DEBUG
+#if CALORECGPU_HELPERS_DEBUG
         std::cerr << "MOVED " << sz << " from " << SourceContext::name << " to " << DestContext::name << ": " << source << " to " << dest;
 #endif
         if (sz > 0 && source != nullptr)
@@ -323,7 +580,7 @@ namespace CaloRecGPU
             dest = nullptr;
             deallocate<SourceContext>(source);
           }
-#if CALOREC_HELPERS_DEBUG
+#if CALORECGPU_HELPERS_DEBUG
         std::cerr << " | " << source << " to " << dest << std::endl;
 #endif
       }
@@ -383,7 +640,7 @@ namespace CaloRecGPU
           {
             T * temp = m_array;
             m_array = Manager::template allocate<Context>(new_size);
-            Manager::template copy<Context, Context>(m_array, temp, std::min(m_size, new_size));
+            Manager::template copy<Context, Context>(m_array, temp, (m_size < new_size ? m_size : new_size));
             Manager::template deallocate<Context>(temp);
             m_size = new_size;
           }
@@ -629,6 +886,8 @@ namespace CaloRecGPU
         return m_array[i];
       }
 
+      // cppcheck-suppress  uninitMemberVar
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       CUDA_HOS_DEV SimpleContainer() : m_array(nullptr), m_size(0)
       {
       }
@@ -636,19 +895,23 @@ namespace CaloRecGPU
       /*!
         \warning We assume the pointer is in a valid memory location!
       */
-      CUDA_HOS_DEV SimpleContainer(T * other_array, const indexer sz)
+      // cppcheck-suppress  uninitMemberVar
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
+      CUDA_HOS_DEV SimpleContainer(T * other_array, const indexer sz) : m_array(other_array), m_size(sz)
       {
-        m_array = other_array;
-        m_size = sz;
       }
 
       template <class other_indexer, bool other_hold>
+      // cppcheck-suppress  uninitMemberVar
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       CUDA_HOS_DEV SimpleContainer(const SimpleContainer<T, other_indexer, Context, other_hold> & other)
       {
         m_size = other.m_size;
         m_array = other.m_array;
       }
 
+      // cppcheck-suppress  operatorEqVarError
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       CUDA_HOS_DEV SimpleContainer & operator= (const SimpleContainer & other)
       {
         if (this == &other)
@@ -659,10 +922,13 @@ namespace CaloRecGPU
           {
             m_array = other.m_array;
             m_size = other.m_size;
+            return (*this);
           }
       }
 
       template <class other_indexer, bool other_hold>
+      // cppcheck-suppress  operatorEqVarError
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       CUDA_HOS_DEV SimpleContainer & operator= (const SimpleContainer<T, other_indexer, Context, other_hold> & other)
       {
         m_size = other.m_size;
@@ -833,6 +1099,8 @@ namespace CaloRecGPU
         Manager::template move<Context, other_context>(m_object, other.m_object, other.valid());
       }
 
+      // cppcheck-suppress  operatorEqVarError
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       SimpleHolder & operator= (const SimpleHolder & other)
       {
         if (!valid() && other.valid())
@@ -848,6 +1116,8 @@ namespace CaloRecGPU
 
       template < class X, class other_context, bool other_hold,
                  class disabler = typename std::enable_if < std::is_base_of<T, X>::value || std::is_same<T, X>::value >::type >
+      // cppcheck-suppress  operatorEqVarError
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       SimpleHolder & operator= (const SimpleHolder<X, other_context, other_hold> & other)
       {
         if (!valid() && other.valid())
@@ -858,6 +1128,8 @@ namespace CaloRecGPU
         return (*this);
       }
 
+      // cppcheck-suppress  operatorEqVarError
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       SimpleHolder & operator= (SimpleHolder && other)
       {
         if (&other != this)
@@ -870,6 +1142,8 @@ namespace CaloRecGPU
 
       template < class X, class other_context,
                  class disabler = typename std::enable_if < std::is_base_of<T, X>::value || std::is_same<T, X>::value >::type >
+      // cppcheck-suppress  operatorEqVarError
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       SimpleHolder & operator= (SimpleHolder<X, other_context, true> && other)
       {
         clear();
@@ -1022,6 +1296,8 @@ namespace CaloRecGPU
         return m_object != nullptr;
       }
 
+      // cppcheck-suppress  uninitMemberVar
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       CUDA_HOS_DEV SimpleHolder() : m_object(nullptr)
       {
       }
@@ -1030,6 +1306,8 @@ namespace CaloRecGPU
         \warning We assume the pointer is in a valid memory location!
       */
       template < class X, class disabler = typename std::enable_if < std::is_base_of<T, X>::value || std::is_same<T, X>::value >::type >
+      // cppcheck-suppress  uninitMemberVar
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       CUDA_HOS_DEV SimpleHolder(X * other_p)
       {
         m_object = other_p;
@@ -1037,6 +1315,8 @@ namespace CaloRecGPU
 
       template < class X, bool other_hold,
                  class disabler = typename std::enable_if < std::is_base_of<T, X>::value || std::is_same<T, X>::value >::type >
+      // cppcheck-suppress  uninitMemberVar
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       CUDA_HOS_DEV SimpleHolder(const SimpleHolder<X, Context, other_hold> & other)
       {
         m_object = other.m_object;
@@ -1044,6 +1324,8 @@ namespace CaloRecGPU
 
       template < class X, bool other_hold,
                  class disabler = typename std::enable_if < std::is_base_of<T, X>::value || std::is_same<T, X>::value >::type >
+      // cppcheck-suppress  operatorEqVarError
+      //Try to suppress the uninitialized member thing that is probably being thrown off by the CUDA_HOS_DEV macro...
       CUDA_HOS_DEV SimpleHolder & operator= (const SimpleHolder<X, Context, other_hold> & other)
       {
         m_object = other.m_object;
@@ -1074,6 +1356,10 @@ namespace CaloRecGPU
     /// \brief Non-owning pointer to an object of type \p T in CUDA GPU memory.
     template <class T>
     using CUDA_kernel_object = SimpleHolder<T, MemoryContext::CUDAGPU, false>;
+
+    /// \brief Holds an object of type \p T in CUDA GPU memory.
+    template <class T>
+    using CUDA_pinned_CPU_object = SimpleHolder<T, MemoryContext::CUDAPinnedCPU, true>;
 
     /*! \brief Manages objects of type \p T in a thread-safe way,
                ensuring that there's an object available for each separate thread
@@ -1119,6 +1405,22 @@ namespace CaloRecGPU
           }
         m_held.emplace_back(std::make_unique<T>());
         m_thread_equivs.emplace_back(this_id);
+        return *(m_held.back());
+      }
+
+      ///\pre Assumes the thread already has an allocated object (through @p get_one).
+      T & get_for_thread() const
+      {
+        std::thread::id this_id = std::this_thread::get_id();
+        for (size_t i = 0; i < m_thread_equivs.size(); ++i)
+          {
+            if (m_thread_equivs[i] == this_id)
+              {
+                return *(m_held[i]);
+              }
+          }
+        //Here would be a good place for an unreachable.
+        //C++23?
         return *(m_held.back());
       }
 
@@ -1232,6 +1534,141 @@ namespace CaloRecGPU
       {
         get_one();
         ptr = m_held;
+      }
+    };
+
+    /** \brief Possibly holds an object in its internal buffer.
+               Useful to forego heap allocations, but still
+               have the option not to construct something...
+    */
+    template <class T>
+    struct maybe_allocate
+    {
+     private:
+
+      alignas(T) char m_buf[sizeof(T)];
+      T * m_object = nullptr;
+
+     public:
+
+      maybe_allocate(const bool allocate, const T & t)
+      {
+        if (allocate)
+          {
+            m_object = new (m_buf) T(t);
+          }
+      }
+
+      maybe_allocate(const bool allocate, T && t)
+      {
+        if (allocate)
+          {
+            m_object = new (m_buf) T(t);
+          }
+      }
+
+      template <class ... Args>
+      maybe_allocate(const bool allocate, Args && ... args)
+      {
+        if (allocate)
+          {
+            m_object = new (m_buf) T(std::forward<Args>(args)...);
+          }
+      }
+
+      maybe_allocate(const maybe_allocate & other) : maybe_allocate(other.get())
+      {
+      }
+
+
+      maybe_allocate(maybe_allocate && other) : maybe_allocate(other.get())
+      {
+      }
+
+      maybe_allocate & operator= (const maybe_allocate & other)
+      {
+        if (&other != this)
+          {
+            if (m_object != nullptr)
+              {
+                (*m_object) = other.get();
+              }
+            else
+              {
+                m_object = new (m_buf) T(other.get());
+              }
+          }
+        return (*this);
+      }
+
+
+      maybe_allocate & operator= (maybe_allocate && other)
+      {
+        if (&other != this)
+          {
+            if (m_object != nullptr)
+              {
+                (*m_object) = other.get();
+              }
+            else
+              {
+                m_object = new (m_buf) T(other.get());
+              }
+          }
+        return (*this);
+      }
+
+      ~maybe_allocate()
+      {
+        if (m_object != nullptr)
+          {
+            m_object->~T();
+          }
+      }
+
+      bool valid() const
+      {
+        return m_object != nullptr;
+      }
+
+      T && get() &&
+      {
+        return *m_object;
+      }
+
+      T & get() &
+      {
+        return *m_object;
+      }
+
+      const T & get() const &
+      {
+        return *m_object;
+      }
+
+      const T * operator ->() const
+      {
+        return m_object;
+      }
+
+      T * operator ->()
+      {
+        return m_object;
+      }
+
+      operator T & ()
+      {
+        return *m_object;
+      }
+
+      operator T && () &&
+      {
+        return *m_object;
+      }
+
+      operator const T & () const
+      {
+        return *m_object;
       }
     };
   }

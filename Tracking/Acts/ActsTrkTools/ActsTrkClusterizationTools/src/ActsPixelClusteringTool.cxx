@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "ActsPixelClusteringTool.h"
@@ -28,19 +28,11 @@ void clusterAddCell(PixelClusteringTool::Cluster& cl, const PixelClusteringTool:
 
 StatusCode PixelClusteringTool::initialize()
 {
-    if (m_pixelRDOTool.retrieve().isFailure()) {
-	ATH_MSG_FATAL(m_pixelRDOTool.propertyName() <<
-		      ": Failed to retrieve tool " <<
-		      m_pixelRDOTool.type());
-	return StatusCode::FAILURE;
-    }
+    ATH_CHECK(m_pixelRDOTool.retrieve());
 
-    if (m_clusterMakerTool.retrieve().isFailure()) {
-	ATH_MSG_FATAL(m_clusterMakerTool.propertyName() <<
-		      ": Failed to retrieve tool " <<
-		      m_clusterMakerTool.type());
-	return StatusCode::FAILURE;
-    }
+    ATH_CHECK(m_clusterMakerTool.retrieve());
+    ATH_CHECK(m_chargeDataKey.initialize(SG::AllowEmpty));
+    ATH_CHECK(m_offlineCalibDataKey.initialize(SG::AllowEmpty));
 
     ATH_MSG_DEBUG("Acts::PixelClusteringTool successfully initialized");
     return StatusCode::SUCCESS;
@@ -53,10 +45,11 @@ PixelClusteringTool::PixelClusteringTool(
 }
 
 StatusCode
+
 PixelClusteringTool::makeCluster(const PixelClusteringTool::Cluster &cluster,
 				 const PixelID& pixelID,
 				 const InDetDD::SiDetectorElement* element,
-				 xAOD::PixelClusterContainer& container) const
+				 xAOD::PixelCluster& xaodcluster) const
 {
     const InDetDD::PixelModuleDesign& design = 
 	dynamic_cast<const InDetDD::PixelModuleDesign&>(element->design());
@@ -104,10 +97,25 @@ PixelClusteringTool::makeCluster(const PixelClusteringTool::Cluster &cluster,
     double phiWidth = design.widthFromRowRange(rowmin, rowmax);
     InDet::SiWidth siWidth(Amg::Vector2D(rowWidth,colWidth), Amg::Vector2D(phiWidth,etaWidth));
 
+
+    const PixelChargeCalibCondData *calibData = nullptr;
+    if (!m_chargeDataKey.empty()) {
+      SG::ReadCondHandle<PixelChargeCalibCondData> calibDataHandle(m_chargeDataKey);
+      calibData = *calibDataHandle;
+    }
+
+    const PixelCalib::PixelOfflineCalibData *offlineCalibData = nullptr;
+    if (!m_offlineCalibDataKey.empty()) {
+      SG::ReadCondHandle<PixelCalib::PixelOfflineCalibData> offlineCalibDataHandle(m_offlineCalibDataKey);
+      offlineCalibData = *offlineCalibDataHandle;
+    }
+
+
+
     // N.B. the cluster is automatically added to the container
     xAOD::PixelCluster *cl =
 	m_clusterMakerTool->xAODpixelCluster(
-	    container,
+	    xaodcluster,
 	    pos_acc,
 	    cluster.ids,
 	    cluster.lvl1min,
@@ -116,7 +124,12 @@ PixelClusteringTool::makeCluster(const PixelClusteringTool::Cluster &cluster,
 	    element,
 	    hasGanged,
 	    m_errorStrategy,
-	    pixelID
+	    pixelID,
+      false,
+      0.0,
+      0.0,
+      calibData,
+      offlineCalibData
 	    );
 
     return (cl != nullptr) ? StatusCode::SUCCESS : StatusCode::FAILURE;
@@ -140,8 +153,18 @@ PixelClusteringTool::clusterize(const InDetRawDataCollection<PixelRDORawData>& R
       Acts::Ccl::createClusters<CellCollection, ClusterCollection, 2>
       (cells, Acts::Ccl::DefaultConnect<Cell, 2>(m_addCorners));
 
-    for (const Cluster& cluster : clusters)
-	ATH_CHECK(makeCluster(cluster, pixelID, element, container));
+    std::size_t previousSizeContainer = container.size();
+    // Fast insertion trick
+    std::vector<xAOD::PixelCluster*> toAddCollection;
+    toAddCollection.reserve(clusters.size());
+    for (std::size_t i(0); i<clusters.size(); ++i)
+      toAddCollection.push_back(new xAOD::PixelCluster());
+    container.insert(container.end(), toAddCollection.begin(), toAddCollection.end());
+
+    for (std::size_t i(0); i<clusters.size(); ++i) {
+      const Cluster& cluster = clusters[i];
+      ATH_CHECK(makeCluster(cluster, pixelID, element, *container[previousSizeContainer+i]));
+    }
 
     return StatusCode::SUCCESS;
 }

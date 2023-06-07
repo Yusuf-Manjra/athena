@@ -182,8 +182,8 @@ StatusCode jFEXFPGA::execute(jFEXOutputCollection* inputOutputCollection) {
         uint32_t jTE_tobword = 0;
                       
                          
+        int hemisphere = m_id == 0 ? 1 : -1;
         
-
         if(m_jfexid > 0 && m_jfexid < 5) {
 
             //-----------------jFEXsumETAlgo-----------------
@@ -191,7 +191,7 @@ StatusCode jFEXFPGA::execute(jFEXOutputCollection* inputOutputCollection) {
             m_jFEXsumETAlgoTool->buildBarrelSumET();
 
             //-----------------jFEXmetAlgo-----------------
-            m_jFEXmetAlgoTool->setup(m_jTowersIDs_Thin);
+            m_jFEXmetAlgoTool->setup(m_jTowersIDs_Thin, hemisphere);
             m_jFEXmetAlgoTool->buildBarrelmet();
         }
         else if(m_jfexid == 0 ) {
@@ -208,7 +208,7 @@ StatusCode jFEXFPGA::execute(jFEXOutputCollection* inputOutputCollection) {
             m_jFEXsumETAlgoTool->buildFWDSumET();
 
             //-----------------jFEXmetAlgo-----------------
-            m_jFEXmetAlgoTool->setup(flipped_jTowersIDs);
+            m_jFEXmetAlgoTool->setup(flipped_jTowersIDs, hemisphere);
             m_jFEXmetAlgoTool->buildFWDmet();
         }
         else if(m_jfexid == 5) {
@@ -217,15 +217,24 @@ StatusCode jFEXFPGA::execute(jFEXOutputCollection* inputOutputCollection) {
             m_jFEXsumETAlgoTool->buildFWDSumET();
 
             //-----------------jFEXmetAlgo-----------------
-            m_jFEXmetAlgoTool->setup(m_jTowersIDs_Wide);
+            m_jFEXmetAlgoTool->setup(m_jTowersIDs_Wide, hemisphere);
             m_jFEXmetAlgoTool->buildFWDmet();
         }
         
-        jXE_tobword = m_IjFEXFormTOBsTool->formMetTOB(m_jFEXmetAlgoTool->GetMetXComponent(),m_jFEXmetAlgoTool->GetMetYComponent(),thr_jXE.resolutionMeV());
+        jXE_tobword = m_IjFEXFormTOBsTool->formMetTOB(m_jFEXmetAlgoTool->GetMetXComponent(), m_jFEXmetAlgoTool->GetMetYComponent(),thr_jXE.resolutionMeV());
         jXE_tob->initialize(m_id,m_jfexid,jXE_tobword,thr_jXE.resolutionMeV(),0);
         m_Met_tobwords.push_back(std::move(jXE_tob));
         
-        jTE_tobword = m_IjFEXFormTOBsTool->formSumETTOB(m_jFEXsumETAlgoTool->getETlowerEta(bin_pos),m_jFEXsumETAlgoTool->getETupperEta(bin_pos),thr_jTE.resolutionMeV());
+        int  lowEt = m_jFEXsumETAlgoTool->getETlowerEta(bin_pos);
+        int highEt = m_jFEXsumETAlgoTool->getETupperEta(bin_pos);
+        
+        // NOTE: Foward FPGA in the C-side is already flipped, however we still need to flip the jFEX module 1 and 2 
+        if(m_jfexid == 1 || m_jfexid == 2){
+            lowEt  = m_jFEXsumETAlgoTool->getETupperEta(bin_pos);
+            highEt = m_jFEXsumETAlgoTool->getETlowerEta(bin_pos);
+        }
+        
+        jTE_tobword = m_IjFEXFormTOBsTool->formSumETTOB(lowEt,highEt,thr_jTE.resolutionMeV());
         jTE_tob->initialize(m_id,m_jfexid,jTE_tobword,thr_jTE.resolutionMeV(),0);
         m_sumET_tobwords.push_back(std::move(jTE_tob));
     }

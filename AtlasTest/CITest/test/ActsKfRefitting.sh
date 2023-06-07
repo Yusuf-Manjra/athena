@@ -1,14 +1,13 @@
 #!/usr/bin/bash
 # Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
-input_rdo=/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/InDetPhysValMonitoring/inputs/601237_ttbar_allhad_PU200_ITk_master_v1.RDO.root
+input_rdo=/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/InDetPhysValMonitoring/inputs/ATLAS-P2-RUN4-01-01-00_ttbar_mu200.RDO.root
 n_events=5
 
 Reco_tf.py --CA \
-   --detectors Bpipe ITkPixel ITkStrip \
-   --preExec "ConfigFlags.Reco.EnableHGTDExtension=False;" \
+   --preExec "flags.Reco.EnableHGTDExtension=False;" \
    --preInclude "InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude" \
-   --postInclude "ActsTrkFittingAlgs.ActsTrkFittingAlgsConfig.ActsReFitterAlgCfg" \
+   --postInclude "ActsConfig.ActsTrkFittingConfig.ActsReFitterAlgCfg" \
    --inputRDOFile ${input_rdo} \
    --outputESDFile ESD.pool.root \
    --outputAODFile AOD.pool.root \

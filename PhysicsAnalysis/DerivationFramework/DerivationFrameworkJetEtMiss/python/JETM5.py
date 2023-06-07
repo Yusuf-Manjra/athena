@@ -6,6 +6,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.Enums import MetadataCategory
 
 # Main algorithm config
 def JETM5SkimmingToolCfg(ConfigFlags):
@@ -56,10 +57,11 @@ def JETM5KernelCfg(ConfigFlags, name='JETM5Kernel', **kwargs):
     # Include inner detector tracks associated with photons
     JETM5PhotonTPThinningTool = acc.getPrimaryAndMerge(EgammaTrackParticleThinningCfg(
         ConfigFlags,
-        name                    = "JETM5PhotonTPThinningTool",
-        StreamName              = kwargs['StreamName'],
-        SGKey                   = "Photons",
-        InDetTrackParticlesKey  = "InDetTrackParticles"))
+        name                     = "JETM5PhotonTPThinningTool",
+        StreamName               = kwargs['StreamName'],
+        SGKey                    = "Photons",
+        InDetTrackParticlesKey   = "InDetTrackParticles",
+        GSFConversionVerticesKey = "GSFConversionVertices"))
 
 
     thinningTools = [JETM5MuonTPThinningTool,
@@ -120,6 +122,7 @@ def JETM5Cfg(ConfigFlags):
     # Define contents of the format
     # =============================
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     
     JETM5SlimmingHelper = SlimmingHelper("JETM5SlimmingHelper", NamesAndTypes = ConfigFlags.Input.TypedCollections, ConfigFlags = ConfigFlags)
@@ -164,6 +167,7 @@ def JETM5Cfg(ConfigFlags):
     # Output stream    
     JETM5ItemList = JETM5SlimmingHelper.GetItemList()
     acc.merge(OutputStreamCfg(ConfigFlags, "DAOD_JETM5", ItemList=JETM5ItemList, AcceptAlgs=["JETM5Kernel"]))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, "DAOD_JETM5", AcceptAlgs=["JETM5Kernel"], createMetadata=[MetadataCategory.CutFlowMetaData]))
 
     return acc
 

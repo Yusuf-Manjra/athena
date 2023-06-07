@@ -48,6 +48,7 @@ muFastThresholds = {
     '18GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 14.33,  9.45, 10.96, 14.35] ],
     '20GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [  3.10,  3.25,  2.69,  5.14] ], # new
     '22GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [  3.20,  3.25,  4.90,  5.00] ], # new
+    '23GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [  3.20,  3.25,  4.90,  5.00] ], # new
     '24GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [  4.80,  3.25,  4.50,  5.10] ], # new
     '26GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [  3.50,  3.25,  4.45,  4.40] ], # new
     '28GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [  3.70,  3.25,  4.50,  5.40] ], # new
@@ -89,6 +90,7 @@ muCombThresholds = {
     '18GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 17.41, 17.27, 16.95, 16.25] ],
     '20GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 16.50, 19.19, 18.80, 17.00] ], # new 
     '22GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 18.70, 21.07, 19.13, 18.80] ], # new 
+    '23GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 18.70, 21.07, 19.13, 18.80] ], # new 
     '24GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 18.10, 21.07, 18.60, 19.35] ], # new 
     '25GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 24.20, 23.20, 23.20, 22.60] ],
     '26GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 21.50, 21.07, 20.22, 19.65] ], # new 
@@ -144,6 +146,7 @@ trigMuonEFSAThresholds = {
     '18GeV'                  : [ [0,1.05,1.5,2.0,9.9], [ 15.7, 16.6, 15.4, 16.3] ],
     '20GeV'                  : [ [0,1.05,1.5,2.0,9.9], [ 18.20, 16.50, 17.00, 18.00] ], # new
     '22GeV'                  : [ [0,1.05,1.5,2.0,9.9], [ 20.20, 18.00, 17.00, 19.00] ], # new 
+    '23GeV'                  : [ [0,1.05,1.5,2.0,9.9], [ 21.20, 18.75, 17.80, 19.60] ], # new 
     '24GeV'                  : [ [0,1.05,1.5,2.0,9.9], [ 22.20, 19.50, 18.60, 20.20] ], # new 
     '26GeV'                  : [ [0,1.05,1.5,2.0,9.9], [ 23.50, 21.00, 20.15, 22.00] ], # new
     '28GeV'                  : [ [0,1.05,1.5,2.0,9.9], [ 23.40, 21.00, 20.55, 22.50] ], # new
@@ -188,6 +191,7 @@ efCombinerThresholds = {
     '18GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 17.68, 17.51, 17.34, 17.34] ],
     '20GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 19.65, 19.50, 19.20, 19.30] ], # new 
     '22GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 21.64, 21.32, 21.30, 21.30] ], # new 
+    '23GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 22.59, 22.27, 22.25, 22.27] ], # new 
     '24GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 23.55, 23.21, 23.20, 23.25] ], # new 
     '26GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 25.60, 25.15, 25.20, 25.20] ], # new
     '27GeV_v15a'             : [ [0,1.05,1.5,2.0,9.9], [ 26.26, 26.12, 26.11, 26.02] ],
@@ -227,6 +231,7 @@ muFastThresholdsForECWeakBRegion = {
     '18GeV_v15a'            : [  8.48,  7.26 ],
     '20GeV_v15a'            : [  8.63,  7.26 ],
     '22GeV_v15a'            : [  9.53,  7.77 ],
+    '23GeV_v15a'            : [  9.53,  7.77 ],
     '24GeV_v15a'            : [  9.02,  8.31 ],
     '26GeV_v15a'            : [  9.89,  8.77 ],
     '28GeV_v15a'            : [  9.89,  8.77 ], # copy of 26
@@ -284,6 +289,9 @@ def getThresholdsFromDict( chainDict ):
     cparts = [i for i in chainDict['chainParts'] if i['signature']=='Muon' or i['signature']=='Bphysics']
     return sum( [ [part['threshold']]*int(part['multiplicity']) for part in cparts ], [])
 
+
+def TrigMufastHypoAlgCfg(flags, name="UNSPECIFIED", **kwargs):
+    return CompFactory.TrigMufastHypoAlg(name, **kwargs)
 
 def TrigMufastHypoToolFromDict(flags, chainDict):
 
@@ -659,25 +667,57 @@ class TrigmuCombHypoConfig(object):
 
         return tool
 
+def TrigMuonEFHypoAlgCfg(flags, name="UNSPECIFIED", **kwargs):
+    return CompFactory.TrigMuonEFHypoAlg(name, **kwargs)
 
 
 def TrigMuonEFMSonlyHypoToolFromDict( flags, chainDict ) :
     thresholds = getThresholdsFromDict( chainDict )
-    config = TrigMuonEFMSonlyHypoConfig()
-    doOverlap=False
+    kwargs={}
+    kwargs.setdefault("RequireSAMuons",True)
     if 'msonly' in chainDict['chainParts'][0]['msonlyInfo'] and 'noL1' not in chainDict['chainParts'][0]['extra']:
-        doOverlap=True
-    tool = config.ConfigurationHypoTool( chainDict['chainName'], thresholds, doOverlap, flags)
+        kwargs.setdefault("RemoveOverlaps",True)
+
 
     if monitorAll:
-        tool.MonTool = TrigMuonEFHypoMonitoring(flags, "TrigMuonEFMSonlyHypoTool/"+chainDict['chainName'])
+        monTool = TrigMuonEFHypoMonitoring(flags, "TrigMuonEFMSonlyHypoTool/"+chainDict['chainName'])
+        kwargs.setdefault("MonTool", monTool)
     else:
         if any(group in muonHypoMonGroups for group in chainDict['monGroups']):
-            tool.MonTool = TrigMuonEFHypoMonitoring(flags, "TrigMuonEFMSonlyHypoTool/"+chainDict['chainName'])
-    
-    return tool
+            monTool = TrigMuonEFHypoMonitoring(flags, "TrigMuonEFMSonlyHypoTool/"+chainDict['chainName'])
+            kwargs.setdefault("MonTool", monTool)
+    if '3layersEC' in chainDict['chainParts'][0]['addInfo']:
+        kwargs.setdefault("RequireThreeStations", True)
+        muonflags = flags.cloneAndReplace('Muon', 'Trigger.Offline.SA.Muon')
+        if muonflags.Muon.runCommissioningChain:
+            kwargs.setdefault("RunCommissioningChain",True)
+            
 
-def TrigMuonEFMSonlyHypoToolFromName( flags, chainDict ):
+    if 'nscan10' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.1
+       narrowscan = True
+    elif 'nscan20' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.2
+       narrowscan = True
+    elif 'nscan30' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.3
+       narrowscan = True
+    elif 'nscan40' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.4
+       narrowscan = True
+    elif 'nscan' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.5
+       narrowscan = True
+    else:
+       narrowscan = False
+       conesize = 0.0
+
+    kwargs.setdefault("ConeSize", conesize)
+    kwargs.setdefault("NarrowScan", narrowscan)
+    
+    return TrigMuonEFHypoToolCfg( chainDict['chainName'], thresholds, **kwargs )
+
+def TrigMuonEFMSonlyHypoToolFromName( flags, chainDict):
     #For full scan chains, we need to configure the thresholds based on all muons
     #in the chain to get the counting correct. 
     thresholds=[]
@@ -699,58 +739,68 @@ def TrigMuonEFMSonlyHypoToolFromName( flags, chainDict ):
                 thr =thr.replace('noL1','')
             for i in range(1,int(mult)+1):
                 thresholds.append(thr)
-    config = TrigMuonEFMSonlyHypoConfig()
-    tool = config.ConfigurationHypoTool(chainDict['chainName'], thresholds, False, flags)
 
+    monTool=None
     if monitorAll:
-        tool.MonTool = TrigMuonEFHypoMonitoring(flags, "TrigMuonEFMSonlyHypoTool/"+chainDict['chainName'])
+        monTool = TrigMuonEFHypoMonitoring(flags, "TrigMuonEFMSonlyHypoTool/"+chainDict['chainName'])
     else:
         if any(group in muonHypoMonGroups for group in chainDict['monGroups']):
-            tool.MonTool = TrigMuonEFHypoMonitoring(flags, "TrigMuonEFMSonlyHypoTool/"+chainDict['chainName'])
+            monTool = TrigMuonEFHypoMonitoring(flags, "TrigMuonEFMSonlyHypoTool/"+chainDict['chainName'])
 
-    return tool
+    if 'nscan10' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.1
+       narrowscan = True
+    elif 'nscan20' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.2
+       narrowscan = True
+    elif 'nscan30' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.3
+       narrowscan = True
+    elif 'nscan40' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.4
+       narrowscan = True
+    elif 'nscan' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.5
+       narrowscan = True
+    else:
+       narrowscan = False
+       conesize = 0.0
 
-class TrigMuonEFMSonlyHypoConfig(object):
 
-    log = logging.getLogger('TrigMuonEFMSonlyHypoConfig')
+    return TrigMuonEFHypoToolCfg( chainDict['chainName'], thresholds, MonTool=monTool, RequireSAMuons=True, NarrowScan=narrowscan, ConeSize=conesize)
 
-    def ConfigurationHypoTool( self, toolName, thresholds, overlap, flags ):
-        log = logging.getLogger(self.__class__.__name__)
-        tool = CompFactory.TrigMuonEFHypoTool( toolName )
-        
-        nt = len(thresholds)
-        log.debug('Set %d thresholds', nt)
-        tool.PtBins = [ [ 0, 2.5 ] ] * nt
-        tool.PtThresholds = [ [ 5.49 * GeV ] ] * nt
-        tool.RequireSAMuons=True
-        tool.RemoveOverlaps=overlap
-        tool.RunCommissioningChain=flags.Muon.runCommissioningChain
-        if '3layersEC' in toolName:
-            tool.RequireThreeStations=True
-        for th, thvalue in enumerate(thresholds):
-            if "0eta105" in toolName:
-                thvaluename = thvalue+ "GeV_barrelOnly"
-            else:
-                thvaluename = thvalue + 'GeV'
-                if int(thvalue)==3:
-                    thvaluename = thvalue + 'GeV_v22a'
-            log.debug('Number of threshold = %d, Value of threshold = %s', th, thvaluename)
+def TrigMuonEFHypoToolCfg(name, thresholds, **kwargs):
 
-            try:
-                tool.AcceptAll = False
-                values = trigMuonEFSAThresholds[thvaluename]
-                tool.PtBins[th] = values[0]
-                tool.PtThresholds[th] = [ x * GeV for x in values[1] ]
 
-            except LookupError:
-                if (thvalue=='passthrough'):
-                    tool.AcceptAll = True
-                    tool.PtBins[th] = [-10000.,10000.]
-                    tool.PtThresholds[th] = [ -1. * GeV ]
-                else:
-                    raise Exception('MuonEFMSonly Hypo Misconfigured: threshold %r not supported' % thvaluename)
+    log = logging.getLogger(name)
 
-        return tool
+    nt = len(thresholds)
+    log.debug('Set %d thresholds', nt)
+    PtBins = [ [ 0, 2.5 ] ] * nt
+    PtThresholds = [ [ 5.49 * GeV ] ] * nt
+    passthrough=False
+    for th, thvalue in enumerate(thresholds):
+        if "0eta105" in name:
+            thvaluename = thvalue+ "GeV_barrelOnly"
+        else:
+            thvaluename = thvalue + 'GeV'
+            if int(thvalue)==3:
+                thvaluename = thvalue + 'GeV_v22a'
+        log.debug('Number of threshold = %d, Value of threshold = %s', th, thvaluename)
+
+        values = trigMuonEFSAThresholds[thvaluename]
+        PtBins[th] = values[0]
+        PtThresholds[th] = [ x * GeV for x in values[1] ]
+
+        if (thvalue=='passthrough'):
+            passthrough = True
+            PtBins[th] = [-10000.,10000.]
+            PtThresholds[th] = [ -1. * GeV ]
+
+    kwargs.setdefault("AcceptAll", passthrough)
+    kwargs.setdefault("PtBins", PtBins)
+    kwargs.setdefault("PtThresholds", PtThresholds)
+    return CompFactory.TrigMuonEFHypoTool(name, **kwargs)
 
 
 def TrigMuonEFCombinerHypoToolFromDict( flags, chainDict ) :
@@ -764,24 +814,24 @@ def TrigMuonEFCombinerHypoToolFromDict( flags, chainDict ) :
     else:
        muonquality = False
 
-    if 'nscan' in chainDict['chainParts'][0]['addInfo']:
-       narrowscan = True
-       conesize = 5
-    elif 'nscan10' in chainDict['chainParts'][0]['addInfo']:
-       conesize = 1
+    if 'nscan10' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.1
        narrowscan = True
     elif 'nscan20' in chainDict['chainParts'][0]['addInfo']:
-       conesize = 2
+       conesize = 0.2
        narrowscan = True
     elif 'nscan30' in chainDict['chainParts'][0]['addInfo']:
-       conesize = 3
+       conesize = 0.3
        narrowscan = True
     elif 'nscan40' in chainDict['chainParts'][0]['addInfo']:
-       conesize = 4
+       conesize = 0.4
+       narrowscan = True
+    elif 'nscan' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.5
        narrowscan = True
     else:
        narrowscan = False
-       conesize = 0
+       conesize = 0.0
 
     if 'noL1' not in chainDict['chainParts'][0]['extra']:
         overlap=True
@@ -830,24 +880,24 @@ def TrigMuonEFCombinerHypoToolFromName( flags, chainDict ):
                 thr =thr.replace('noL1','')
             for i in range(1,int(mult)+1):
                 thresholds.append(thr)
-    if 'nscan' in chainDict['chainParts'][0]['addInfo']:
-       narrowscan = True
-       conesize = 5
-    elif 'nscan10' in chainDict['chainParts'][0]['addInfo']:
-       conesize = 1
+    if 'nscan10' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.1
        narrowscan = True
     elif 'nscan20' in chainDict['chainParts'][0]['addInfo']:
-       conesize = 2
+       conesize = 0.2
        narrowscan = True
     elif 'nscan30' in chainDict['chainParts'][0]['addInfo']:
-       conesize = 3
+       conesize = 0.3
        narrowscan = True
     elif 'nscan40' in chainDict['chainParts'][0]['addInfo']:
-       conesize = 4
+       conesize = 0.4
+       narrowscan = True
+    if 'nscan' in chainDict['chainParts'][0]['addInfo']:
+       conesize = 0.5
        narrowscan = True
     else:
        narrowscan = False
-       conesize = 0
+       conesize = 0.0
 
     if 'muonqual' in chainDict['chainParts'][0]['addInfo']:
        muonquality = True
@@ -961,7 +1011,7 @@ class TrigMuonEFTrackIsolationHypoConfig(object) :
                 log.debug('Setting passthrough')
                 tool.AcceptAll = True
             else:
-                log.error('isoCut = ', isoCut)
+                log.error('isoCut = %s', isoCut)
                 raise Exception('TrigMuonEFTrackIsolation Hypo Misconfigured')
         return tool
 
@@ -1005,7 +1055,7 @@ class TrigMuonEFInvMassHypoConfig(object) :
                 log.debug('Setting passthrough')
                 tool.AcceptAll = True
             else:
-                log.error('thresholds = ', thresholds)
+                log.error('thresholds = %s', thresholds)
                 raise Exception('TrigMuonEFInvMass Hypo Misconfigured')
         return tool
 
@@ -1114,7 +1164,7 @@ class TrigMuonEFIdtpInvMassHypoConfig(object) :
                 log.debug('Setting passthrough')
                 tool.AcceptAll = True
             else:
-                log.error('thresholds = ', thresholds)
+                log.error('thresholds = %s', thresholds)
                 raise Exception('TrigMuonEFIdtpInvMass Hypo Misconfigured')
         return tool
 

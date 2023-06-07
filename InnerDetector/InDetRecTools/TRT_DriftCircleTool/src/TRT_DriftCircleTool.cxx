@@ -225,8 +225,8 @@ InDet::TRT_DriftCircleTool::convert(
 
       // Gas status - assumed same for all rdo's in the collection
       if (m_useConditionsHTStatus && !isGasSet) {
-         if (m_ConditionsSummary->getStatusHT(id) == TRTCond::StrawStatus::Argon ||
-             m_ConditionsSummary->getStatusHT(id) == TRTCond::StrawStatus::Dead) {
+         if (m_ConditionsSummary->getStatusHT(id, ctx) == TRTCond::StrawStatus::Argon ||
+             m_ConditionsSummary->getStatusHT(id, ctx) == TRTCond::StrawStatus::Dead) {
             isArgonStraw = true;
          }
          isGasSet = true;
@@ -287,7 +287,7 @@ InDet::TRT_DriftCircleTool::convert(
 
       // Require good straw status
       if (getTRTBadChannel) {
-        if (m_ConditionsSummary->getStatus(id) != TRTCond::StrawStatus::Good)
+        if (m_ConditionsSummary->getStatus(id,ctx) != TRTCond::StrawStatus::Good)
           continue;
       }
 

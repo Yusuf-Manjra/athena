@@ -40,6 +40,8 @@ def athenaMPRunArgsToFlags(runArgs, flags):
     if hasattr(runArgs, "parallelCompression"):
         flags.MP.UseParallelCompression = runArgs.parallelCompression
 
+    if hasattr(runArgs, "eventService"):
+        flags.MP.Strategy = "EventService"
 
 def AthenaMPCfg(flags):
 
@@ -125,9 +127,11 @@ def AthenaMPCfg(flags):
         if flags.Concurrency.NumThreads > 0:
             if mpevtloop.IsPileup:
                 raise Exception('Running pileup digitization in mixed MP+MT currently not supported')
-            queue_consumer = CompFactory.SharedEvtQueueConsumer(UseSharedWriter=use_shared_writer,
-                                                                EventsBeforeFork=mpevtloop.EventsBeforeFork,
-                                                                Debug=debug_worker)
+            from AthenaConfiguration.MainServicesConfig import AthenaMtesEventLoopMgrCfg
+            result.merge(AthenaMtesEventLoopMgrCfg(flags))
+            queue_consumer = CompFactory.SharedHiveEvtQueueConsumer(UseSharedWriter=use_shared_writer,
+                                                                    EventsBeforeFork=mpevtloop.EventsBeforeFork,
+                                                                    Debug=debug_worker)
         else:
             queue_consumer = CompFactory.SharedEvtQueueConsumer(UseSharedReader=use_shared_reader,
                                                                 UseSharedWriter=use_shared_writer,
@@ -152,11 +156,13 @@ def AthenaMPCfg(flags):
         mpevtloop.Tools += [ CompFactory.EvtRangeScatterer(ProcessorChannel = channelScatterer2Processor,
                                                            EventRangeChannel = event_range_channel,
                                                            DoCaching=flags.MP.EvtRangeScattererCaching) ]
-        mpevtloop.Tools += [ CompFactory.vtRangeProcessor(IsPileup=mpevtloop.IsPileup,
-                                                          Channel2Scatterer = channelScatterer2Processor,
-                                                          Channel2EvtSel = channelProcessor2EvtSel,
-                                                          Debug=debug_worker) ]
+        mpevtloop.Tools += [ CompFactory.EvtRangeProcessor(IsPileup=mpevtloop.IsPileup,
+                                                           Channel2Scatterer = channelScatterer2Processor,
+                                                           Channel2EvtSel = channelProcessor2EvtSel,
+                                                           Debug=debug_worker) ]
 
+        from AthenaServices.OutputStreamSequencerSvcConfig import OutputStreamSequencerSvcCfg
+        result.merge(OutputStreamSequencerSvcCfg(flags,incidentName="NextEventRange"))
     else:
         msg.warning("Unknown strategy %s. No MP tools will be configured", flags.MP.Strategy)
 

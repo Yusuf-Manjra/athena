@@ -1,9 +1,10 @@
 #
-#  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 #
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaCommon.Logging import logging
+from collections.abc import Iterable
 _msg = logging.getLogger('AccumulatorCache')
 
 import functools
@@ -110,6 +111,10 @@ class AccumulatorDecorator:
             return hash(x)
         return None
 
+    def __get__(self, obj, objtype):
+        """Support instance methods."""
+        return functools.partial(self.__call__, obj)
+
     def __call__(self , *args , **kwargs):
         cacheHit = None
         try:
@@ -173,13 +178,22 @@ class AccumulatorDecorator:
                             cacheHit = True
                     else:
                         cacheHit = True
-
-                    return (deepcopy(res) if self._deepcopy else res, cacheHit)
+                
+                    if self._deepcopy:
+                        return deepcopy(res), cacheHit
+                    else:
+                        # shallow copied CA still needs to undergo merging
+                        if isinstance(res, ComponentAccumulator):
+                            res._wasMerged=False
+                        return res, cacheHit
 
                 else:
                     _msg.debug('Hash not found in AccumulatorCache for function %s' , self._func)
                     if(len(self._cache) >= self._maxSize):
-                        del self._cache[next(iter(self._cache))]
+                        _msg.debug("Cache limit (%d) reached for %s.%s", self._maxSize, self._func.__module__, self._func.__name__)
+                        oldest = self._cache.pop(next(iter(self._cache)))
+                        if isinstance(oldest, ComponentAccumulator):
+                            oldest.wasMerged()
 
                     res = self._func(*args , **kwargs)
 
@@ -202,10 +216,17 @@ class AccumulatorDecorator:
 
     def __del__(self):
         # Cleanup dangling private tools of cached CAs
-        for k, v in self._cache.items():
-            if isinstance(v, ComponentAccumulator):
-                v.popPrivateTools(quiet=True)
+        def _cleanupIfCA(something):
+            if isinstance(something, ComponentAccumulator):
+                something.popPrivateTools(quiet=True)
+                something.wasMerged()
 
+        for k, v in self._cache.items():            
+            if isinstance(v, Iterable):
+                for el in v:
+                    _cleanupIfCA(el)
+            else:
+                _cleanupIfCA(v)
 
 def AccumulatorCache(func = None, maxSize = 128,
                      verifyResult = AccumulatorDecorator.VERIFY_NOTHING, deepCopy = True):

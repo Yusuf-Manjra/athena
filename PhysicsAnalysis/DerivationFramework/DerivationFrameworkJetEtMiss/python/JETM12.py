@@ -6,6 +6,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.Enums import MetadataCategory
 
 # Main algorithm config
 def JETM12SkimmingToolCfg(ConfigFlags):
@@ -137,10 +138,11 @@ def JETM12KernelCfg(ConfigFlags, name='JETM12Kernel', **kwargs):
     # Include inner detector tracks associated with photons
     JETM12PhotonTPThinningTool = acc.getPrimaryAndMerge(EgammaTrackParticleThinningCfg(
         ConfigFlags,
-        name                    = "JETM12PhotonTPThinningTool",
-        StreamName              = kwargs['StreamName'],
-        SGKey                   = "Photons",
-        InDetTrackParticlesKey  = "InDetTrackParticles"))
+        name                     = "JETM12PhotonTPThinningTool",
+        StreamName               = kwargs['StreamName'],
+        SGKey                    = "Photons",
+        InDetTrackParticlesKey   = "InDetTrackParticles",
+        GSFConversionVerticesKey = "GSFConversionVertices"))
 
     # Include inner detector tracks associated with taus
     JETM12TauTPThinningTool = acc.getPrimaryAndMerge(TauTrackParticleThinningCfg(
@@ -214,6 +216,7 @@ def JETM12Cfg(ConfigFlags):
     # Define contents of the format
     # =============================
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     
     JETM12SlimmingHelper = SlimmingHelper("JETM12SlimmingHelper", NamesAndTypes = ConfigFlags.Input.TypedCollections, ConfigFlags = ConfigFlags)
@@ -256,6 +259,7 @@ def JETM12Cfg(ConfigFlags):
     # Output stream    
     JETM12ItemList = JETM12SlimmingHelper.GetItemList()
     acc.merge(OutputStreamCfg(ConfigFlags, "DAOD_JETM12", ItemList=JETM12ItemList, AcceptAlgs=["JETM12Kernel"]))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, "DAOD_JETM12", AcceptAlgs=["JETM12Kernel"], createMetadata=[MetadataCategory.CutFlowMetaData]))
 
     return acc
 

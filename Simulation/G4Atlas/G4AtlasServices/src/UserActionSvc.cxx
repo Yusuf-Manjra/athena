@@ -43,6 +43,20 @@ namespace G4UA
 
     return StatusCode::SUCCESS;
   }
+  StatusCode UserActionSvc::addActionTool(const ToolHandle<IUserActionTool>& service_tool){
+    
+    if (!service_tool.isPublic()){
+        ATH_MSG_FATAL("Only public tools are allowed");
+        return StatusCode::FAILURE;
+    }
+    if (service_tool.empty()) {
+      ATH_MSG_FATAL("NO point in adding empty tool handles here.");
+      return StatusCode::FAILURE;
+    }
+    ATH_MSG_INFO(" Add new tool "<<service_tool.name());
+    m_userActionTools.push_back(service_tool);
+    return StatusCode::SUCCESS;
+  }
 
   //---------------------------------------------------------------------------
   // Initialize the user actions for the current thread.
@@ -104,8 +118,11 @@ namespace G4UA
     }
     auto eventAction = std::make_unique<G4AtlasEventAction>();
     // Assign event plugins
-    for(auto* action : actions.eventActions)
+    for(auto* action : actions.eventActions) {
       eventAction->addEventAction(action);
+      // set the event manager
+      action->SetEventManager( G4EventManager::GetEventManager() );
+    }
     G4RunManager::GetRunManager()->SetUserAction( eventAction.get() );
     m_eventActions.set( std::move(eventAction) );
 
@@ -116,8 +133,11 @@ namespace G4UA
     }
     auto stackAction = std::make_unique<G4AtlasStackingAction>();
     // Assign stacking plugins
-    for(auto* action : actions.stackingActions)
+    for(auto* action : actions.stackingActions) {
       stackAction->addAction(action);
+      // set the stack manager
+      action->SetStackManager( G4EventManager::GetEventManager()->GetStackManager() );
+    }
     G4RunManager::GetRunManager()->SetUserAction( stackAction.get() );
     m_stackingActions.set( std::move(stackAction) );
 
@@ -128,8 +148,11 @@ namespace G4UA
     }
     auto trackAction = std::make_unique<G4AtlasTrackingAction>();
     // Assign tracking plugins
-    for(auto* action : actions.trackingActions)
+    for(auto* action : actions.trackingActions) {
       trackAction->addTrackAction(action);
+      // set the tracking manager
+      action->SetTrackingManagerPointer ( G4EventManager::GetEventManager()->GetTrackingManager() );
+    }
     G4RunManager::GetRunManager()->SetUserAction( trackAction.get() );
     m_trackingActions.set( std::move(trackAction) );
 
@@ -140,8 +163,11 @@ namespace G4UA
     }
     auto stepAction = std::make_unique<G4AtlasSteppingAction>();
     // Assign stepping plugins
-    for(auto* action : actions.steppingActions)
+    for(auto* action : actions.steppingActions) {
       stepAction->addAction(action);
+      // set the stepping manager
+      action->SetSteppingManagerPointer( G4EventManager::GetEventManager()->GetTrackingManager()->GetSteppingManager() );
+    }
     G4RunManager::GetRunManager()->SetUserAction( stepAction.get() );
     m_steppingActions.set( std::move(stepAction) );
 

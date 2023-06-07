@@ -6,9 +6,9 @@ from AthenaCommon.Logging import logging
 log = logging.getLogger("InDetTrigPrecisionTracking")
 
 from InDetTrigRecExample.InDetTrigCommonTools import CAtoLegacyPublicToolWrapper
+from TriggerMenuMT.HLT.Config.MenuComponents import algorithmCAToGlobalWrapper
 
-
-def makeInDetTrigPrecisionTracking( flags, config=None, verifier=False, rois='EMViewRoIs', prefix="InDetTrigMT" ) :
+def makeInDetTrigPrecisionTracking( inflags, config=None, verifier=False, rois='EMViewRoIs', prefix="InDetTrigMT" ) :
     
     log.info( "makeInDetTrigPrecisionTracking:: {} {} doTRT: {} ".format(  config.input_name, config.name, config.doTRT ) )
 
@@ -16,23 +16,27 @@ def makeInDetTrigPrecisionTracking( flags, config=None, verifier=False, rois='EM
     
     # Expects configuration  
     if config is None:
-        raise ValueError('PrecisionTracking No configuration provided!')
+      raise ValueError('PrecisionTracking No configuration provided!')
+
+    from TrigInDetConfig.utils import getFlagsForActiveConfig
+    flags = getFlagsForActiveConfig(inflags, config.input_name, log)
 
     from InDetTrigRecExample import InDetTrigCA
-    InDetTrigCA.InDetTrigConfigFlags = flags.cloneAndReplace("InDet.Tracking.ActiveConfig", "Trigger.InDetTracking."+config.name)
+    InDetTrigCA.InDetTrigConfigFlags = flags
     
     from TrkConfig.TrkTrackSummaryToolConfig import InDetTrigTrackSummaryToolCfg
     summaryTool = CAtoLegacyPublicToolWrapper(InDetTrigTrackSummaryToolCfg)
 
-    doTRT = config.doTRT
+    doTRT = flags.Tracking.ActiveConfig.doTRT
 
     # Add suffix to the algorithms
-    signature =  "_{}".format( config.input_name )
-    
+    signature =  "_{}".format( flags.Tracking.ActiveConfig.input_name )
+
+    inputTracks = flags.Tracking.ActiveConfig.trkTracks_FTF 
     # Name settings for output Tracks/TrackParticles
-    outTrkTracks        = config.trkTracks_IDTrig() # Final output Track collection
-    outTrackParticles   = config.tracks_IDTrig() # Final output xAOD::TrackParticle collection
-    ambiTrackCollection = config.trkTracks_IDTrig()+"_Amb"  # Ambiguity solver tracks
+    outTrkTracks        = flags.Tracking.ActiveConfig.trkTracks_IDTrig # Final output Track collection
+    outTrackParticles   = flags.Tracking.ActiveConfig.tracks_IDTrig # Final output xAOD::TrackParticle
+    ambiTrackCollection = outTrkTracks+"_Amb"  # Ambiguity solver tracks
     
     #  Verifying input data for the algorithms
   
@@ -41,10 +45,11 @@ def makeInDetTrigPrecisionTracking( flags, config=None, verifier=False, rois='EM
     if verifier:
         from .InDetTrigCollectionKeys import TrigPixelKeys
         verifier.DataObjects += [( 'InDet::PixelGangedClusterAmbiguities' , 'StoreGateSvc+' + TrigPixelKeys.PixelClusterAmbiguitiesMap ),
-                                 ( 'TrackCollection' , 'StoreGateSvc+' + config.trkTracks_FTF() )]
+                                 ( 'TrackCollection' , 'StoreGateSvc+' +inputTracks ),
+                                 ( 'TRT_RDO_Cache' , 'StoreGateSvc+TrtRDOCache' )]
 
     
-    ambiSolvingAlgs = ambiguitySolver_builder( signature, config, summaryTool, outputTrackName=ambiTrackCollection, prefix=prefix+"Trk" )
+    ambiSolvingAlgs = ambiguitySolver_builder(flags, signature, config, summaryTool, inputTracks, outputTrackName=ambiTrackCollection, prefix=prefix+"Trk" )
 
     #Loading the alg to the sequence
     ptAlgs.extend( ambiSolvingAlgs )
@@ -53,36 +58,27 @@ def makeInDetTrigPrecisionTracking( flags, config=None, verifier=False, rois='EM
     if doTRT:
         # do the TRT extension if requested
         finalTrackCollection = outTrkTracks
-        trtAlgs = trtExtension_builder( signature, config, rois, summaryTool, inputTracks=ambiTrackCollection, outputTracks=outTrkTracks, prefix=prefix ) 
+        trtAlgs = trtExtension_builder(flags, signature, config, rois, summaryTool, inputTracks=ambiTrackCollection, outputTracks=outTrkTracks, prefix=prefix ) 
         ptAlgs.extend( trtAlgs )
-  
-    #
-    #  Track PRD association algorithm, can be enabled to restore shared hit computation in TrackParticleCreatorTool
-    #
-    # from .InDetTrigCommon import trackPRD_Association_builder
-    # trackPRD_AssociationAlg = trackPRD_Association_builder(name = prefix+'trackPRD_AssociationAlg'+config.input_name+'_IDTrig',
-    #                                                        inTrackCollections = [finalTrackCollection],
-    #                                                        associationMapName = "TrigInDetPRDtoTrackMap")
 
-    # ptAlgs.append( trackPRD_AssociationAlg )
-
-    #
+        
     #  Track particle conversion algorithm
-    #
-    from .InDetTrigCommon import trackParticleCnv_builder
-    from InDetTrigRecExample.InDetTrigConfigRecLoadToolsPost import InDetTrigParticleCreatorToolWithSummary, \
-        InDetTrigParticleCreatorToolWithSummaryTRTPid
 
-    creatorTool = InDetTrigParticleCreatorToolWithSummary
+    from .InDetTrigCommon import trackParticleCnv_builder
+    from InDetTrigRecExample.InDetTrigConfigRecLoadToolsPost import InDetTrigParticleCreatorTool, \
+        InDetTrigParticleCreatorToolTRTPid
+
+    creatorTool = InDetTrigParticleCreatorTool
     if config.electronPID:
-      creatorTool = InDetTrigParticleCreatorToolWithSummaryTRTPid
+      creatorTool = InDetTrigParticleCreatorToolTRTPid
     
-    trackParticleCnvAlg = trackParticleCnv_builder( flags,
-                                                    name                 = prefix+'xAODParticleCreatorAlg'+config.input_name+'_IDTrig',
-                                                    config               = config,
-                                                    inTrackCollectionKey = finalTrackCollection,
-                                                    outTrackParticlesKey = outTrackParticles,
-                                                    trackParticleCreatorTool     =  creatorTool)
+    trackParticleCnvAlg = trackParticleCnv_builder( 
+        flags,
+        name                 = prefix+'xAODParticleCreatorAlg'+flags.Tracking.ActiveConfig.input_name+'_IDTrig',
+        config               = config,
+        inTrackCollectionKey = finalTrackCollection,
+        outTrackParticlesKey = outTrackParticles,
+        trackParticleCreatorTool     =  creatorTool)
     
     log.debug(trackParticleCnvAlg)
     ptAlgs.append(trackParticleCnvAlg)
@@ -100,16 +96,18 @@ def makeInDetTrigPrecisionTracking( flags, config=None, verifier=False, rois='EM
 
 # top level alg
 
-def ambiguitySolver_builder( signature, config, summaryTool, outputTrackName=None, prefix="InDetTrigMT" ) :
+def ambiguitySolver_builder(flags, signature, config, summaryTool, inputTracks, outputTrackName=None, prefix="InDetTrigMT" ) :
 
     log.info( "Precision tracking using new configuration: {} {} {} {}".format(  signature, config.input_name, config.name, prefix ) )
 
+    
     scoreMap        = 'ScoreMap'+config.input_name
     if config.usePixelNN:
-        ambiguityScore  = ambiguityScoreNN_builder( signature, config, scoreMap, prefix )
+        ambiguityScore  = ambiguityScoreNN_builder(flags, signature, config, scoreMap, prefix )
     else:
-        ambiguityScore  = ambiguityScore_builder( signature, config, scoreMap, prefix )
-    ambiguitySolver = ambiguitySolverInternal_builder( signature, config, summaryTool, scoreMap, outputTrackName, prefix )
+        ambiguityScore  = ambiguityScore_builder(flags, signature, config, inputTracks, scoreMap, prefix )
+
+    ambiguitySolver = ambiguitySolverInternal_builder(flags, signature, config, summaryTool, scoreMap, outputTrackName, prefix )
 
     return [ ambiguityScore, ambiguitySolver ]
 
@@ -117,21 +115,20 @@ def ambiguitySolver_builder( signature, config, summaryTool, outputTrackName=Non
 
 # next level alg
 
-def ambiguityScore_builder( signature, config, scoreMap, prefix=None ):
-    
-    from TrkAmbiguitySolver.TrkAmbiguitySolverConf import Trk__TrkAmbiguityScore
-    ambiguityScore = Trk__TrkAmbiguityScore( name                    = '%sAmbiguityScore_%s'%(prefix, config.input_name),
-                                             TrackInput              = [ config.trkTracks_FTF() ],
-                                             TrackOutput             = scoreMap,
-                                             AmbiguityScoreProcessor = None ) 
-         
-    log.info(ambiguityScore)
-    
-    return ambiguityScore 
+def ambiguityScore_builder(flags, signature, config, inputTracks, scoreMap, prefix=None ):
+
+    from TrkConfig.TrkAmbiguitySolverConfig import TrkAmbiguityScore_Trig_Cfg
+    ambiguityScore = algorithmCAToGlobalWrapper(
+        TrkAmbiguityScore_Trig_Cfg,
+        flags,
+        name = f"{prefix}AmbiScore_{flags.Tracking.ActiveConfig.input_name}",
+        TrackInput = [inputTracks],
+        AmbiguityScoreProcessor = None,
+    )
+    return ambiguityScore[0]
 
 
-
-def ambiguityScoreNN_builder( signature, config, scoreMap, prefix=None ):
+def ambiguityScoreNN_builder(flags, signature, config, scoreMap, prefix=None ):
     MultiplicityContent = [1 , 1 , 1]
     from AthenaCommon.CfgGetter import getPublicTool
     from InDetRecExample import TrackingCommon as TrackingCommon
@@ -155,7 +152,7 @@ def ambiguityScoreNN_builder( signature, config, scoreMap, prefix=None ):
     ToolSvc += TrigNnPixelClusterSplitProbTool
     from TrkAmbiguityProcessor.TrkAmbiguityProcessorConf import Trk__DenseEnvironmentsAmbiguityScoreProcessorTool
     trackMapTool = TrackingCommon.getInDetTrigPRDtoTrackMapToolGangedPixels()
-    scoringTool = scoringTool_builder( signature, config, summaryTool=ToolSvc.InDetTrigTrackSummaryTool, prefix=None )
+    scoringTool = scoringTool_builder(flags, signature, config, prefix=None )
     ambiguityScoreProcessor = Trk__DenseEnvironmentsAmbiguityScoreProcessorTool( name               = "%sInDetTrigMT_AmbiguityScoreProcessorTool_%s"%(prefix, config.input_name),
                                                                  ScoringTool        = scoringTool,
                                                                  AssociationTool    = trackMapTool,
@@ -170,11 +167,21 @@ def ambiguityScoreNN_builder( signature, config, scoreMap, prefix=None ):
     return ambiguityScore
 # next level alg
 
-def ambiguitySolverInternal_builder( signature, config, summaryTool, scoreMap, outputTrackName=None, prefix=None ):
+def ambiguitySolverInternal_builder(flags, signature, config, summaryTool, scoreMap, outputTrackName=None, prefix=None ):
+
+    from TrkConfig.TrkAmbiguitySolverConfig import TrkAmbiguitySolver_Trig_Cfg
+    ambiguitySolver = algorithmCAToGlobalWrapper(
+        TrkAmbiguitySolver_Trig_Cfg,
+        flags,
+        name = "TrigAmbiguitySolver"+flags.Tracking.ActiveConfig.input_name,
+    )
+    
+    return ambiguitySolver[0]
+    
     if config.usePixelNN: 
-        ambiguityProcessorTool = ambiguityProcessorToolNN_builder( signature, config, summaryTool, prefix )
+        ambiguityProcessorTool = ambiguityProcessorToolNN_builder(flags, signature, config, summaryTool, prefix )
     else:
-        ambiguityProcessorTool = ambiguityProcessorTool_builder( signature, config, summaryTool, prefix )
+        ambiguityProcessorTool = ambiguityProcessorTool_builder(flags, signature, config, summaryTool, prefix )
     
     from TrkAmbiguitySolver.TrkAmbiguitySolverConf import Trk__TrkAmbiguitySolver
     ambiguitySolver = Trk__TrkAmbiguitySolver( name               = '%sAmbiguitySolver_%s'%(prefix,config.input_name),
@@ -188,30 +195,15 @@ def ambiguitySolverInternal_builder( signature, config, summaryTool, scoreMap, o
 
 
 
-def ambiguityProcessorTool_builder( signature, config, summaryTool ,prefix=None ) : 
+def ambiguityProcessorTool_builder(flags, signature, config, summaryTool ,prefix=None ) : 
 
-    from InDetTrigRecExample.InDetTrigConfigRecLoadTools import InDetTrigTrackFitter
-    from InDetTrigRecExample.InDetTrigConfigRecLoadTools import InDetTrigAmbiTrackSelectionTool
-
-    from InDetRecExample import TrackingCommon as TrackingCommon
-    trackMapTool = TrackingCommon.getInDetTrigPRDtoTrackMapToolGangedPixels()
-
-    scoringTool = scoringTool_builder( signature, config, summaryTool, prefix )
-    
-    from TrkAmbiguityProcessor.TrkAmbiguityProcessorConf import Trk__SimpleAmbiguityProcessorTool 
-    ambiguityProcessorTool = Trk__SimpleAmbiguityProcessorTool( name             = '%sAmbiguityProcessor_%s'%(prefix,config.input_name),
-                                                                Fitter           = InDetTrigTrackFitter,
-                                                                ScoringTool      = scoringTool,
-                                                                AssociationTool  = trackMapTool,
-                                                                TrackSummaryTool = summaryTool,
-                                                                SelectionTool    = InDetTrigAmbiTrackSelectionTool )
-    
-    from AthenaCommon.AppMgr import ToolSvc
-    ToolSvc += ambiguityProcessorTool
-    
+    from TrkConfig.TrkAmbiguityProcessorConfig import SimpleAmbiguityProcessorTool_Trig_Cfg
+    ambiguityProcessorTool = CAtoLegacyPublicToolWrapper(
+        SimpleAmbiguityProcessorTool_Trig_Cfg,
+        name="TrigAmbiguityProcessor"+flags.Tracking.ActiveConfig.input_name)
     return ambiguityProcessorTool
-
-def ambiguityProcessorToolNN_builder( signature, config, summaryTool ,prefix=None ) : 
+    
+def ambiguityProcessorToolNN_builder(flags, signature, config, summaryTool ,prefix=None ) : 
 
     from InDetTrigRecExample.InDetTrigConfigRecLoadTools import InDetTrigTrackFitter
     from InDetTrigRecExample.InDetTrigConfigRecLoadTools import InDetTrigAmbiTrackSelectionTool
@@ -219,7 +211,7 @@ def ambiguityProcessorToolNN_builder( signature, config, summaryTool ,prefix=Non
     from InDetRecExample import TrackingCommon as TrackingCommon
     trackMapTool = TrackingCommon.getInDetTrigPRDtoTrackMapToolGangedPixels()
 
-    scoringTool = scoringTool_builder( signature, config, summaryTool, prefix )
+    scoringTool = scoringTool_builder(flags, signature, config, prefix )
    
     InDetTrigAmbiTrackSelectionTool.doPixelSplitting=True 
     from TrkAmbiguityProcessor.TrkAmbiguityProcessorConf import Trk__DenseEnvironmentsAmbiguityProcessorTool as ProcessorTool
@@ -242,7 +234,7 @@ def ambiguityProcessorToolNN_builder( signature, config, summaryTool ,prefix=Non
 
 
 
-def scoringTool_builder( signature, config, summaryTool, prefix=None, SiOnly=True ):
+def scoringTool_builder(flags, signature, config, prefix=None, SiOnly=True ):
 
   from InDetRecExample.TrackingCommon import setDefaults
 
@@ -259,8 +251,7 @@ def scoringTool_builder( signature, config, summaryTool, prefix=None, SiOnly=Tru
                        name = scoringToolName,
                        minPt        = config.pTmin, 
                        doEmCaloSeed = False,
-                       SummaryTool  = summaryTool,
-                       minTRTonTrk        = 0,
+                       minTRTonTrk        = 0,          #2023fix  (switch to flags)
                        DriftCircleCutTool = InDetTrigTRTDriftCircleCut)
   
   if(config.maxRPhiImpact is not None):
@@ -299,27 +290,22 @@ def scoringTool_builder( signature, config, summaryTool, prefix=None, SiOnly=Tru
   if(config.doEmCaloSeed is not None):
     kwargs = setDefaults(kwargs, doEmCaloSeed = config.doEmCaloSeed)
 
-  if(config.minTRTonTrk is not None):
-    kwargs = setDefaults(kwargs, minTRTonTrk = config.minTRTonTrk)
-
   from InDetConfig.InDetTrackScoringToolsConfig import InDetAmbiScoringToolCfg
   scoringTool = CAtoLegacyPublicToolWrapper(InDetAmbiScoringToolCfg, **kwargs)
   return scoringTool
 
 
-def trtExtension_builder( signature, config, rois, summaryTool, inputTracks, outputTracks, prefix="InDetTrigMT" ): 
+def trtExtension_builder(flags, signature, config, rois, summaryTool, inputTracks, outputTracks, prefix="InDetTrigMT" ): 
 
-    trtRIOMaker           = trtRIOMaker_builder( signature, config, rois, prefix  )
-    trtExtensionAlg       = trtExtensionAlg_builder( signature, config, inputTracks, prefix )
-    trtExtensionProcessor = trtExtensionProcessor_builder( signature, config, summaryTool, inputTracks, outputTracks, prefix )
+        
+    trtRIOMaker           = trtRIOMaker_builder(flags, signature, config, rois, prefix  )
+    trtExtensionAlg       = trtExtensionAlg_builder(flags, signature, config, inputTracks, prefix =prefix)
+    trtExtensionProcessor = trtExtensionProcessor_builder(flags, signature, config, summaryTool, inputTracks, outputTracks, prefix )
 
     return [ trtRIOMaker, trtExtensionAlg, trtExtensionProcessor]
     
 
-
-
-
-def trtRIOMaker_builder( signature, config, rois, prefix="InDetTrigMT" ): 
+def trtRIOMaker_builder(inflags, signature, config, rois, prefix="InDetTrigMT" ): 
     
     log.info( "trtRIOMaker_builder: {} {}".format( signature, prefix ) )
 
@@ -330,201 +316,54 @@ def trtRIOMaker_builder( signature, config, rois, prefix="InDetTrigMT" ):
     from .InDetTrigCollectionKeys import TrigTRTKeys
     from AthenaCommon.GlobalFlags import globalflags
 
+    #TODO invoke as photon from the menu
+    if signature=="electrontrt":
+      flags = inflags.cloneAndReplace("Tracking.ActiveConfig", "Trigger.InDetTracking."+"photon")
+    else:
+      flags = inflags
+
     # Only add raw data decoders if we're running over raw data
     if globalflags.InputFormat.is_bytestream():
         #Global keys/names for collections 
         TRT_RDO_Key = TrigTRTKeys.RDOs
-        trtDataProvider = trtDataProvider_builder( signature, config, TRT_RDO_Key, rois )
+        trtDataProvider = trtDataProvider_builder(flags, signature, config, TRT_RDO_Key, rois )
         algs.append( trtDataProvider )
         
-        
-    #-----------------------------------------------------------------------------
-    #                        TRT extension
-    # Keep track that this needs to have a switch between DAF and XK
-    # trkExtensionType = 'XK'
-    # if InDetTrigFlags.trtExtensionType() is 'DAF' :
-    
-    from InDetTrigRecExample.InDetTrigConfigRecLoadTools import  InDetTrigTRT_DriftCircleTool
-    
-    from InDetPrepRawDataFormation.InDetPrepRawDataFormationConf import InDet__TRT_RIO_Maker
-    trtRIOMaker = InDet__TRT_RIO_Maker( name = "%sTRTDriftCircleMaker%s"%(prefix, signature),
-                                        TRTRIOLocation = TrigTRTKeys.DriftCircles,
-                                        TRTRDOLocation = TRT_RDO_Key,
-                                        # FIXME:
-                                        # EtaHalfWidth = config.etaHalfWidth
-                                        # PhiHalfWidth = config.phiHalfWidth
-                                        # doFullScan   = config.doFullScan
-                                        TRT_DriftCircleTool = InDetTrigTRT_DriftCircleTool )
-    
-    trtRIOMaker.isRoI_Seeded = True
-    trtRIOMaker.RoIs = rois
 
-    from RegionSelector.RegSelToolConfig import makeRegSelTool_TRT
-    trtRIOMaker.RegSelTool = makeRegSelTool_TRT()
-
-    algs.append( trtRIOMaker )
-
+    from InDetConfig.InDetPrepRawDataFormationConfig import TrigTRTRIOMakerCfg
+    trtRIOMaker = algorithmCAToGlobalWrapper(TrigTRTRIOMakerCfg,
+                                             flags, RoIs = rois)
+    algs.extend( trtRIOMaker )
     return algs
-  
- 
-
-
-
-
-def trtDataProvider_builder( signature, config, TRT_RDO_Key, rois, prefix="InDetTrigMT" ) :
-  
-    from AthenaCommon.AppMgr import ToolSvc
-
-    from TRT_RawDataByteStreamCnv.TRT_RawDataByteStreamCnvConf import TRT_RodDecoder
-    trtRodDecoder = TRT_RodDecoder( name="%sTRTRodDecoder%s"%(prefix, signature),
-                                       LoadCompressTableDB=True )
-    ToolSvc += trtRodDecoder
-  
-    from TRT_RawDataByteStreamCnv.TRT_RawDataByteStreamCnvConf import TRTRawDataProviderTool
-    trtRawDataProviderTool = TRTRawDataProviderTool( name="%sTRTRawDataProviderTool%s"%(prefix, signature),
-                                                     Decoder=trtRodDecoder )
     
-    ToolSvc += trtRawDataProviderTool
+
+
+def trtDataProvider_builder(flags, signature, config, TRT_RDO_Key, rois, prefix="InDetTrigMT" ) :
+
     
-    # load the TRTRawDataProvider
-    from TRT_RawDataByteStreamCnv.TRT_RawDataByteStreamCnvConf import TRTRawDataProvider
-    trtRawDataProvider = TRTRawDataProvider(name         = "%sTRTRawDataProvider%s"%(prefix, signature),
-                                            RDOKey       = TRT_RDO_Key,
-                                            ProviderTool = trtRawDataProviderTool)
+    from TrigInDetConfig.TrigInDetConfig import TRTDataProviderCfg
+    trtRawDataProvider = algorithmCAToGlobalWrapper(TRTDataProviderCfg,
+                                                    flags, rois, signature)
+    return trtRawDataProvider[0]
+
     
-    from RegionSelector.RegSelToolConfig import makeRegSelTool_TRT
-    
-    trtRawDataProvider.RegSelTool = makeRegSelTool_TRT()
-    trtRawDataProvider.isRoI_Seeded = True
-    trtRawDataProvider.RoIs = rois
-    
-    return  trtRawDataProvider 
+def trtExtensionAlg_builder(flags, signature, config, inputTracks, prefix="InDetTrigMT" ): 
+
+    from InDetConfig.TRT_TrackExtensionAlgConfig import Trig_TRT_TrackExtensionAlgCfg
+    extensionAlg = algorithmCAToGlobalWrapper(Trig_TRT_TrackExtensionAlgCfg,
+                                              flags, inputTracks, name="%sTrackExtensionAlg%s"%(prefix, signature),
+                                              )
+    return extensionAlg[0]
 
 
+def trtExtensionProcessor_builder(flags, signature, config, summaryTool, inputTracks, outputTracks, prefix="InDetTrigMT" ):   
 
 
-
-
-
-
-def trtExtensionTool_builder( signature, config, prefix="InDetTrigMT" ): 
-
-    from AthenaCommon.AppMgr import ToolSvc
-
-    # Condition algorithm for InDet__TRT_DetElementsRoadMaker_xk
-    from AthenaCommon.AlgSequence import AthSequencer
-    condSeq = AthSequencer("AthCondSeq")
-    
-    trtRoadAlgName = "%sTRT_DetElementsRoadCondAlg_xk"%(prefix)
-    
-    if not hasattr( condSeq, trtRoadAlgName ):
-        from TRT_DetElementsRoadTool_xk.TRT_DetElementsRoadTool_xkConf import InDet__TRT_DetElementsRoadCondAlg_xk
-    
-        # condSeq += InDet__TRT_DetElementsRoadCondAlg_xk(name = "%sTRT_DetElementsRoadCondAlg_xk%s"%(prefix, signature) )
-        condSeq += InDet__TRT_DetElementsRoadCondAlg_xk( name = trtRoadAlgName )
-
-
-    from InDetTrigRecExample.InDetTrigConfigRecLoadTools import InDetTrigPatternPropagator
-    
-    from TRT_DetElementsRoadTool_xk.TRT_DetElementsRoadTool_xkConf import InDet__TRT_DetElementsRoadMaker_xk
-    
-    trtRoadMaker =  InDet__TRT_DetElementsRoadMaker_xk( name   = '%sTRTRoadMaker%s'%(prefix, signature),
-                                                        #DetectorStoreLocation = 'DetectorStore',
-                                                        #TRTManagerLocation    = 'TRT',
-                                                        MagneticFieldMode     = 'MapSolenoid',
-                                                        PropagatorTool        = InDetTrigPatternPropagator )
-
-    ToolSvc += trtRoadMaker
-
-
-
-    # TODO implement new configuration of circle cut
-
-    from InDetTrigRecExample.ConfiguredNewTrackingTrigCuts import EFIDTrackingCuts
-
-    cutValues = EFIDTrackingCuts
-
-    if(config.isLRT):
-        from InDetTrigRecExample.ConfiguredNewTrackingTrigCuts import EFIDTrackingCutLRT
-        cutValues = EFIDTrackingCutLRT
-        
-    from .InDetTrigCollectionKeys import TrigTRTKeys
-
-    from InDetTrigRecExample.InDetTrigConfigRecLoadTools import InDetTrigPatternUpdator 
-    from InDetTrigRecExample.InDetTrigConfigRecLoadTools import InDetTrigTRTDriftCircleCut
-    
-    from TRT_TrackExtensionTool_xk.TRT_TrackExtensionTool_xkConf import InDet__TRT_TrackExtensionTool_xk
-    
-    trtExtensionTool = InDet__TRT_TrackExtensionTool_xk ( name = "%sTrackExtensionTool%s"%(prefix,signature),
-                                                          MagneticFieldMode     = 'MapSolenoid',      # default
-                                                          TRT_ClustersContainer = TrigTRTKeys.DriftCircles, # default
-                                                          TrtManagerLocation    = 'TRT',              # default
-                                                          PropagatorTool = InDetTrigPatternPropagator,
-                                                          UpdatorTool    = InDetTrigPatternUpdator,
-                                                          # RIOonTrackToolYesDr = # default for now
-                                                          # RIOonTrackToolNoDr  = # default for now
-                                                          RoadTool            = trtRoadMaker,
-                                                          DriftCircleCutTool = InDetTrigTRTDriftCircleCut,
-                                                          MinNumberDriftCircles = cutValues.minTRTonTrk(),
-                                                          ScaleHitUncertainty   = 2.,
-                                                          RoadWidth             = 20.,
-                                                          UseParameterization   = cutValues.useParameterizedTRTCuts() )
-               
-    ToolSvc += trtExtensionTool
-
-    return trtExtensionTool
-
-
- 
-
-def trtExtensionAlg_builder( signature, config, inputTracks, prefix="InDetTrigMT" ): 
- 
-    extensionTool = trtExtensionTool_builder( signature, config ) 
- 
-    from TRT_TrackExtensionAlg.TRT_TrackExtensionAlgConf import InDet__TRT_TrackExtensionAlg
-    extensionAlg = InDet__TRT_TrackExtensionAlg( name = "%sTrackExtensionAlg%s"%(prefix, signature),
-                                                    InputTracksLocation    = inputTracks,
-                                                    TrackExtensionTool     = extensionTool,
-                                                    ExtendedTracksLocation = 'ExtendedTrackMap' )
-
-    return extensionAlg
-
-
-
-
-def trtExtensionProcessor_builder( signature, config, summaryTool, inputTracks, outputTracks, prefix="InDetTrigMT" ):   
-
-    from AthenaCommon.AppMgr import ToolSvc
-
-    #-----------------------------------------------------------------------------
-    #                        TRT processor
-    
-    # TODO: do I need a new fitter for this? Or can I use the same one?
-    # TODO In Run2 option for cosmic
-    # InDetTrigExtensionFitter = InDetTrigTrackFitter
-
-    scoringTool = scoringTool_builder( signature, config, summaryTool=ToolSvc.InDetTrigTrackSummaryTool, prefix=prefix, SiOnly=False )
-    ToolSvc += scoringTool
-
-
-    from InDetTrigRecExample.InDetTrigConfigRecLoadTools import InDetTrigTrackFitter
-    from InDetTrigRecExample.InDetTrigFlags import InDetTrigFlags
-    from InDetExtensionProcessor.InDetExtensionProcessorConf import InDet__InDetExtensionProcessor   
-    trtExtensionProcessor = InDet__InDetExtensionProcessor (name               = "%sExtensionProcessor%s"%(prefix, signature),
-                                                            TrackName          = inputTracks,
-                                                            #Cosmics           = InDetFlags.doCosmics(),
-                                                            ExtensionMap       = 'ExtendedTrackMap',
-                                                            NewTrackName       = outputTracks,
-                                                            TrackFitter        = InDetTrigTrackFitter,
-                                                            TrackSummaryTool   = summaryTool,
-                                                            ScoringTool        = scoringTool, 
-                                                            suppressHoleSearch = False,
-                                                            RefitPrds = not (InDetTrigFlags.refitROT() or (InDetTrigFlags.trtExtensionType() == 'DAF')))
-                                                            # Check these option after DAF is implemented
-                                                            # tryBremFit         = InDetFlags.doBremRecovery(),
-                                                            # caloSeededBrem     = InDetFlags.doCaloSeededBrem(),
-                                                            # pTminBrem          = NewTrackingCuts.minPTBrem() )
-    return trtExtensionProcessor
+    from InDetConfig.InDetExtensionProcessorConfig import TrigInDetExtensionProcessorCfg
+    trtExtensionProcessor = algorithmCAToGlobalWrapper(TrigInDetExtensionProcessorCfg,
+                                                       flags, name="%sExtensionProcessor%s"%(prefix, signature),
+                                                       )
+    return trtExtensionProcessor[0]
 
 
 

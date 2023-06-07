@@ -5,15 +5,12 @@
 #ifndef TRIGT1RESULTBYTESTREAM_MUONROIBYTESTREAMTOOL_H
 #define TRIGT1RESULTBYTESTREAM_MUONROIBYTESTREAMTOOL_H
 
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
 
 // Trigger includes
 #include "TrigT1ResultByteStream/IL1TriggerByteStreamTool.h"
 #include "TrigT1Interfaces/ITrigT1MuonRecRoiTool.h"
 #include "TrigT1Interfaces/ITrigThresholdDecisionTool.h"
 #include "xAODTrigger/MuonRoIContainer.h"
-#include "TrigT1Interfaces/MuCTPIL1Topo.h"
 #include "TrigT1Interfaces/TrigT1StoreGateKeys.h"
 #include "TrigT1MuctpiPhase1/L1TopoLUT.h"
 
@@ -66,7 +63,7 @@ private:
   SG::ReadHandleKeyArray<xAOD::MuonRoIContainer> m_roiReadKeys {
     this, "MuonRoIContainerReadKeys", {},
     "Read handle keys to MuonRoIContainer for conversion to ByteStream (one key per BC in the readout window)"};
-  SG::WriteHandleKeyArray<LVL1::MuCTPIL1Topo> m_MuCTPIL1TopoKeys {
+  SG::WriteHandleKeyArray<xAOD::MuonRoIContainer> m_MuCTPIL1TopoKeys {
     this, "L1TopoOutputLocID", {},
     "Output keys for MuCTPItoL1Topo, one per time slice"};
 
@@ -95,7 +92,7 @@ private:
   /// Process raw Topo TOB words in all slices, convert and fill the output EDM
   StatusCode decodeTopoSlices(const uint32_t* data,
                               const std::vector<std::pair<size_t,size_t>>& slices,
-                              std::vector<SG::WriteHandle<LVL1::MuCTPIL1Topo>>& handles,
+                              std::vector<SG::WriteHandle<xAOD::MuonRoIContainer>>& handles,
                               size_t outputOffset,
                               const EventContext& eventContext) const;
 };

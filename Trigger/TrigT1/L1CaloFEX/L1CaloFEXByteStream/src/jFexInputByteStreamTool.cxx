@@ -56,6 +56,15 @@ StatusCode jFexInputByteStreamTool::initialize() {
     //Since the mapping is constant in everyentry, better to be read in the initialize function
     //Reading from CVMFS Fiber mapping
     ATH_CHECK(ReadfromFile(PathResolver::find_calib_file(m_FiberMapping)));
+    
+    
+    // Initialize monitoring tool if not empty
+    if (!m_monTool.empty()) {
+        ATH_CHECK(m_monTool.retrieve());
+        ATH_MSG_INFO("Logging errors to " << m_monTool.name() << " monitoring tool");
+        m_UseMonitoring = true;
+    }
+
 
     return StatusCode::SUCCESS;
 }
@@ -69,6 +78,7 @@ StatusCode jFexInputByteStreamTool::convertFromBS(const std::vector<const ROBF*>
     SG::WriteHandle<xAOD::jFexTowerContainer> jTowersContainer(m_jTowersWriteKey, ctx);
     ATH_CHECK(jTowersContainer.record(std::make_unique<xAOD::jFexTowerContainer>(), std::make_unique<xAOD::jFexTowerAuxContainer>()));
     ATH_MSG_DEBUG("Recorded jFexTowerContainer with key " << jTowersContainer.key());
+    
     
 
     // Iterate over ROBFragments to decode
@@ -86,7 +96,6 @@ StatusCode jFexInputByteStreamTool::convertFromBS(const std::vector<const ROBF*>
         
         const auto dataArray = CxxUtils::span{rob->rod_data(), rob->rod_ndata()};
         std::vector<uint32_t> vec_words(dataArray.begin(),dataArray.end());
-
         
         // jFEX to ROD trailer position
         unsigned int trailers_pos = rob->rod_ndata();
@@ -95,14 +104,78 @@ StatusCode jFexInputByteStreamTool::convertFromBS(const std::vector<const ROBF*>
         bool READ_WORDS = true;
         while(READ_WORDS){
             
-            const auto [payload, jfex, fpga]                      = jFEXtoRODTrailer  ( vec_words.at(trailers_pos-2), vec_words.at(trailers_pos-1) );
+            if( trailers_pos < jBits::jFEX2ROD_WORDS ){
+                std::stringstream sdetail;
+                sdetail  << "There are not enough words ("<< trailers_pos <<") for the jFEX to ROD trailer decoder. Expected at least " << jBits::jFEX2ROD_WORDS<<". Skipping this FPGA(?)" ;
+                std::stringstream slocation;
+                slocation  << "0x"<< std::hex << rob->rob_source_id();
+                std::stringstream stitle;
+                stitle  << "Invalid trailer words" ;
+                printError(slocation.str(),stitle.str(),MSG::WARNING,sdetail.str());                
+
+
+                READ_WORDS = false;
+                continue;
+            }
+            
+            const auto [payload, jfex, fpga, error] = jFEXtoRODTrailer  ( vec_words.at(trailers_pos-2), vec_words.at(trailers_pos-1) );
+            
+            if(error != 0 ){
+                
+                std::stringstream sdetail;
+                sdetail  << "Error bit set in the jFEX to ROD trailer - 0x"<< std::hex <<error << std::dec <<" in FPGA: "<< fpga << " and jFEX: "<< jfex;
+                std::stringstream slocation;
+                slocation  << "Error bit set";
+ 
+                if( ((error >> jBits::ERROR_CORR_TRAILER  ) & jBits::ROD_TRAILER_1b) ){
+                    std::stringstream stitle;
+                    stitle  << "Corrective Trailer" ;
+                    printError(slocation.str(),stitle.str(),MSG::ERROR,sdetail.str());
+                    
+                    //Returning Status code failure here because the contents are unreliable and should not be decoded
+                    return StatusCode::FAILURE;           
+                }   
+                if( ((error >> jBits::ERROR_SAFE_MODE  ) & jBits::ROD_TRAILER_1b) ){
+                    std::stringstream stitle;
+                    stitle  << "Safe Mode" ;
+                    printError(slocation.str(),stitle.str(),MSG::WARNING,sdetail.str());                    
+                }   
+                if( ((error >> jBits::ERROR_PROTOCOL_ERROR  ) & jBits::ROD_TRAILER_1b) ){
+                    std::stringstream stitle;
+                    stitle  << "Protocol error" ;
+                    printError(slocation.str(),stitle.str(),MSG::WARNING,sdetail.str());                    
+                }   
+                if( ((error >> jBits::ERROR_LENGTH_MISMATCH  ) & jBits::ROD_TRAILER_1b) ){
+                    std::stringstream stitle;
+                    stitle  << "Length mismatch" ;
+                    printError(slocation.str(),stitle.str(),MSG::DEBUG,sdetail.str());                    
+                }   
+                if( ((error >> jBits::ERROR_HEADER_MISMATCH  ) & jBits::ROD_TRAILER_1b) ){
+                    std::stringstream stitle;
+                    stitle  << "Header mismatch" ;
+                    printError(slocation.str(),stitle.str(),MSG::DEBUG,sdetail.str());                    
+                }   
+                if( ((error >> jBits::ERROR_PROC_TIMEOUT  ) & jBits::ROD_TRAILER_1b) ){
+                    std::stringstream stitle;
+                    stitle  << "Processor Timeout" ;
+                    printError(slocation.str(),stitle.str(),MSG::DEBUG,sdetail.str());                    
+                }   
+
+            }            
             
             if(payload % jBits::DATA_BLOCKS != 0){
                 ATH_MSG_DEBUG("  Not full readout activated (" << payload << "). Data blocks/channels expected (" << jBits::DATA_BLOCKS <<")"<<C.END);
             }
             
-            if(payload % jBits::DATA_WORDS_PER_BLOCK != 0){
-                ATH_MSG_ERROR(C.B_RED<<"  Payload number (" << payload << ") not a multiple of data words per channel. Expected: " << jBits::DATA_WORDS_PER_BLOCK <<C.END);
+            if(payload % jBits::DATA_WORDS_PER_BLOCK != 0) {
+                std::stringstream sdetail;
+                sdetail  << "  Payload number (" << payload << ") not a multiple of data words per channel. Expected: " << jBits::DATA_WORDS_PER_BLOCK ;
+                std::stringstream slocation;
+                slocation  << "jFEX "<< jfex << " FPGA "<< fpga << " in 0x"<< std::hex << rob->rob_source_id();
+                std::stringstream stitle;
+                stitle  << "Invalid Data Blocks" ;
+                printError(slocation.str(),stitle.str(),MSG::DEBUG,sdetail.str());
+
                 READ_WORDS = false;
                 continue;
             }
@@ -113,14 +186,26 @@ StatusCode jFexInputByteStreamTool::convertFromBS(const std::vector<const ROBF*>
             // Number of iterations that must be done. It is divisible otherwise it throws out an error (Line 108)
             unsigned int Max_iter = payload/jBits::DATA_WORDS_PER_BLOCK;
             
-            if(Max_iter>trailers_pos){
-               ATH_MSG_ERROR(C.B_RED<<"Block size error in fragment 0x"<< std::hex << rob->rob_source_id() << std::dec<<". Words available: " << trailers_pos << ". Number of words wanted to decode: " << Max_iter <<C.END);
-               return StatusCode::FAILURE;
-            }
-                        
-            for (unsigned int iblock = 0; iblock < Max_iter; iblock++){
-                const auto [channel, saturation] = BulkStreamTrailer(vec_words.at(wordIndex-1),vec_words.at(wordIndex-2));
+            if(Max_iter>trailers_pos) {
+                std::stringstream sdetail;
+                sdetail  << "Block size error in fragment 0x"<< std::hex << rob->rob_source_id() << std::dec<<". Words available: " << trailers_pos << ". Number of words wanted to decode: " << Max_iter ;
+                std::stringstream slocation;
+                slocation  << "jFEX "<< jfex << " FPGA "<< fpga << " in 0x"<< std::hex << rob->rob_source_id();
+                std::stringstream stitle;
+                stitle  << "Block Size Error" ;
                 
+                //Currently under investigation... 
+                printError(slocation.str(),stitle.str(),MSG::DEBUG,sdetail.str());
+                return StatusCode::SUCCESS;
+                
+                //DO NOT REMOVE, once fixed it should return and error and FAILURE
+                //printError(slocation.str(),stitle.str(),m_ERROR,sdetail.str());
+                //return StatusCode::FAILURE;
+            }
+            
+            for (unsigned int iblock = 0; iblock < Max_iter; iblock++){
+                const auto [channel, saturation] = BulkStreamTrailer(vec_words.at(wordIndex-1),vec_words.at(wordIndex-2), jfex);
+                                
                 const auto [DATA13_low          , DATA15, DATA14] = Dataformat1(vec_words.at(wordIndex-3));
                 const auto [DATA13_up,DATA10_up , DATA12, DATA11] = Dataformat2(vec_words.at(wordIndex-4));
                 const auto [DATA10_low          , DATA9 , DATA8 ] = Dataformat1(vec_words.at(wordIndex-5));
@@ -140,6 +225,7 @@ StatusCode jFexInputByteStreamTool::convertFromBS(const std::vector<const ROBF*>
                 for(uint idata = 0; idata < allDATA.size(); idata++){
                     
                     char et_saturation = ((saturation >> idata) & jBits::BS_TRAILER_1b);
+                    
                     //allsat[idata] = et_saturation;
                     
                     // read ID, eta and phi from map
@@ -155,7 +241,6 @@ StatusCode jFexInputByteStreamTool::convertFromBS(const std::vector<const ROBF*>
                     }
 
                     const auto [IDsim, eta, phi, source, iEta, iPhi] = it_Firm2Tower_map->second;
-
                     
                     std::vector<uint16_t> vtower_ET;
                     vtower_ET.clear();
@@ -205,29 +290,40 @@ StatusCode jFexInputByteStreamTool::convertFromBS(const std::vector<const ROBF*>
 
 
 // Unpack jFEX to ROD Trailer
-std::array<uint32_t,3> jFexInputByteStreamTool::jFEXtoRODTrailer (uint32_t word0, uint32_t /*word1*/) const {
+std::array<uint32_t,4> jFexInputByteStreamTool::jFEXtoRODTrailer (uint32_t word0, uint32_t word1) const {
     
     uint32_t payload    = ((word0 >> jBits::PAYLOAD_ROD_TRAILER ) & jBits::ROD_TRAILER_16b);
     uint32_t jfex       = ((word0 >> jBits::jFEX_ROD_TRAILER    ) & jBits::ROD_TRAILER_4b );
     uint32_t fpga       = ((word0 >> jBits::FPGA_ROD_TRAILER    ) & jBits::ROD_TRAILER_2b );
     
-    return {payload,jfex,fpga};
+    uint32_t error      = ((word1 >> jBits::ERROR_ROD_TRAILER   ) & jBits::ROD_TRAILER_6b );
+    
+    return {payload,jfex,fpga,error};
    
 }
 
 // Unpack Bulk stream trailer
-std::array<uint16_t,2> jFexInputByteStreamTool::BulkStreamTrailer (uint32_t word0, uint32_t word1) const {
+std::array<uint16_t,2> jFexInputByteStreamTool::BulkStreamTrailer (uint32_t word0, uint32_t word1, uint32_t jfex) const {
     
     uint16_t Satur_down = ((word1 >> jBits::BS_SATUR_1_TRAILER ) & jBits::BS_TRAILER_8b );
     uint16_t Satur_high = ((word1 >> jBits::BS_SATUR_0_TRAILER ) & jBits::BS_TRAILER_8b );
     uint16_t Channel    = ((word0 >> jBits::BS_CHANNEL_TRAILER ) & jBits::BS_TRAILER_8b );
     
-    uint16_t Satur = ( Satur_high << jBits::BS_SATUR_1_TRAILER ) + Satur_down;
-    
-    // Checking if K28.5 is there, if so then any jTower is saturated
-    if(Satur_high == 0xbc and Satur_down == 0x0){
-        Satur = 0;
+    //Tile fibre are decoded differently, no saturation bits are set for tile  
+    bool isTileFibre = false;
+    for(unsigned int i=0; i< jBits::tile_channels.at(jfex).size(); i++){
+        if(jBits::tile_channels.at(jfex).at(i) == Channel){
+            isTileFibre=true;
+            break;
+        }
     }
+    
+    if(isTileFibre){
+        //If it is tile then return just the channel number and sat = 0
+        return {Channel, 0};
+    }
+    
+    uint16_t Satur = ( Satur_high << jBits::BS_SATUR_1_TRAILER ) + Satur_down;
     
     return {Channel, Satur};
    
@@ -342,3 +438,15 @@ constexpr unsigned int jFexInputByteStreamTool::mapIndex(unsigned int jfex, unsi
   return (jfex << 16) | (fpga << 12) | (channel << 4) | tower;
 }
 
+void  jFexInputByteStreamTool::printError(const std::string& location, const std::string& title, MSG::Level type, const std::string& detail) const{
+    
+    if(m_UseMonitoring){
+        Monitored::Group(m_monTool,
+                     Monitored::Scalar("jfexDecoderErrorLocation",location.empty() ? std::string("UNKNOWN") : location),
+                     Monitored::Scalar("jfexDecoderErrorTitle"   ,title.empty()    ? std::string("UNKNOWN") : title)
+                     );
+    }
+    else {
+        msg() << type << detail << endmsg;
+    }
+}

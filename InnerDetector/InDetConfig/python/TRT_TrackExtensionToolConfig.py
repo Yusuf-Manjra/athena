@@ -4,7 +4,9 @@ from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.Enums import BeamType
 
-def TRT_TrackExtensionToolCosmicsCfg(flags, name='TRT_TrackExtensionToolCosmics', **kwargs):
+
+def TRT_TrackExtensionToolCosmicsCfg(
+        flags, name='TRT_TrackExtensionToolCosmics', **kwargs):
     acc = ComponentAccumulator()
 
     if 'Propagator' not in kwargs:
@@ -38,7 +40,9 @@ def TRT_TrackExtensionToolCosmicsCfg(flags, name='TRT_TrackExtensionToolCosmics'
         CompFactory.InDet.TRT_TrackExtensionToolCosmics(name, **kwargs))
     return acc
 
-def TRT_TrackExtensionToolPhaseCfg(flags, name='TRT_TrackExtensionToolPhase', **kwargs) :
+
+def TRT_TrackExtensionToolPhaseCfg(
+        flags, name='TRT_TrackExtensionToolPhase', **kwargs):
     acc = ComponentAccumulator()
 
     if 'RIOonTrackToolYesDr' not in kwargs:
@@ -53,7 +57,9 @@ def TRT_TrackExtensionToolPhaseCfg(flags, name='TRT_TrackExtensionToolPhase', **
         TRT_TrackExtensionToolCosmicsCfg(flags, name, **kwargs)))
     return acc
 
-def TRT_TrackExtensionTool_xk_BaseCfg(flags, name='TRT_TrackExtensionTool_xk', **kwargs):
+
+def TRT_TrackExtensionTool_xk_BaseCfg(
+        flags, name='TRT_TrackExtensionTool_xk', **kwargs):
     from MagFieldServices.MagFieldServicesConfig import (
         AtlasFieldCacheCondAlgCfg)
     acc = AtlasFieldCacheCondAlgCfg(flags)
@@ -81,17 +87,19 @@ def TRT_TrackExtensionTool_xk_BaseCfg(flags, name='TRT_TrackExtensionTool_xk', *
 
     kwargs.setdefault("TRT_ClustersContainer", "TRT_DriftCircles")
     kwargs.setdefault("MinNumberDriftCircles",
-                      flags.InDet.Tracking.ActiveConfig.minTRTonTrk)
+                      flags.Tracking.ActiveConfig.minTRTonTrk)
     kwargs.setdefault("ScaleHitUncertainty", 2)
     kwargs.setdefault("RoadWidth", 20.)
     kwargs.setdefault("UseParameterization",
-                      flags.InDet.Tracking.ActiveConfig.useParameterizedTRTCuts)
+                      flags.Tracking.ActiveConfig.useParameterizedTRTCuts)
 
     acc.setPrivateTools(
         CompFactory.InDet.TRT_TrackExtensionTool_xk(name, **kwargs))
     return acc
 
-def TRT_TrackExtensionTool_xkCfg(flags, name='TRT_TrackExtensionTool_xk', **kwargs):
+
+def TRT_TrackExtensionTool_xkCfg(
+        flags, name='TRT_TrackExtensionTool_xk', **kwargs):
     acc = ComponentAccumulator()
 
     if 'DriftCircleCutTool' not in kwargs:
@@ -114,17 +122,21 @@ def TRT_TrackExtensionTool_xkCfg(flags, name='TRT_TrackExtensionTool_xk', **kwar
 
     kwargs.setdefault("UseDriftRadius", not flags.InDet.noTRTTiming)
     kwargs.setdefault("maxImpactParameter",
-                      500 if flags.InDet.Tracking.doBeamGas else 50 )  # single beam running, open cuts
+                      # single beam running, open cuts
+                      500 if flags.Tracking.doBeamGas
+                      else 50)
 
-    if flags.InDet.Tracking.ActiveConfig.RoISeededBackTracking:
+    if flags.Tracking.ActiveConfig.RoISeededBackTracking:
         kwargs.setdefault("minTRTSegmentpT",
-                          flags.InDet.Tracking.ActiveConfig.minSecondaryPt)
+                          flags.Tracking.ActiveConfig.minSecondaryPt)
 
     acc.setPrivateTools(acc.popToolsAndMerge(
         TRT_TrackExtensionTool_xk_BaseCfg(flags, name, **kwargs)))
     return acc
 
-def Trig_TRT_TrackExtensionToolCfg(flags, name='Trig_TRT_TrackExtensionTool', **kwargs):
+
+def Trig_TRT_TrackExtensionToolCfg(
+        flags, name='Trig_TRT_TrackExtensionTool', **kwargs):
     acc = ComponentAccumulator()
 
     if 'DriftCircleCutTool' not in kwargs:
@@ -133,11 +145,20 @@ def Trig_TRT_TrackExtensionToolCfg(flags, name='Trig_TRT_TrackExtensionTool', **
         kwargs.setdefault("DriftCircleCutTool", acc.popToolsAndMerge(
             InDetTrigTRTDriftCircleCutToolCfg(flags)))
 
+    if 'RoadTool' not in kwargs:
+        from InDetConfig.TRT_DetElementsRoadToolConfig import Trig_TRT_DetElementsRoadMaker_xk_TRTExtensionCfg
+        kwargs.setdefault("RoadTool", acc.popToolsAndMerge(
+            Trig_TRT_DetElementsRoadMaker_xk_TRTExtensionCfg(flags)))
+        
     kwargs.setdefault("TRT_ClustersContainer", "TRT_TrigDriftCircles")
+    kwargs.setdefault("RoadWidth", 20.)
+    kwargs.setdefault("ScaleHitUncertainty", 2.)
+    kwargs.setdefault("MinNumberDriftCircles", flags.Tracking.ActiveConfig.minTRTonTrk)
 
     acc.setPrivateTools(acc.popToolsAndMerge(
         TRT_TrackExtensionTool_xk_BaseCfg(flags, name, **kwargs)))
     return acc
+
 
 def TRT_TrackExtensionToolCfg(flags, name='TRT_TrackExtensionTool', **kwargs):
     if flags.Beam.Type is BeamType.Cosmics:

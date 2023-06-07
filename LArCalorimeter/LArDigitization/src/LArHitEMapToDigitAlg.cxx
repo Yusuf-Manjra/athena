@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+ *   Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
  */
 #include "LArHitEMapToDigitAlg.h"
 #include "AthenaKernel/ITriggerTime.h"
@@ -45,8 +45,14 @@ LArHitEMapToDigitAlg::LArHitEMapToDigitAlg(const std::string& name, ISvcLocator*
 StatusCode LArHitEMapToDigitAlg::initialize()
 {
 
-  ATH_CHECK(m_noiseKey.initialize((!m_RndmEvtOverlay || m_isMcOverlay) && !m_pedestalNoise && m_NoiseOnOff));
- 
+  if (m_NSamples > s_MaxNSamples) {
+    ATH_MSG_ERROR("Requested Nsamples " << m_NSamples << " larger than max "
+                                        << s_MaxNSamples);
+    return StatusCode::FAILURE;
+  }
+  ATH_CHECK(m_noiseKey.initialize((!m_RndmEvtOverlay || m_isMcOverlay) &&
+                                  !m_pedestalNoise && m_NoiseOnOff));
+
   ATH_CHECK(m_shapeKey.initialize());
   ATH_CHECK(m_fSamplKey.initialize());
   ATH_CHECK(m_OFCKey.initialize());
@@ -83,7 +89,6 @@ StatusCode LArHitEMapToDigitAlg::initialize()
 
   // Services
   ATH_CHECK(m_rndmGenSvc.retrieve());
- 
   ATH_CHECK(m_hitMapKey.initialize());
   ATH_CHECK(m_hitMapKey_DigiHSTruth.initialize(m_doDigiTruth));
  
@@ -128,7 +133,7 @@ StatusCode LArHitEMapToDigitAlg::execute(const EventContext& context) const {
    ATHRNG::RNGWrapper* rngWrapper = m_rndmGenSvc->getEngine(this, m_randomStreamName);
    CLHEP::HepRandomEngine * engine = rngWrapper->getEngine(context);
    ATHRNG::RNGWrapper::SeedingOptionType seedingmode=m_useLegacyRandomSeeds ? ATHRNG::RNGWrapper::MC16Seeding : ATHRNG::RNGWrapper::SeedingDefault;
-  rngWrapper->setSeedLegacy( m_randomStreamName, context, m_randomSeedOffset, seedingmode );
+   rngWrapper->setSeedLegacy( m_randomStreamName, context, m_randomSeedOffset, seedingmode );
 
    for( ; it!=it_end;++it) // now loop on cells
    {
@@ -137,17 +142,17 @@ StatusCode LArHitEMapToDigitAlg::execute(const EventContext& context) const {
       if (!m_Windows || hitlist.inWindows()) {
         TimeE = &(hitlist.getData());
         if(m_doDigiTruth) {
-          auto& hitlist_DigiHSTruth=hitmapPtr_DigiHSTruth->GetCell(it);
+          const auto& hitlist_DigiHSTruth=hitmapPtr_DigiHSTruth->GetCell(it);
           TimeE_DigiHSTruth = &(hitlist_DigiHSTruth.getData());
         }
 
-        if (TimeE->size() > 0 || m_NoiseOnOff || m_RndmEvtOverlay) {
+        if (!TimeE->empty() || m_NoiseOnOff || m_RndmEvtOverlay) {
            const Identifier cellID=m_calocell_id->cell_id(IdentifierHash(it));
            HWIdentifier ch_id = cabling->createSignalChannelIDFromHash(IdentifierHash(it));
            HWIdentifier febId = m_laronline_id->feb_Id(ch_id);
            bool missing=!(badFebs->status(febId).good());
            if (!missing) {
-             const LArDigit * digit = 0 ;
+             const LArDigit * digit = nullptr ;
              if(m_RndmEvtOverlay) digit = hitmapPtr->GetDigit(it);
              // MakeDigit called if in no overlay mode or
              // if in overlay mode and random digit exists
@@ -179,7 +184,7 @@ StatusCode LArHitEMapToDigitAlg::execute(const EventContext& context) const {
 
 StatusCode LArHitEMapToDigitAlg::MakeDigit(const EventContext& ctx, const Identifier & cellId,
                                     const HWIdentifier & ch_id,
-				    LArDigit*& Digit, LArDigit*& Digit_DigiHSTruth,
+                                    LArDigit*& Digit, LArDigit*& Digit_DigiHSTruth,
                                     const std::vector<std::pair<float,float> >* TimeE,
                                     const LArDigit * rndmEvtDigit, CLHEP::HepRandomEngine * engine,
                                     const std::vector<std::pair<float,float> >* TimeE_DigiHSTruth) const
@@ -201,7 +206,7 @@ StatusCode LArHitEMapToDigitAlg::MakeDigit(const EventContext& ctx, const Identi
 
   float SF=1.;
   float SigmaNoise;
-  std::vector<float> rndm_energy_samples(m_NSamples) ;
+  staticVecFloat_t rndm_energy_samples(m_NSamples) ;
 
 
   SG::ReadCondHandle<LArADC2MeV> adc2mevHdl(m_adc2mevKey, ctx);
@@ -256,9 +261,9 @@ StatusCode LArHitEMapToDigitAlg::MakeDigit(const EventContext& ctx, const Identi
   ATH_MSG_DEBUG("    SF: " << SF);
 #endif
 
-  std::vector<double> Samples;
-  std::vector<double> Samples_DigiHSTruth;
-  std::vector<double> Noise;
+  staticVecDouble_t Samples;
+  staticVecDouble_t Samples_DigiHSTruth;
+  staticVecDouble_t Noise;
   Samples.resize(m_NSamples,0);
   if(m_doDigiTruth) Samples_DigiHSTruth.resize(m_NSamples,0);
   Noise.resize(m_NSamples,0);
@@ -576,7 +581,7 @@ StatusCode LArHitEMapToDigitAlg::MakeDigit(const EventContext& ctx, const Identi
 //
 // ...... create the LArDigit and push it into the Digit container ..................
 //
-  Digit = new LArDigit(ch_id,igain,AdcSample);
+  Digit = new LArDigit(ch_id,igain,std::move(AdcSample));
 
 
   if(m_doDigiTruth && createDigit_DigiHSTruth){
@@ -587,7 +592,7 @@ StatusCode LArHitEMapToDigitAlg::MakeDigit(const EventContext& ctx, const Identi
       if(Samples_DigiHSTruth[i] != 0) createDigit_DigiHSTruth = true;
     }
 
-    Digit_DigiHSTruth = new LArDigit(ch_id,igain,AdcSample_DigiHSTruth);
+    Digit_DigiHSTruth = new LArDigit(ch_id,igain,std::move(AdcSample_DigiHSTruth));
   }
 
 
@@ -597,8 +602,8 @@ StatusCode LArHitEMapToDigitAlg::MakeDigit(const EventContext& ctx, const Identi
 // ----------------------------------------------------------------------------------------------------------------------------------
 
 StatusCode LArHitEMapToDigitAlg::ConvertHits2Samples(const EventContext& ctx,
-                                              const Identifier & cellId, const HWIdentifier ch_id, CaloGain::CaloGain igain,
-                          const std::vector<std::pair<float,float> >  *TimeE, std::vector<double> &sampleList) const
+                                                     const Identifier & cellId, const HWIdentifier ch_id, CaloGain::CaloGain igain,
+                                                     const std::vector<std::pair<float,float> >  *TimeE, staticVecDouble_t &sampleList) const
 
 {
 // Converts  hits of a particular LAr cell into energy samples

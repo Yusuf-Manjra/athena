@@ -29,7 +29,7 @@ def HepMCtoXAODTruthCfg(flags):
     isEVNT = False
 
     # Ensure EventInfoCnvAlg is scheduled
-    if "EventInfo#EventInfo" in flags.Input.TypedCollections and "xAOD::EventInfo#EventInfo" not in flags.Input.TypedCollections:
+    if "EventInfo#McEventInfo" in flags.Input.TypedCollections and "xAOD::EventInfo#EventInfo" not in flags.Input.TypedCollections:
         from xAODEventInfoCnv.xAODEventInfoCnvConfig import EventInfoCnvAlgCfg
         acc.merge(EventInfoCnvAlgCfg(flags, inputKey="McEventInfo", outputKey="EventInfo", disableBeamSpot=True))
 
@@ -119,9 +119,9 @@ def PreJetMCTruthAugmentationsCfg(flags, **kwargs):
         augmentationToolsList.append(acc.getPrimaryAndMerge(DFCommonTruthElectronDressingToolCfg(flags, decorationName = kwargs['decorationDressing'])))
         augmentationToolsList.append(acc.getPrimaryAndMerge(DFCommonTruthMuonDressingToolCfg(flags, decorationName = kwargs['decorationDressing'])))
 
-    CommonAugmentation = CompFactory.DerivationFramework.CommonAugmentation
-    acc.addEventAlgo(CommonAugmentation(name = "MCTruthCommonPreJetKernel", AugmentationTools = augmentationToolsList))
-
+    for i, tool in enumerate(augmentationToolsList):
+        acc.addEventAlgo(CompFactory.DerivationFramework.CommonAugmentation(name ="MCTruthCommonPreJetKernelNo{num}".format(num = i+1), AugmentationTools = [tool]))
+    
     return(acc)
 
 
@@ -150,8 +150,9 @@ def PostJetMCTruthAugmentationsCfg(flags, **kwargs):
         augmentationToolsList += DecorateSUSYProcessCfg(flags, 'MCTruthCommon')
 
     CommonAugmentation = CompFactory.DerivationFramework.CommonAugmentation
-    acc.addEventAlgo(CommonAugmentation(name              = "MCTruthCommonPostJetKernel", 
-                                        AugmentationTools = augmentationToolsList))
+    for i, tool in enumerate(augmentationToolsList):
+        acc.addEventAlgo(CommonAugmentation(name = "MCTruthCommonPostJetKernelNo{num}".format(num = i+1), 
+                                        AugmentationTools = [tool]))
 
     # add SoW of individual SUSY final states, relies on augmentation from DecorateSUSYProcess()
     if IsSUSYSignalRun3(flags):
@@ -457,9 +458,10 @@ def AddMiniTruthCollectionLinksCfg(flags, **kwargs):
             RecoCollection="Muons", 
             TargetCollections=["TruthMuons","TruthPhotons","TruthElectrons"]))
         aug_tools += [ muon_relink ]
-    acc.addEventAlgo(CompFactory.DerivationFramework.CommonAugmentation(
-        "MiniCollectionTruthLinkKernel",
-        AugmentationTools = aug_tools ))
+    for i, tool in enumerate(aug_tools):
+        acc.addEventAlgo(CompFactory.DerivationFramework.CommonAugmentation(
+        "MiniCollectionTruthLinkKernelNo{num}".format(num=i+1),
+        AugmentationTools = [tool] ))
     return acc
 
 def addTruth3ContentToSlimmerTool(slimmer):

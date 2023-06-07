@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 // MuonPhysValMonitoringTool.cxx
@@ -29,7 +29,7 @@
 #include "xAODTruth/TruthVertexAuxContainer.h"
 #include "xAODTruth/TruthVertexContainer.h"
 #include "FourMomUtils/xAODP4Helpers.h"
-
+#include "AtlasHepMC/MagicNumbers.h"
 
 #include "TString.h"
 #include <cmath>
@@ -89,7 +89,7 @@ namespace MuonPhysValMonitoring {
             m_doTrigMuonL2Validation = false;
             m_doTrigMuonEFValidation = false;
         }
-        if(m_doTrigMuonValidation) ATH_CHECK(m_trigDec.retrieve());
+        ATH_CHECK(m_trigDec.retrieve(DisableTool{!m_doTrigMuonValidation}));
 
         ATH_CHECK(m_eventInfo.initialize());
         ATH_CHECK(m_muonSelectionTool.retrieve());
@@ -1087,7 +1087,7 @@ namespace MuonPhysValMonitoring {
             if (type ==
                 xAOD::Muon::InnerDetectorTrackParticle) {  // don't fill histograms for any ID track, only for muons; buys a lot of time
                 if ((*truthLink)->absPdgId() != 13 || (*truthLink)->status() != 1) return;     // not a muon
-                if ((*truthLink)->barcode() == 0 || (*truthLink)->barcode() >= 200e3) return;  // must have valid barcode
+                if ((*truthLink)->barcode() == 0 || HepMC::is_simulation_particle((*truthLink))) return;  // must have valid barcode
             }
 
             if (!passesAcceptanceCuts(*truthLink)) return;

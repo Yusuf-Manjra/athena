@@ -8,7 +8,7 @@ echo "Input Parameters"
 number_of_events=$1
 
 #Option for sim/digi/reco
-default_geometry="ATLAS-P2-RUN4-01-01-00"
+default_geometry="ATLAS-P2-RUN4-03-00-00"
 default_condition="OFLCOND-MC15c-SDR-14-05"
 
 #Post-processing for ID/ITk and FTag
@@ -67,6 +67,9 @@ run "RAWtoALL" Reco_tf.py \
   --outputAODFile "AOD.pool.root" \
   --maxEvents ${number_of_events}
 
+#a missing Acts material map can be overriden by a statement like 
+#--preExec "all:ConfigFlags.Acts.TrackingGeometry.MaterialSource='material-maps-ATLAS-P2-RUN4-01-01-00-ITk-HGTD.json'" \
+
 checkstep "RAWtoALL"
 
 run "AODtoDAOD_PHYSVAL" Derivation_tf.py \
@@ -114,12 +117,11 @@ then
   hadd NTUP_PHYS.root art_core_*/NTUP_PHYSVAL.root
   $idpvm_merge_script NTUP_PHYSVAL.root
   python $ftag_merge_DQA/$ftag_merge_script --input art_core_*/* --pattern "*BTAG_PHYSVAL*" --output NTUP_BTAG_MERGE_PHYSVAL.root -d BTag
-  root -l -b -q $ftag_merge_DQA/$ftag_roc_script\(\"ttbar\",\"NTUP_BTAG_MERGE_PHYSVAL.root\",\"NTUP_BTAG_MERGE_PHYSVAL.root\",\"ROC\",\{\"IP2D\",\"IP3D\"\}\)
-  hadd NTUP_MERGE_PHYSVAL.root NTUP_PHYSVAL.root NTUP_BTAG_MERGE_PHYSVAL.root ROC_NTUP_BTAG_MERGE_PHYSVAL.root
 else
   python $ftag_merge_DQA/$ftag_merge_script --pattern "*BTAG_PHYSVAL*"  --output NTUP_BTAG_MERGE_PHYSVAL.root -d BTag
-  root -l -b -q $ftag_merge_DQA/$ftag_roc_script\(\"ttbar\",\"NTUP_BTAG_MERGE_PHYSVAL.root\",\"NTUP_BTAG_MERGE_PHYSVAL.root\",\"ROC\",\{\"IP2D\",\"IP3D\"\}\)
-  hadd NTUP_MERGE_PHYSVAL.root NTUP_PHYSVAL.root NTUP_BTAG_MERGE_PHYSVAL.root ROC_NTUP_BTAG_MERGE_PHYSVAL.root
 fi
+
+root -l -b -q $ftag_merge_DQA/$ftag_roc_script\(\"ttbar\",\"EMTopo\",\"NTUP_BTAG_MERGE_PHYSVAL.root\",\"NTUP_BTAG_MERGE_PHYSVAL.root\",\"ROC_NTUP_BTAG_MERGE_PHYSVAL.root\",\{\"IP2D\",\"IP3D\",\"SV1\",\"DL1dv00\",\"GN1\"\}\)
+hadd NTUP_MERGE_PHYSVAL.root NTUP_PHYSVAL.root NTUP_BTAG_MERGE_PHYSVAL.root ROC_NTUP_BTAG_MERGE_PHYSVAL.root
 
 checkstep "Merging and post processing"

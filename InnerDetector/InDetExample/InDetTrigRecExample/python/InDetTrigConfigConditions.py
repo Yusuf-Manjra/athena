@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 from __future__ import print_function
 
@@ -73,17 +73,7 @@ class PixelConditionsServicesSetup:
       IdMappingDat="PixelCabling/Pixels_Atlas_IdMapping_2016.dat"
       if (globalflags.DataSource()=='geant4'):
         # ITk:
-        if geoFlags.isSLHC():
-          IdMappingDat = "ITk_Atlas_IdMapping.dat"
-          if "BrlIncl4.0_ref" == commonGeoFlags.GeoType():
-            IdMappingDat = "ITk_Atlas_IdMapping_InclBrl4.dat"
-          elif "IBrlExt4.0ref" == commonGeoFlags.GeoType():
-            IdMappingDat = "ITk_Atlas_IdMapping_IExtBrl4.dat"
-          elif "BrlExt4.0_ref" == commonGeoFlags.GeoType():
-            IdMappingDat = "ITk_Atlas_IdMapping_ExtBrl4.dat"
-          elif "BrlExt3.2_ref" == commonGeoFlags.GeoType():
-            IdMappingDat = "ITk_Atlas_IdMapping_ExtBrl32.dat"
-        elif (geoFlags.isIBL() is False):
+        if (geoFlags.isIBL() is False):
           IdMappingDat="PixelCabling/Pixels_Atlas_IdMapping.dat"
         else:
           # Planar IBL
@@ -211,11 +201,12 @@ class PixelConditionsServicesSetup:
         from PixelConditionsAlgorithms.PixelConditionsAlgorithmsConf import PixelChargeLUTCalibCondAlg
         condSeq += PixelChargeLUTCalibCondAlg(name="PixelChargeLUTCalibCondAlg", ReadKey="/PIXEL/ChargeCalibration")
     else:
-      if not conddb.folderRequested("/PIXEL/PixCalib"):
-        conddb.addFolderSplitOnline("PIXEL", "/PIXEL/Onl/PixCalib", "/PIXEL/PixCalib", className="CondAttrListCollection")
+      PixCalibFolder = 'ChargeCalibration'
+      if not conddb.folderRequested("/PIXEL/"+PixCalibFolder):
+        conddb.addFolderSplitOnline("PIXEL", "/PIXEL/Onl/"+PixCalibFolder, "/PIXEL/"+PixCalibFolder, className="CondAttrListCollection")
       if not hasattr(condSeq, 'PixelChargeCalibCondAlg'):
         from PixelConditionsAlgorithms.PixelConditionsAlgorithmsConf import PixelChargeCalibCondAlg
-        condSeq += PixelChargeCalibCondAlg(name="PixelChargeCalibCondAlg", ReadKey="/PIXEL/PixCalib" if commonGeoFlags.Run() == "RUN2" else "")
+        condSeq += PixelChargeCalibCondAlg(name="PixelChargeCalibCondAlg", ReadKey="/PIXEL/"+PixCalibFolder if commonGeoFlags.Run() == "RUN2" else "")
 
     #####################
     # Cabling map Setup #

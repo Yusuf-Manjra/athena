@@ -199,11 +199,11 @@ StatusCode MuCTPIPhase1ByteStreamAlgo::convert( const IROBDataProviderSvc::ROBF*
           {
               //fill mult word into temp container until 3rd word is found
               if(tmNum==1)
-                  sliceMultiplicity |= LVL1::MuCTPIBits::maskedWord(word,LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART1_SHIFT, LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART1_MASK);
+                  sliceMultiplicity |= ( (uint64_t)LVL1::MuCTPIBits::maskedWord(word,LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART1_SHIFT, LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART1_MASK) ) << LVL1::MuCTPIBits::RUN3_MULTIPLICITY_ENC_PART1_SHIFT;
               else if(tmNum==2)
-                  sliceMultiplicity |= LVL1::MuCTPIBits::maskedWord(word,LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART2_SHIFT, LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART2_MASK);
+                  sliceMultiplicity |= ( (uint64_t)LVL1::MuCTPIBits::maskedWord(word,LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART2_SHIFT, LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART2_MASK) ) << LVL1::MuCTPIBits::RUN3_MULTIPLICITY_ENC_PART2_SHIFT;
               else if(tmNum==3)
-                  sliceMultiplicity |= LVL1::MuCTPIBits::maskedWord(word,LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART3_SHIFT, LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART3_MASK);
+                  sliceMultiplicity |= ( (uint64_t)LVL1::MuCTPIBits::maskedWord(word,LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART3_SHIFT, LVL1::MuCTPIBits::RUN3_MULTIPLICITY_PART3_MASK) ) << LVL1::MuCTPIBits::RUN3_MULTIPLICITY_ENC_PART3_SHIFT;
 
               //flags from third word
               //AND: process multiplicity for the slice!!!
@@ -258,6 +258,7 @@ StatusCode MuCTPIPhase1ByteStreamAlgo::convert( const IROBDataProviderSvc::ROBF*
 		{
 			thiscand.eta = m_l1topoLUT.getCoordinates(thiscand.side, thiscand.subsystem, thiscand.num, thiscand.roi).eta;
 			thiscand.phi = m_l1topoLUT.getCoordinates(thiscand.side, thiscand.subsystem, thiscand.num, thiscand.roi).phi;
+			thiscand.mappedPt = LVL1::MuCTPIBits::RPCtoTGC_pt_map[thiscand.pt - 1];
 		}
 		else if(thiscand.type == LVL1::MuCTPIBits::SubsysID::Endcap)
 		{

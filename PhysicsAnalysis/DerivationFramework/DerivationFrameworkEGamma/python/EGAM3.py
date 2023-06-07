@@ -9,6 +9,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.Enums import MetadataCategory
 
 from AthenaCommon.SystemOfUnits import MeV
 
@@ -232,6 +233,7 @@ def EGAM3KernelCfg(ConfigFlags, name='EGAM3Kernel', **kwargs):
 
     # thinning tools
     thinningTools = []
+    streamName = kwargs['StreamName']
     
     # Track thinning
     if ConfigFlags.Derivation.Egamma.doTrackThinning:
@@ -239,7 +241,6 @@ def EGAM3KernelCfg(ConfigFlags, name='EGAM3Kernel', **kwargs):
         from DerivationFrameworkInDet.InDetToolsConfig import (
             TrackParticleThinningCfg, MuonTrackParticleThinningCfg,
             TauTrackParticleThinningCfg )
-        streamName = kwargs['StreamName']
 
         TrackThinningKeepElectronTracks = True
         TrackThinningKeepAllElectronTracks = False
@@ -290,6 +291,7 @@ def EGAM3KernelCfg(ConfigFlags, name='EGAM3Kernel', **kwargs):
                     SGKey = 'Photons',
                     GSFTrackParticlesKey = 'GSFTrackParticles',
                     InDetTrackParticlesKey = 'InDetTrackParticles',
+                    GSFConversionVerticesKey = 'GSFConversionVertices',
                     SelectionString = 'Photons.pt > 0*GeV',
                     BestMatchOnly = True,
                     ConeSize = 0.3)
@@ -306,6 +308,7 @@ def EGAM3KernelCfg(ConfigFlags, name='EGAM3Kernel', **kwargs):
                     SGKey = 'Photons',
                     GSFTrackParticlesKey = 'GSFTrackParticles',
                     InDetTrackParticlesKey = 'InDetTrackParticles',
+                    GSFConversionVerticesKey = 'GSFConversionVertices',
                     SelectionString = 'Photons.pt > 9.5*GeV',
                     BestMatchOnly = False,
                     ConeSize = 0.6)
@@ -401,6 +404,7 @@ def EGAM3Cfg(ConfigFlags):
 
     # configure slimming
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     EGAM3SlimmingHelper = SlimmingHelper(
         'EGAM3SlimmingHelper',
@@ -570,5 +574,11 @@ def EGAM3Cfg(ConfigFlags):
                               'DAOD_EGAM3',
                               ItemList = EGAM3ItemList,
                               AcceptAlgs = ['EGAM3Kernel']))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, 'DAOD_EGAM3',
+                                        AcceptAlgs=['EGAM3Kernel'],
+                                        createMetadata=[
+                                            MetadataCategory.CutFlowMetaData,
+                                            MetadataCategory.TruthMetaData,
+                                        ]))
 
     return acc

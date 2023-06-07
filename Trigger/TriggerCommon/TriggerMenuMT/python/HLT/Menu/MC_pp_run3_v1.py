@@ -47,7 +47,6 @@ def getMCSignatures():
         ChainProp(name="HLT_mu10_L1MU8F", groups=SingleMuonGroup),
         ChainProp(name="HLT_mu14_L1MU8F", groups=SingleMuonGroup),
         ChainProp(name="HLT_mu14_L1MU8VFC", groups=SingleMuonGroup),
-        ChainProp(name="HLT_mu24_L1MU14FCH", groups=SingleMuonGroup),
         ChainProp(name='HLT_2mu4_L12MU3V',  groups=MultiMuonGroup),
 
         #-- nscan ATR-19376, TODO: to be moved to physics once debugged to a resaonable rate
@@ -66,7 +65,6 @@ def getMCSignatures():
         ChainProp(name='HLT_2mu4_PhysicsTLA_L1BPH-7M22-0DR12-2MU3V', l1SeedThresholds=['MU3V'],stream=['TLA'], groups=MultiMuonGroup+EOFL1MuGroup+Topo3Group),
 
         ## ATR-25456 - 4mu
-        ChainProp(name='HLT_2mu4_L1BPH-7M11-25DR99-2MU3VF', l1SeedThresholds=['MU3VF'], stream=["BphysDelayed"], groups=BphysicsGroup+EOFBPhysL1MuGroup+Topo2Group),
         ChainProp(name='HLT_mu6_mu4_L1BPH-7M14-MU5VFMU3VF', l1SeedThresholds=['MU5VF','MU3VF'], stream=["BphysDelayed"], groups=BphysicsGroup+EOFBPhysL1MuGroup+Topo3Group),
         ChainProp(name='HLT_2mu4_L1BPH-7M14-2MU3V', l1SeedThresholds=['MU3V'], stream=["BphysDelayed"], groups=BphysicsGroup+EOFBPhysL1MuGroup+Topo3Group),
         ChainProp(name='HLT_2mu4_L1BPH-7M14-2MU3VF', l1SeedThresholds=['MU3VF'], stream=["BphysDelayed"], groups=BphysicsGroup+EOFBPhysL1MuGroup+Topo3Group),
@@ -98,17 +96,12 @@ def getMCSignatures():
         ChainProp(name='HLT_j260_0eta200_tracklessdR1p2_a10r_subjesIS_ftf_preselj200_L1J100', groups=SingleJetGroup+PrimaryLegGroup, l1SeedThresholds=['FSNOSEED']),    
 
         ## ATR-25456 - calratio jet chains
-        ChainProp(name='HLT_j30_CLEANllp_calratio_L1TAU100', l1SeedThresholds=['FSNOSEED'], groups=SingleJetGroup+PrimaryLegGroup),
-        ChainProp(name='HLT_j30_CLEANllp_calratiormbib_L1TAU100', l1SeedThresholds=['FSNOSEED'], groups=SingleJetGroup+PrimaryLegGroup),
+        
         ChainProp(name='HLT_j30_CLEANllp_calratio_L1TAU60', l1SeedThresholds=['FSNOSEED'], groups=SingleJetGroup+SupportGroup),
         ChainProp(name='HLT_j30_CLEANllp_calratiormbib_L1TAU60', l1SeedThresholds=['FSNOSEED'], groups=SingleJetGroup+SupportGroup),
-        ChainProp(name='HLT_j30_CLEANllp_calratio_L1LLP-NOMATCH', l1SeedThresholds=['FSNOSEED'], groups=SingleJetGroup+PrimaryLegGroup+LegacyTopoGroup),
-        ChainProp(name='HLT_j30_CLEANllp_calratiormbib_L1LLP-NOMATCH', l1SeedThresholds=['FSNOSEED'], groups=SingleJetGroup+PrimaryLegGroup+LegacyTopoGroup),
+      
         # supporting chains for background studies
-        ChainProp(name='HLT_j30_CLEANllp_calratio_L1TAU40_EMPTY', l1SeedThresholds=['FSNOSEED'], groups=SingleJetGroup+SupportLegGroup),
-        ChainProp(name='HLT_j30_CLEANllp_calratiormbib_L1TAU40_EMPTY', l1SeedThresholds=['FSNOSEED'], groups=SingleJetGroup+SupportLegGroup),
-        ChainProp(name='HLT_j30_CLEANllp_calratio_L1TAU40_UNPAIRED_ISO', l1SeedThresholds=['FSNOSEED'], groups=SingleJetGroup+SupportLegGroup),
-        ChainProp(name='HLT_j30_CLEANllp_calratiormbib_L1TAU40_UNPAIRED_ISO', l1SeedThresholds=['FSNOSEED'], groups=SingleJetGroup+SupportLegGroup),
+      
 
         ## ATR-25456 - Central Exclusive Production for SM group
         ChainProp(name='HLT_2j100_L1CEP-CjJ90', l1SeedThresholds=['FSNOSEED'], groups=PrimaryPhIGroup+MultiJetGroup+Topo3Group),
@@ -131,7 +124,6 @@ def getMCSignatures():
         ChainProp(name='HLT_e5_lhtight_noringer_L1EM3', groups=SingleElectronGroup),
         ChainProp(name='HLT_e26_lhtight_L1eEM26', groups=SingleElectronGroup),
         ChainProp(name='HLT_e26_lhtight_L1eEM26L', groups=SingleElectronGroup),
-        ChainProp(name='HLT_e26_lhtight_L1eEM26M', groups=SingleElectronGroup),
         ChainProp(name='HLT_e26_lhtight_L1eEM26T', groups=SingleElectronGroup),
         #------------ dnn chains
         ChainProp(name='HLT_e5_dnnloose_L1EM3', groups=SingleElectronGroup),
@@ -159,11 +151,11 @@ def getMCSignatures():
         #------------ nopid trigger and etcut from ATR-26311
         # ATR-23723
         ChainProp(name='HLT_e5_nopid_L1EM3', groups=SingleElectronGroup+['PS:NoBulkMCProd']),
+        ChainProp(name='HLT_e5_nopid_L1eEM5', groups=SingleElectronGroup+['PS:NoBulkMCProd']), #ATR-27264
 
         #  ATR-26311
         #  Validating/checking eFEX and primary electron trigger
         ChainProp(name='HLT_e26_etcut_L1EM22VHI', groups=SingleElectronGroup),
-        ChainProp(name='HLT_e26_lhtight_L1EM22VHI', groups=SingleElectronGroup,monGroups=['egammaMon:t0_tp']),
         ChainProp(name='HLT_e26_lhtight_ivarloose_L1EM22VH', groups=SingleElectronGroup),
 
         # Ringer development / validation also ATR-24384

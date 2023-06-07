@@ -50,18 +50,18 @@ def ITkPixelModuleConfigCondAlgCfg(flags, name="ITkPixelModuleConfigCondAlg", **
     acc.addCondAlgo(CompFactory.PixelModuleConfigCondAlg(name, **CondArgs))
     return acc
 
-def ITkPixelAlignCondAlgCfg(flags, name="ITkPixelAlignCondAlg", **kwargs):
+def ITkPixelAlignCondAlgCfg(flags, name="ITkPixelAlignCondAlg",setAlignmentFolderName="/Indet/Align", **kwargs):
     """Return a ComponentAccumulator with configured PixelAlignCondAlg for ITk"""
     acc = ComponentAccumulator()
 
     if flags.GeoModel.Align.Dynamic:
         raise RuntimeError("Dynamic alignment not supported for ITk yet")
     else:
-        acc.merge(addFoldersSplitOnline(flags, "INDET", "/Indet/Onl/Align", "/Indet/Align", className="AlignableTransformContainer"))
+        acc.merge(addFoldersSplitOnline(flags, "INDET", "/Indet/Onl/Align", setAlignmentFolderName, className="AlignableTransformContainer"))
 
     kwargs.setdefault("DetManagerName", "ITkPixel")
     kwargs.setdefault("UseDynamicAlignFolders", flags.GeoModel.Align.Dynamic)
-    kwargs.setdefault("ReadKeyStatic", "/Indet/Align")
+    kwargs.setdefault("ReadKeyStatic", setAlignmentFolderName)
     # kwargs.setdefault("ReadKeyDynamicL1", "/Indet/AlignL1/ID")
     # kwargs.setdefault("ReadKeyDynamicL2", "/Indet/AlignL2/PIX")
     # kwargs.setdefault("ReadKeyDynamicL3", "/Indet/AlignL3")
@@ -143,10 +143,10 @@ def ITkPixelDeadMapCondAlgCfg(flags, name="ITkPixelDeadMapCondAlg", **kwargs):
     acc.addCondAlgo(CompFactory.PixelDeadMapCondAlg(name, **kwargs))
     return acc
 
-def ITkPixelDetectorElementCondAlgCfg(flags, name="ITkPixelDetectorElementCondAlg", **kwargs):
+def ITkPixelDetectorElementCondAlgCfg(flags, name="ITkPixelDetectorElementCondAlg",setAlignmentFolderName="/Indet/Align", **kwargs):
     """Return a ComponentAccumulator with configured PixelDetectorElementCondAlg for ITk"""
     acc = ComponentAccumulator()
-    acc.merge(ITkPixelAlignCondAlgCfg(flags))
+    acc.merge(ITkPixelAlignCondAlgCfg(flags,setAlignmentFolderName=setAlignmentFolderName))
     kwargs.setdefault("DetManagerName", "ITkPixel")
     kwargs.setdefault("PixelAlignmentStore", "ITkPixelAlignmentStore")
     kwargs.setdefault("WriteKey", "ITkPixelDetectorElementCollection")
@@ -173,10 +173,7 @@ def ITkPixelOfflineCalibCondAlgCfg(flags, name="ITkPixelOfflineCalibCondAlg", **
     folderName = ""
     if flags.ITk.Conditions.PixelOfflineCalibTag:
         folderName = '/PIXEL/ITkClusterError'
-        DetDescrVersion = flags.GeoModel.AtlasVersion
-        splitGeo        = DetDescrVersion.split('-')
-        CalibTag = flags.ITk.Conditions.PixelOfflineCalibTag + '_' + splitGeo[0] + '-' + splitGeo[1] + '-' + splitGeo[2] + '-' + splitGeo[3] # PixelITkError_v5_ATLAS-RUN4-P2-XX
-
+        CalibTag = flags.ITk.Conditions.PixelOfflineCalibTag     
         if flags.ITk.Conditions.PixelOfflineCalibFile:
             acc.merge(addFolders(flags, folderName, flags.ITk.Conditions.PixelOfflineCalibFile, tag=CalibTag, db="OFLP200", className="CondAttrListCollection"))
         else:

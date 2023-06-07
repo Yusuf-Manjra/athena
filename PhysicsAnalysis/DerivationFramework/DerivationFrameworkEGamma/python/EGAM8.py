@@ -10,6 +10,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.Enums import MetadataCategory
 
 from AthenaCommon.SystemOfUnits import MeV
 
@@ -164,6 +165,7 @@ def EGAM8KernelCfg(ConfigFlags, name='EGAM8Kernel', **kwargs):
 
     # thinning tools
     thinningTools = []
+    streamName = kwargs['StreamName']
     
     # Track thinning
     if ConfigFlags.Derivation.Egamma.doTrackThinning:
@@ -171,7 +173,6 @@ def EGAM8KernelCfg(ConfigFlags, name='EGAM8Kernel', **kwargs):
         from DerivationFrameworkInDet.InDetToolsConfig import ( 
             TrackParticleThinningCfg, MuonTrackParticleThinningCfg, 
             TauTrackParticleThinningCfg )
-        streamName = kwargs['StreamName']
 
         TrackThinningKeepElectronTracks = True
         TrackThinningKeepPhotonTracks = True
@@ -221,6 +222,7 @@ def EGAM8KernelCfg(ConfigFlags, name='EGAM8Kernel', **kwargs):
                     SGKey = 'Photons',
                     GSFTrackParticlesKey = 'GSFTrackParticles',
                     InDetTrackParticlesKey = 'InDetTrackParticles',
+                    GSFConversionVerticesKey = 'GSFConversionVertices',
                     SelectionString = 'Photons.pt > 0*GeV',
                     BestMatchOnly = True,
                     ConeSize = 0.3)
@@ -352,6 +354,7 @@ def EGAM8Cfg(ConfigFlags):
 
     # configure slimming
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     EGAM8SlimmingHelper = SlimmingHelper(
         'EGAM8SlimmingHelper',
@@ -496,5 +499,11 @@ def EGAM8Cfg(ConfigFlags):
                               'DAOD_EGAM8',
                               ItemList = EGAM8ItemList,
                               AcceptAlgs = ['EGAM8Kernel']))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, 'DAOD_EGAM8',
+                                AcceptAlgs=['EGAM8Kernel'],
+                                createMetadata=[
+                                    MetadataCategory.CutFlowMetaData,
+                                    MetadataCategory.TruthMetaData,
+                                ]))
 
     return acc

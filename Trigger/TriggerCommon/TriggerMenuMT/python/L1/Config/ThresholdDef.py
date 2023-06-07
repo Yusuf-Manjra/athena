@@ -116,12 +116,12 @@ class ThresholdDef:
         NSWMonThreshold('NSWMon')
 
         # eEM
-        eEM_cuts = [5, 7, 9, 15, 18, 26]
+        eEM_cuts = [1, 2, 5, 7, 9, 15, 18, 26]
         for thrV in eEM_cuts:
             eEMThreshold('eEM%i' %thrV, 'eEM').addThrValue(get_threshold_cut('eEM',thrV))
 
         # eEM SPARES
-        for thrV in range(1,9):
+        for thrV in range(1,7):
             eEMThreshold('eEMSPARE%i' % thrV, 'eEM').addThrValue(thrVal_SPARE)
 
         # L section (used to be VH in Run2)
@@ -213,12 +213,12 @@ class ThresholdDef:
         # ThresholdDef.addJetVaryingThrValues( jJetThreshold('jJ12p0ETA25V', 'jJ'), pt=12, shift_set=1, rangemin=0, rangemax=25 )
 
         # jJET forward jet
-        jJ_cuts = [40, 50, 60, 90, 125]
+        jJ_cuts = [15, 20, 40, 50, 60, 90, 125]
         for thrV in jJ_cuts:
             ThresholdDef.addJetVaryingThrValues( jJetThreshold('jJ%ip31ETA49' % thrV, 'jJ'), pt=get_threshold_cut('jJ', thrV), shift_set=0, rangemin=31, rangemax=49 )
 
         # jJET SPARES
-        for thrV in range(1,7):
+        for thrV in range(1,5):
             jJetThreshold('jJSPARE%i' % thrV, 'jJ').addThrValue(thrVal_SPARE)
 
         # jLJET (default range)
@@ -268,7 +268,8 @@ class ThresholdDef:
             XEThreshold('jXE%i' % thrV, 'jXE').setXE(get_threshold_cut('jXE', thrV))
 
         # ENERGY SPARES
-        for thrV in range(1,30):
+        # decrement jXE spares for addtional heavy ion jTE thresholds
+        for thrV in range(1,19):
             XEThreshold('jXESPARE%i' % thrV, 'jXE').setXE(thrVal_SPAREXE)
 
         jXE_cuts = [100]
@@ -281,7 +282,8 @@ class ThresholdDef:
             XEThreshold('jXEPerf%i' % thrV, 'jXE').setXE(get_threshold_cut('jXE', thrV))
 
         # jTE
-        for thrV in [200,]:
+        # additional heavy ion jTE threhsolds
+        for thrV in [3,5,20,50,200,600,1500,3000]:
             TEThreshold('jTE%i' % thrV, 'jTE').setTE(thrV)
 
         for thrV in [200,]:
@@ -290,10 +292,10 @@ class ThresholdDef:
         for thrV in [100,]:
             TEThreshold('jTEFWD%i' % thrV, 'jTE').setTE(thrV)
 
-        for thrV in [100,]:
+        for thrV in [100,5,1]:
             TEThreshold('jTEFWDA%i' % thrV, 'jTE').setTE(thrV)
 
-        for thrV in [100,]:
+        for thrV in [100,5,1]:
             TEThreshold('jTEFWDC%i' % thrV, 'jTE').setTE(thrV)
 
         # ATR-22344

@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 # Declare the package name:
 atlas_subdir( ActsTrkTrackParamsEstimationTool )
@@ -13,14 +13,12 @@ atlas_add_component( ActsTrkTrackParamsEstimationTool
                      LINK_LIBRARIES
                      GaudiKernel
                      ActsCore
-                     ActsTrkEvent
+                     ActsTrkEventLib
                      ActsTrkToolInterfacesLib
                      ActsInteropLib
                      MagFieldConditions
                      )
 
-# Install files from the package:
-atlas_install_python_modules( python/*.py POST_BUILD_CMD ${ATLAS_FLAKE8} )
 
 
 

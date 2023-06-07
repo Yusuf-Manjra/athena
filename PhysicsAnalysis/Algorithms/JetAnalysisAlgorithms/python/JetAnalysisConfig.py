@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 
 from __future__ import print_function
@@ -186,6 +186,7 @@ class SmallRJetAnalysisConfig (ConfigBlock) :
             alg.modifierTool.UseTightOP = 1 # 1 = Tight, 0 = Loose
             alg.modifierTool.EtaThresh = 2.5 # Eta dividing central from forward jets
             alg.modifierTool.ForwardMaxPt = 120.0e3 #Max Pt to define fwdJets for JVT
+            alg.RenounceOutputs = True
             alg.jets = config.readName (self.containerName)
             alg.jetsOut = config.copyName (self.containerName)
             alg.preselection = config.getPreselection (self.containerName, '')
@@ -350,7 +351,7 @@ class LargeRJetAnalysisConfig (ConfigBlock) :
                     configFile = "JES_MC16recommendation_FatJet_Trimmed_JMS_TA_12Oct2018.config"
 
         if self.jetInput == "UFO":
-            configFile = "JES_MC16recommendation_R10_UFO_CSSK_SoftDrop_JMS_01April2020.config"
+            configFile = "JES_MC20PreRecommendation_R10_UFO_CSSK_SoftDrop_JMS_R21Insitu_10Mar2023.config"
 
         # Prepare the jet calibration algorithm
         alg = config.createAlgorithm( 'CP::JetCalibrationAlg', 'JetCalibrationAlg'+postfix )

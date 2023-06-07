@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 from __future__ import print_function
 
@@ -261,7 +261,7 @@ def makeSmallRJetAnalysisSequence( seq, dataType, jetCollection,
         alg.modifierTool.UseTightOP = 1 # 1 = Tight, 0 = Loose
         alg.modifierTool.EtaThresh = 2.5 # Eta dividing central from forward jets
         alg.modifierTool.ForwardMaxPt = 120.0e3 #Max Pt to define fwdJets for JVT
-        alg.modifierTool.JetContainer = jetCollection
+        alg.modifierTool.RenounceOutputs = True
         seq.append( alg, inputPropName = 'jets', outputPropName = 'jetsOut', stageName = 'selection' )
         pass
 
@@ -409,7 +409,9 @@ def makeLargeRJetAnalysisSequence( seq, dataType, jetCollection,
                 configFile = "JES_MC16recommendation_FatJet_Trimmed_JMS_TA_12Oct2018.config"
 
     if jetInput == "UFO":
-        configFile = "JES_MC16recommendation_R10_UFO_CSSK_SoftDrop_JMS_01April2020.config"
+        # R22 pre-recs
+        # More info: https://twiki.cern.ch/twiki/bin/view/AtlasProtected/ApplyJetCalibrationR22#R_1_0_unified_flow_object_UFO_je
+        configFile = "JES_MC20PreRecommendation_R10_UFO_CSSK_SoftDrop_JMS_R21Insitu_10Mar2023.config"
 
     # Prepare the jet calibration algorithm
     alg = createAlgorithm( 'CP::JetCalibrationAlg', 'JetCalibrationAlg'+postfix )

@@ -18,9 +18,6 @@ from AthenaConfiguration.MainServicesConfig import MainServicesCfg
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 
-from ActsGeometry.ActsGeometryConfig import ActsExtrapolationToolCfg
-
-
 def defaultTestFlags(flags, args):
 
 
@@ -116,15 +113,16 @@ def ActsGeantFollowerCfg(flags, name="ActsGeantFollowerTool", **kwargs):
     from TrkConfig.AtlasTrackingGeometrySvcConfig import TrackingGeometrySvcCfg
     result.merge(TrackingGeometrySvcCfg(flags))
 
-    from ActsGeometry.ActsGeometryConfig import NominalAlignmentCondAlgCfg
+    from ActsConfig.ActsTrkGeometryConfig import NominalAlignmentCondAlgCfg
     nomAli = NominalAlignmentCondAlgCfg(flags, OutputLevel=INFO)
     result.merge(nomAli)
 
-    from ActsGeometry.ActsGeometryConfig import ActsTrackingGeometrySvcCfg
+    from ActsConfig.ActsTrkGeometryConfig import ActsTrackingGeometrySvcCfg
     tgSvc = ActsTrackingGeometrySvcCfg(flags, OutputLevel=INFO)
     result.merge(tgSvc)
 
     print('DEF WRITER : ')
+    from ActsConfig.ActsTrkGeometryConfig import ActsExtrapolationToolCfg
     Actsextrapol = result.popToolsAndMerge(ActsExtrapolationToolCfg(flags,
                                                                     InteractionMultiScatering = True,
                                                                     InteractionEloss = True,
@@ -147,7 +145,7 @@ def ActsGeantFollowerCfg(flags, name="ActsGeantFollowerTool", **kwargs):
     result.addPublicTool(followingHelper)
 
     #Setting up the CA for the ActsGeantFollower
-    from ActsGeantFollowing.ActsGeantFollowingConfig import ActsGeantFollowerToolCfg
+    from ActsConfig.ActsTrkGeantFollowingConfig import ActsGeantFollowerToolCfg
     actionAcc = ComponentAccumulator()
     actions = []
     actions += [actionAcc.popToolsAndMerge(ActsGeantFollowerToolCfg(flags))

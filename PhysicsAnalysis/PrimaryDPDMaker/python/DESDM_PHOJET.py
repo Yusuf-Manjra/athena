@@ -10,6 +10,8 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.Enums import MetadataCategory
+
 
 # Main algorithm config
 def DESDM_PHOJETKernelCfg(configFlags, name='DESDM_PHOJETKernel', **kwargs):
@@ -46,6 +48,7 @@ def DESDM_PHOJETCfg(configFlags):
     # Define contents of the format
     # =============================
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
 
     items = ['xAOD::EventInfo#*', 'xAOD::EventAuxInfo#*',
              # Standard CP objects
@@ -121,6 +124,18 @@ def DESDM_PHOJETCfg(configFlags):
                   'xAOD::TruthEventContainer#*','xAOD::TruthEventAuxContainer#*']
 
     acc.merge( OutputStreamCfg( configFlags, 'DESDM_PHOJET', ItemList=items, AcceptAlgs=["DESDM_PHOJETKernel"]) )
+    acc.merge(
+        SetupMetaDataForStreamCfg(
+            configFlags,
+            "DESDM_PHOJET",
+            AcceptAlgs=["DESDM_PHOJETKernel"],
+            createMetadata=[
+                    MetadataCategory.ByteStreamMetaData,
+                    MetadataCategory.LumiBlockMetaData,
+                    MetadataCategory.TriggerMenuMetaData,
+            ],
+        )
+    )
 
     return acc
 

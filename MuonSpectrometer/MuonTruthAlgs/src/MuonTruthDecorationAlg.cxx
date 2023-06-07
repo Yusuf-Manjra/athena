@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "MuonTruthDecorationAlg.h"
@@ -19,7 +19,7 @@
 #include "xAODMuon/MuonSegmentAuxContainer.h"
 #include "xAODTruth/TruthParticleAuxContainer.h"
 #include "xAODTruth/TruthParticleContainer.h"
-
+#include "AtlasHepMC/MagicNumbers.h"
 namespace {
     const SG::AuxElement::Decorator<int> dec_truthOrigin{"truthOrigin"};
     const SG::AuxElement::Decorator<int> dec_truthType{"truthType"};
@@ -352,7 +352,7 @@ namespace Muon {
             
             // loop over collection and find particle with the same bar code
             for (const auto& particle : *col) {
-                if ((particle.GetBarCode()) % m_barcodeOffset != barcode) continue;
+                if ((particle.GetBarCode()) % HepMC::SIM_REGENERATION_INCREMENT != barcode) continue;
                 CLHEP::Hep3Vector pos = particle.GetPosition();
                 CLHEP::Hep3Vector mom = particle.GetMomentum();
                 ATH_MSG_VERBOSE("Found associated  " << r_name << " pt " << mom.perp() << " position: r " << pos.perp() << " z " << pos.z());
@@ -464,7 +464,7 @@ namespace Muon {
             // loop over trajectories
             for (const auto& trajectory : *col) {
                 // check if gen particle same as input
-                if ((trajectory.second.barcode()) % m_barcodeOffset != barcode) continue;
+                if ((trajectory.second.barcode()) % HepMC::SIM_REGENERATION_INCREMENT != barcode) continue;
 
                 const Identifier& id = trajectory.first;
                 bool measPhi = m_idHelperSvc->measuresPhi(id);
@@ -698,7 +698,7 @@ namespace Muon {
         if (m_idHelperSvc->hasCSC()) {
             truthParticle.auxdata<std::vector<unsigned long long> >("truthCscHits") = cscTruthHits;
         }
-        if (m_idHelperSvc->hasSTgc()) {
+        if (m_idHelperSvc->hasSTGC()) {
             truthParticle.auxdata<std::vector<unsigned long long> >("truthStgcHits") = stgcTruthHits;
         }
         if (m_idHelperSvc->hasMM()) {

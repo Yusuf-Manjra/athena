@@ -10,6 +10,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.Enums import MetadataCategory
 
 # Main algorithm config
 def PHYSKernelCfg(ConfigFlags, name='PHYSKernel', **kwargs):
@@ -67,6 +68,7 @@ def PHYSCfg(ConfigFlags):
     # Define contents of the format
     # =============================
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     
     PHYSSlimmingHelper = SlimmingHelper("PHYSSlimmingHelper", NamesAndTypes = ConfigFlags.Input.TypedCollections, ConfigFlags = ConfigFlags)
@@ -112,6 +114,13 @@ def PHYSCfg(ConfigFlags):
                                               "TauJets_MuonRM.dRmax.etOverPtLeadTrk",
                                               "HLT_xAOD__TrigMissingETContainer_TrigEFMissingET.ex.ey",
                                               "HLT_xAOD__TrigMissingETContainer_TrigEFMissingET_mht.ex.ey"]
+
+    # FTAG Xbb extra content
+    extraList = []
+    for tagger in ["GN2Xv00", "GN2XWithMassv00"]:
+        for score in ["phbb", "phcc", "ptop", "pqcd"]:
+            extraList.append(f"{tagger}_{score}")
+    PHYSSlimmingHelper.ExtraVariables += ["AntiKt10UFOCSSKSoftDropBeta100Zcut10Jets." + ".".join(extraList)]
  
     # Truth extra content
     if ConfigFlags.Input.isMC:
@@ -170,6 +179,7 @@ def PHYSCfg(ConfigFlags):
     # Output stream    
     PHYSItemList = PHYSSlimmingHelper.GetItemList()
     acc.merge(OutputStreamCfg(ConfigFlags, "DAOD_PHYS", ItemList=PHYSItemList, AcceptAlgs=["PHYSKernel"]))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, "DAOD_PHYS", AcceptAlgs=["PHYSKernel"], createMetadata=[MetadataCategory.CutFlowMetaData, MetadataCategory.TruthMetaData]))
 
     return acc
 

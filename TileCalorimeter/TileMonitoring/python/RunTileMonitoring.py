@@ -79,6 +79,7 @@ if __name__=='__main__':
     parser.add_argument('--dumpArguments', action='store_true', help='Print arguments and exit')
 
     _addBoolArgument(parser, 'laser', help='Tile Laser monitoring')
+    _addBoolArgument(parser, 'cis', help='Tile CIS monitoring')
     _addBoolArgument(parser, 'noise', help='Tile Noise monitoring')
     _addBoolArgument(parser, 'cells', help='Tile Calorimeter Cells monitoring')
     _addBoolArgument(parser, 'towers', help='Tile Calorimeter Towers monitoring')
@@ -102,7 +103,7 @@ if __name__=='__main__':
     parser.add_argument('--keyValue', default="",
                         help='EMON, Key values, e.g. [SFI-1, SFI-2]; if empty all SFIs; default: "" (*), TileREB-ROS (Tile)')
     parser.add_argument('--keyCount', type=int, default=50,
-                        help='EMON, key count, e.g. 5 to get five random SFIs, default: 50 (physics), 1000 (laser)')
+                        help='EMON, key count, e.g. 5 to get five random SFIs, default: 50 (physics), 1000 (laser:CIS)')
     parser.add_argument('--publishName', default='TilePT-stateless-10', help='EMON, Name under which to publish histograms')
     parser.add_argument('--include', default="", help='EMON, Regular expression to select histograms to publish')
     parser.add_argument('--lvl1Items', default=[], help='EMON, A list of L1 bit numbers, default []')
@@ -125,7 +126,7 @@ if __name__=='__main__':
     args, _ = parser.parse_known_args()
 
     # Set up default arguments which can be overriden via command line
-    if not any([args.laser, args.noise, args.mbts]):
+    if not any([args.laser, args.cis, args.noise, args.mbts]):
         mbts = False if (args.stateless and args.useMbtsTrigger) else True
         parser.set_defaults(cells=True, towers=True, clusters=True, muid=True, muonfit=True, mbts=mbts,
                             rod=True, tmdb=True, tmdbDigits=True, tmdbRawChannels=True)
@@ -146,8 +147,9 @@ if __name__=='__main__':
         updatePeriod = 0 if args.frequency > 0 else args.updatePeriod
         parser.set_defaults(partition=partition, key=key, keyValue=keyValue, updatePeriod=updatePeriod)
 
-        if args.laser:
-            parser.set_defaults(streamType='calibration', streamNames=['Tile'], streamLogic='And', keyCount=1000, groupName='TileLasMon')
+        if any([args.laser, args.cis]):
+            calibGroupName = 'TileLasMon' if args.laser else 'TileCisMon'
+            parser.set_defaults(streamType='calibration', streamNames=['Tile'], streamLogic='And', keyCount=1000, groupName=calibGroupName)
         elif args.noise:
             publishInclude = ".*Summary.*|.*DMUErrors.*|.*DigiNoise.*"
             parser.set_defaults(streamType='physics', streamNames=['CosmicCalo'], streamLogic='And', include=publishInclude,
@@ -160,7 +162,7 @@ if __name__=='__main__':
             _l1Names += ['L1_MBTSC' + str(counter) for counter in range(0, 16)]
             parser.set_defaults(lvl1Logic='Or', lvl1Origin='TBP', lvl1Items=_l1Items, lvl1Names=_l1Names,
                                 keyCount=1000, groupName='TileMBTSMon', useMbtsTrigger = True)
-        elif any([args.tmdb, args.tmdbDigits]):
+        else:
             parser.set_defaults(postProcessingInterval=100)
 
     args, _ = parser.parse_known_args()
@@ -171,8 +173,10 @@ if __name__=='__main__':
     log.setLevel(INFO)
 
     if args.dumpArguments:
-        log.info('FINAL ARGUMENTS FOLLOW')
-        log.info(args)
+        log.info('=====>>> FINAL ARGUMENTS FOLLOW')
+        print('{:40} : {}'.format('Argument Name', 'Value'))
+        for a,v in (vars(args)).items():
+            print(f'{a:40} : {v}')
         sys.exit(0)
 
     # Set the Athena configuration flags to defaults (can be overriden via comand line)
@@ -189,12 +193,23 @@ if __name__=='__main__':
         flags.Input.isMC = False
         flags.Input.Format = Format.BS
         if args.mbts and args.useMbtsTrigger:
-            from AthenaConfiguration.AutoConfigOnlineRecoFlags import autoConfigOnlineRecoFlags
-            autoConfigOnlineRecoFlags(flags, args.partition)
+            if args.partition in ['TileMon']:
+                flags.Trigger.triggerConfig = 'DB:{:s}:{:d},{:d},{:d},{:d}'.format('TRIGGERDB_RUN3', 3185, 4357, 4219, 2543)
+            else:
+                beamType = flags.Beam.Type
+                from AthenaConfiguration.AutoConfigOnlineRecoFlags import autoConfigOnlineRecoFlags
+                autoConfigOnlineRecoFlags(flags, args.partition)
+                flags.Beam.Type = beamType
+
     else:
         if args.filesInput:
             flags.Input.Files = args.filesInput.split(",")
         elif args.laser:
+            inputDirectory = "/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/TileByteStream/TileByteStream-02-00-00"
+            inputFile = "data18_tilecomm.00363899.calibration_tile.daq.RAW._lb0000._TileREB-ROS._0005-200ev.data"
+            flags.Input.Files = [os.path.join(inputDirectory, inputFile)]
+            flags.Input.RunNumber = [363899]
+        elif args.cis:
             inputDirectory = "/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/TileByteStream/TileByteStream-02-00-00"
             inputFile = "data18_tilecomm.00363899.calibration_tile.daq.RAW._lb0000._TileREB-ROS._0005-200ev.data"
             flags.Input.Files = [os.path.join(inputDirectory, inputFile)]
@@ -208,7 +223,7 @@ if __name__=='__main__':
             flags.Input.Files = defaultTestFiles.RAW_RUN2
 
     runNumber = flags.Input.RunNumber[0]
-    flags.GeoModel.AtlasVersion = 'ATLAS-R3S-2021-03-01-00' if not flags.Input.isMC and runNumber >= 411938 else 'ATLAS-R2-2016-01-00-01'
+    flags.GeoModel.AtlasVersion = 'ATLAS-R3S-2021-03-02-00' if not flags.Input.isMC and runNumber >= 411938 else 'ATLAS-R2-2016-01-00-01'
 
     if not flags.Output.HISTFileName:
         flags.Output.HISTFileName = 'tilemon_{}.root'.format(runNumber)
@@ -216,15 +231,18 @@ if __name__=='__main__':
     if args.online:
         flags.Common.isOnline = True
     if flags.Common.isOnline:
-        flags.IOVDb.GlobalTag = 'CONDBR2-HLTP-2022-02' if runNumber > 232498 else 'COMCOND-HLTP-004-02'
+        flags.IOVDb.GlobalTag = 'CONDBR2-HLTP-2023-01' if runNumber > 232498 else 'COMCOND-HLTP-004-02'
         flags.DQ.Environment = 'online'
         flags.DQ.FileKey = ''
     else:
-        flags.IOVDb.GlobalTag = 'CONDBR2-BLKPA-2022-08' if runNumber > 232498 else 'COMCOND-BLKPA-RUN1-06'
+        flags.IOVDb.GlobalTag = 'CONDBR2-BLKPA-2023-01' if runNumber > 232498 else 'COMCOND-BLKPA-RUN1-06'
 
-    if args.laser:
-        flags.Tile.RunType = 'LAS'
-        flags.Tile.TimingType = 'GAP/LAS'
+    if any([args.laser, args.cis]):
+        if args.laser:
+            flags.Tile.RunType = 'LAS'
+            flags.Tile.TimingType = 'GAP/LAS'
+        elif args.cis:
+            flags.Tile.RunType = 'CIS'
         flags.Tile.doFit = True
         flags.Tile.correctTime = True
         flags.Tile.doOverflowFit = False
@@ -242,8 +260,8 @@ if __name__=='__main__':
         log.info('Executing preExec: %s', args.preExec)
         exec(args.preExec)
 
-    log.info('FINAL CONFIG FLAGS SETTINGS FOLLOW')
-    flags.dump()
+    log.info('=====>>> FINAL CONFIG FLAGS SETTINGS FOLLOW')
+    flags.dump(pattern='Tile.*|Input.*|Exec.*|IOVDb.[D|G].*', evaluate=True)
 
     flags.lock()
 
@@ -296,13 +314,17 @@ if __name__=='__main__':
 
     from TileRecUtils.TileRawChannelMakerConfig import TileRawChannelMakerCfg
     cfg.merge( TileRawChannelMakerCfg(flags) )
+    if args.threads and (args.threads > 1):
+        rawChMaker = cfg.getEventAlgo('TileRChMaker')
+        rawChMaker.Cardinality = args.threads
 
     l1Triggers = ['bit0_RNDM', 'bit1_ZeroBias', 'bit2_L1Cal', 'bit3_Muon',
                   'bit4_RPC', 'bit5_FTK', 'bit6_CTP', 'bit7_Calib', 'AnyPhysTrig']
 
-    if args.laser:
+    if any([args.laser, args.cis]):
+        triggerTypes = [0x34] if args.laser else [0x32]
         from TileMonitoring.TileRawChannelTimeMonitorAlgorithm import TileRawChannelTimeMonitoringConfig
-        cfg.merge(TileRawChannelTimeMonitoringConfig(flags))
+        cfg.merge(TileRawChannelTimeMonitoringConfig(flags, TriggerTypes=triggerTypes))
 
     if args.rod:
         from TileMonitoring.TileRODMonitorAlgorithm import TileRODMonitoringConfig
@@ -406,8 +428,8 @@ if __name__=='__main__':
         cfg.getService("THistSvc").Output=["Tile DATAFILE='%s' OPT='RECREATE'" % (flags.Output.HISTFileName)]
         cfg.getService("TileCablingSvc").CablingType=6
 
-    if args.mbts and args.useMbtsTrigger:
-        cfg.getService('LVL1ConfigSvc').TriggerDB='TRIGGERDB_RUN3'
+    if args.stateless and args.cis:
+        cfg.getEventAlgo('TileDQstatusAlg').TileBeamElemContainer=""
 
     cfg.printConfig(withDetails=args.printDetailedConfig)
 

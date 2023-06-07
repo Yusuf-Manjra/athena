@@ -10,6 +10,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.Enums import MetadataCategory
 
 from DerivationFrameworkEGamma.PhotonsCPDetailedContent import (
     PhotonsCPDetailedContent )
@@ -160,11 +161,10 @@ def EGAM10KernelCfg(ConfigFlags, name='EGAM10Kernel', **kwargs):
 
     # thinning tools
     thinningTools = []
+    streamName = kwargs['StreamName']
 
     # Track thinning
     if ConfigFlags.Derivation.Egamma.doTrackThinning:
-
-        streamName = kwargs['StreamName']
 
         TrackThinningKeepElectronTracks = True
         TrackThinningKeepPhotonTracks = True
@@ -194,6 +194,7 @@ def EGAM10KernelCfg(ConfigFlags, name='EGAM10Kernel', **kwargs):
                     SGKey = 'Photons',
                     GSFTrackParticlesKey = 'GSFTrackParticles',
                     InDetTrackParticlesKey = 'InDetTrackParticles',
+                    GSFConversionVerticesKey = 'GSFConversionVertices',
                     SelectionString = photonRequirements,
                     BestMatchOnly = False,
                     ConeSize = 0.6)
@@ -252,6 +253,7 @@ def EGAM10Cfg(ConfigFlags):
 
     # configure slimming
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     EGAM10SlimmingHelper = SlimmingHelper(
         'EGAM10SlimmingHelper',
@@ -426,6 +428,12 @@ def EGAM10Cfg(ConfigFlags):
                               'DAOD_EGAM10',
                               ItemList = EGAM10ItemList,
                               AcceptAlgs = ['EGAM10Kernel']))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, 'DAOD_EGAM10',
+                                        AcceptAlgs=['EGAM10Kernel'],
+                                        createMetadata=[
+                                            MetadataCategory.CutFlowMetaData,
+                                            MetadataCategory.TruthMetaData,
+                                        ]))
 
     return acc
     

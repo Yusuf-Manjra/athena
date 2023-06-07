@@ -210,9 +210,8 @@ def setupAlignmentEventSkimmingToolCfg(flags,name = "AlignmentEventStringSkimmin
 
 def setupDESDMCPSkimmingAlgCfg(flags, name= "DESDMCPEventKernel", **kwargs):
     result = ComponentAccumulator()
-    doAlignment = False
     
-    EventFilterTool = result.getPrimaryAndMerge(setupAlignmentEventSkimmingToolCfg(flags)) if doAlignment else \
+    EventFilterTool = result.getPrimaryAndMerge(setupAlignmentEventSkimmingToolCfg(flags)) if flags.Muon.DESDM_MCP.doAlignmentFormat else \
                       result.getPrimaryAndMerge(setupDESDMSkimmingToolsCfg(flags))    
     kwargs.setdefault("SkimmingTools", EventFilterTool)
     the_alg = CompFactory.DerivationFramework.DerivationKernel(name, **kwargs)
@@ -221,7 +220,7 @@ def setupDESDMCPSkimmingAlgCfg(flags, name= "DESDMCPEventKernel", **kwargs):
 
 def DESDMCPOutputCfg(flags, **kwargs):
     result = ComponentAccumulator()
-    from AthenaConfiguration.Enums import LHCPeriod
+    from AthenaConfiguration.Enums import LHCPeriod, MetadataCategory
     isRun3 = flags.GeoModel.Run == LHCPeriod.Run3
 
     container_items = ["xAOD::EventInfo#*", "xAOD::EventAuxInfo#*",
@@ -267,14 +266,13 @@ def DESDMCPOutputCfg(flags, **kwargs):
                   "HLT_xAOD__MuonContainer_eMuonEFInfo" ]
     for muon in xaod_muon:
         container_items+=["xAOD::MuonContainer#{muon}".format(muon = muon), 
-                          "xAOD::MuonAuxContainer#${muon}Aux.".format(muon = muon)]
+                          "xAOD::MuonAuxContainer#{muon}Aux.".format(muon = muon)]
     
     
     trackParticleAuxExclusions="-clusterAssociation.-trackParameterCovarianceMatrices.-parameterX.-parameterY.-parameterZ.-parameterPX.-parameterPY.-parameterPZ.-parameterPosition"
 
-    ### Need to find the proper flag for this
-    #if primDPDAlignTrigMu.doAlignmentFormat():
-    #   trackParticleAuxExclusions=""
+    if flags.Muon.DESDM_MCP.doAlignmentFormat:
+       trackParticleAuxExclusions=""
     track_parts = ["MuonSpectrometerTrackParticles", 
                    "CombinedMuonTrackParticles", 
                    "ExtrapolatedMuonTrackParticles",
@@ -303,7 +301,12 @@ def DESDMCPOutputCfg(flags, **kwargs):
     container_items += ["Muon::RpcPrepDataContainer#*", "Muon::TgcPrepDataContainer#*", "Muon::MdtPrepDataContainer#*"]
     ### Only add the SW containers in the corresponding geometry
     if not isRun3: container_items +=["Muon::CscPrepDataContainer#*", "Muon::CscStripPrepDataContainer#CSC_Measurements"]
-    else: container_items +=["Muon::MMPrepDataContainer#*","Muon::sTgcPrepDataContainer#*"]
+    else: container_items +=["Muon::MMPrepDataContainer#*",
+                            "Muon::sTgcPrepDataContainer#*",
+                            "xAOD::NSWTPRDOContainer#*","xAOD::NSWTPRDOAuxContainer#*",
+                            "Muon::NSW_PadTriggerDataContainer#*", 
+                            "Muon::NSW_TrigRawDataContainer#L1_NSWTrigContainer" ,
+                            ]
     
     ### RPC trigger RDO containers
     container_items += ["MuCTPI_RDO#MUCTPI_RDO", "RpcPadContainer#RPCPAD", 
@@ -314,8 +317,7 @@ def DESDMCPOutputCfg(flags, **kwargs):
                         "Muon::TgcCoinDataContainer#TrigT1CoinDataCollectionNextBC",
                         "Muon::TgcCoinDataContainer#TrigT1CoinDataCollectionNextNextBC",
                         "Muon::TgcCoinDataContainer#TrigT1CoinDataCollection"]
-     #### NSW trigger containers
-    if isRun3: container_items +=["Muon::NSW_PadTriggerDataContainer#*", "Muon::NSW_TrigRawDataContainer#L1_NSWTrigContainer" ]
+    
     
     ### Segment containers
     trk_seg_cont = ["TrkMuonSegments", "UnAssocMuonTrkSegments"]+ (["TrackMuonNSWSegments"] if isRun3 else [])
@@ -327,12 +329,30 @@ def DESDMCPOutputCfg(flags, **kwargs):
     # Define contents of the format
     # =============================
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     kwargs.setdefault("ItemList", container_items)
     result.merge(OutputStreamCfg(flags, **kwargs))
+    result.merge(
+        SetupMetaDataForStreamCfg(
+            flags,
+            kwargs.get("streamName"),
+            kwargs.get("AcceptAlgs"),
+            createMetadata=[
+                    MetadataCategory.ByteStreamMetaData,
+                    MetadataCategory.CutFlowMetaData,
+                    MetadataCategory.LumiBlockMetaData,
+                    MetadataCategory.TriggerMenuMetaData,
+            ],
+        )
+    )
     return result
 
 
 def DESDM_MCPCfg(flags):
+    if(flags.Muon.DESDM_MCP.doAlignmentFormat):
+        from AthenaCommon.Logging import logging
+        msg = logging.getLogger("Athena")
+        msg.info("DESDM_MCP format will run with doAlignmentFormat True")
     result = ComponentAccumulator()
     StreamName = "DESDM_MCP"
     SeqName = "DESDMCPSequence"

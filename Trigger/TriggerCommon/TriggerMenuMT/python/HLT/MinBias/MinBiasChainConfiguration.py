@@ -4,23 +4,25 @@ from AthenaCommon.Logging import logging
 logging.getLogger().info("Importing %s",__name__)
 log = logging.getLogger( __name__ )
 
-from TriggerMenuMT.HLT.Config.MenuComponents import EmptyMenuSequence
+from TriggerMenuMT.HLT.Config.MenuComponents import EmptyMenuSequence, EmptyMenuSequenceCA
 from TriggerMenuMT.HLT.Config.ChainConfigurationBase import ChainConfigurationBase
 from AthenaConfiguration.ComponentFactory import isComponentAccumulatorCfg
 
-from TriggerMenuMT.HLT.MinBias.MinBiasMenuSequences import (MinBiasSPSequence, 
+from TriggerMenuMT.HLT.MinBias.MinBiasMenuSequences import (MinBiasSPSequenceCfg, 
                                                             MinBiasTrkSequence,
-                                                            MinBiasMbtsSequenceCfg, 
+                                                            MinBiasMbtsSequenceCfg,
                                                             MinBiasZVertexFinderSequenceCfg)
 from TriggerMenuMT.HLT.MinBias.ALFAMenuSequences import ALFAPerfSequence
-from TriggerMenuMT.HLT.MinBias.AFPMenuSequence import AFPTrkSequenceCfg, AFPGlobalSequenceCfg
+from TriggerMenuMT.HLT.MinBias.AFPMenuSequence import AFPTrkSequence, AFPGlobalSequence
 
 #----------------------------------------------------------------
 # fragments generating configuration will be functions in New JO,
 # so let's make them functions already now
 #----------------------------------------------------------------
-def MinBiasSPSequenceCfg(flags):
-    return MinBiasSPSequence(flags)
+
+def MinBiasSPCfg(flags):
+    from ..Config.MenuComponents import menuSequenceCAToGlobalWrapper 
+    return menuSequenceCAToGlobalWrapper(MinBiasSPSequenceCfg, flags)   
 
 def MinBiasTrkSequenceCfg(flags):
     return MinBiasTrkSequence(flags)
@@ -31,17 +33,23 @@ def MinBiasMbtsEmptySequenceCfg(flags):
 def MinBiasZFindEmptySequenceCfg(flags):
     return EmptyMenuSequence("EmptyZFind")
 
+def AFPGlobalSequenceCfg(flags):
+    from ..Config.MenuComponents import menuSequenceCAToGlobalWrapper
+    return menuSequenceCAToGlobalWrapper(AFPGlobalSequence, flags)
+
+def AFPTrkSequenceCfg(flags):
+    from ..Config.MenuComponents import menuSequenceCAToGlobalWrapper
+    return menuSequenceCAToGlobalWrapper(AFPTrkSequence, flags)
 
 def ALFAPerfSequenceCfg(flags):
-    return ALFAPerfSequence(flags)
+    from ..Config.MenuComponents import menuSequenceCAToGlobalWrapper
+    return menuSequenceCAToGlobalWrapper(ALFAPerfSequence, flags)
 
 def MinBiasZVertexFinderCfg(flags):
-    #TODO we can do that inside of the getStep ... next interation
     from ..Config.MenuComponents import menuSequenceCAToGlobalWrapper
     return menuSequenceCAToGlobalWrapper(MinBiasZVertexFinderSequenceCfg, flags)
 
 def MinBiasMbtsCfg(flags):
-    #TODO we can do that inside of the getStep ... next interation
     from ..Config.MenuComponents import menuSequenceCAToGlobalWrapper
     return menuSequenceCAToGlobalWrapper(MinBiasMbtsSequenceCfg, flags)
 
@@ -61,6 +69,12 @@ class MinBiasChainConfig(ChainConfigurationBase):
         if isComponentAccumulatorCfg():
             if "mbts" == self.chainPart['recoAlg'][0] or "mbts" in self.chainName:
                 steps.append(self.getStep(flags,1,'Mbts',[MinBiasMbtsSequenceCfg]))
+            else:
+                steps.append(self.getStep(flags,1,'EmptyMbts',[lambda flags: EmptyMenuSequenceCA("EmptyMbts") ]))
+
+            if self.chainPart['recoAlg'][0] in ['sp', 'sptrk', 'hmt', 'excl']:
+                steps.append(self.getStep(flags,2,'SPCount',[MinBiasSPSequenceCfg]))
+
         else:
 
             if "mbts" == self.chainPart['recoAlg'][0] or "mbts" in self.chainName:
@@ -92,7 +106,7 @@ class MinBiasChainConfig(ChainConfigurationBase):
         return self.getStep(flags,1,'EmptyMbts',[MinBiasMbtsEmptySequenceCfg])
 
     def getMinBiasSpStep(self, flags):
-        return self.getStep(flags,2,'SPCount',[MinBiasSPSequenceCfg])
+        return self.getStep(flags,2,'SPCount',[MinBiasSPCfg])
 
     def getMinBiasZFindStep(self, flags):
         return self.getStep(flags,3,'ZFind',[MinBiasZVertexFinderCfg])

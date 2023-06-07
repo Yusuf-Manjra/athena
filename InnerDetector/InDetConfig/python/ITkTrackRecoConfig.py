@@ -18,36 +18,37 @@ def CombinedTrackingPassFlagSets(flags):
     flags_set = []
 
     # Primary Pass
-    if flags.ITk.Tracking.useFTF:
-        flags = flags.cloneAndReplace("ITk.Tracking.ActiveConfig", 
-                                      "ITk.Tracking.FTFPass")
-    elif flags.ITk.Tracking.doFastTracking:
-        flags = flags.cloneAndReplace("ITk.Tracking.ActiveConfig",
-                                      "ITk.Tracking.FastPass")
+    if flags.Tracking.useITkFTF:
+        flags = flags.cloneAndReplace("Tracking.ActiveConfig", 
+                                      "Tracking.ITkFTFPass")
+    elif flags.Tracking.doITkFastTracking:
+        flags = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                      "Tracking.ITkFastPass")
     else:
-        flags = flags.cloneAndReplace("ITk.Tracking.ActiveConfig",
-                                      "ITk.Tracking.MainPass")
+        flags = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                      "Tracking.ITkMainPass")
     flags_set += [flags]
 
     # LRT
     if flags.Tracking.doLargeD0:
-        flagsLRT = flags.cloneAndReplace("ITk.Tracking.ActiveConfig",
-                                         "ITk.Tracking.LargeD0Pass")
-        if flags.ITk.Tracking.doFastTracking:
-            flagsLRT = flags.cloneAndReplace("ITk.Tracking.ActiveConfig",
-                                             "ITk.Tracking.LargeD0FastPass")
+        if flags.Tracking.doITkFastTracking:
+            flagsLRT = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                             "Tracking.ITkLargeD0FastPass")
+        else:
+            flagsLRT = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                             "Tracking.ITkLargeD0Pass")
         flags_set += [flagsLRT]
 
     # Photon conversion tracking reco
-    if flags.Detector.EnableCalo and flags.ITk.Tracking.doConversionFinding:
-        flagsConv = flags.cloneAndReplace("ITk.Tracking.ActiveConfig",
-                                          "ITk.Tracking.ConversionFindingPass")
+    if flags.Detector.EnableCalo and flags.Tracking.doITkConversionFinding:
+        flagsConv = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                          "Tracking.ITkConversionFindingPass")
         flags_set += [flagsConv]
 
     # LowPt
-    if flags.ITk.Tracking.doLowPt:
-        flagsLowPt = flags.cloneAndReplace("ITk.Tracking.ActiveConfig",
-                                           "ITk.Tracking.LowPt")
+    if flags.Tracking.doLowPt:
+        flagsLowPt = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                           "Tracking.ITkLowPt")
         flags_set += [flagsLowPt]
 
     _flags_set = flags_set  # Put into cache
@@ -57,7 +58,7 @@ def CombinedTrackingPassFlagSets(flags):
 
 def ITkClusterSplitProbabilityContainerName(flags):
     flags_set = CombinedTrackingPassFlagSets(flags)
-    extension = flags_set[-1].ITk.Tracking.ActiveConfig.extension
+    extension = flags_set[-1].Tracking.ActiveConfig.extension
     ClusterSplitProbContainer = "ITkAmbiguityProcessorSplitProb" + extension
     return ClusterSplitProbContainer
 
@@ -93,7 +94,7 @@ def ITkTrackRecoCfg(flags):
 
     for current_flags in flags_set:
 
-        extension = current_flags.ITk.Tracking.ActiveConfig.extension
+        extension = current_flags.Tracking.ActiveConfig.extension
         TrackContainer = "Resolved" + extension + "Tracks"
         SiSPSeededTracks = "SiSPSeeded" + extension + "Tracks"
 
@@ -107,7 +108,7 @@ def ITkTrackRecoCfg(flags):
         StatTrackTruthCollections += [SiSPSeededTracks+"TruthCollection",
                                       TrackContainer+"TruthCollection"]
 
-        if current_flags.ITk.Tracking.ActiveConfig.storeSeparateContainer:
+        if current_flags.Tracking.ActiveConfig.storeSeparateContainer:
             if flags.Tracking.doTruth:
                 result.merge(ITkTrackTruthCfg(
                     current_flags,
@@ -139,7 +140,7 @@ def ITkTrackRecoCfg(flags):
         OutputCombinedTracks="CombinedITkTracks",
         AssociationMapName=(
             "PRDtoTrackMapCombinedITkTracks"
-            if not flags.ITk.Tracking.doFastTracking else "")))
+            if not flags.Tracking.doITkFastTracking else "")))
 
     if flags.Tracking.doTruth:
         from InDetConfig.ITkTrackTruthConfig import ITkTrackTruthCfg
@@ -165,10 +166,10 @@ def ITkTrackRecoCfg(flags):
         flags,
         ClusterSplitProbabilityName=(
             ITkClusterSplitProbabilityContainerName(flags)
-            if not flags.ITk.Tracking.doFastTracking else ""),
+            if not flags.Tracking.doITkFastTracking else ""),
         AssociationMapName=(
             "PRDtoTrackMapCombinedITkTracks"
-            if not flags.ITk.Tracking.doFastTracking else "")))
+            if not flags.Tracking.doITkFastTracking else "")))
 
     if flags.Tracking.doVertexFinding:
         from InDetConfig.InDetPriVxFinderConfig import primaryVertexFindingCfg
@@ -190,7 +191,7 @@ def ITkTrackRecoCfg(flags):
                 flags_set[0],  # Use cuts from primary pass
                 TracksLocation=StatTrackCollections))
 
-    if flags.ITk.Tracking.writeExtendedPRDInfo:
+    if flags.Tracking.writeExtendedPRDInfo:
         from InDetConfig.InDetPrepRawDataToxAODConfig import (
             ITkPixelPrepDataToxAODCfg, ITkStripPrepDataToxAODCfg)
         result.merge(ITkPixelPrepDataToxAODCfg(
@@ -211,6 +212,16 @@ def ITkTrackRecoCfg(flags):
                 "ITkCommonKernel",
                 AugmentationTools=[TrackStateOnSurfaceDecorator]))
 
+        if flags.Tracking.doStoreSiSPSeededTracks:
+            from DerivationFrameworkInDet.InDetToolsConfig import (
+                ITkSiSPTrackStateOnSurfaceDecoratorCfg)
+            SiSPTrackStateOnSurfaceDecorator = result.getPrimaryAndMerge(
+                ITkSiSPTrackStateOnSurfaceDecoratorCfg(flags))
+            result.addEventAlgo(
+                CompFactory.DerivationFramework.CommonAugmentation(
+                    "SiSPITkCommonKernel",
+                    AugmentationTools=[SiSPTrackStateOnSurfaceDecorator]))
+
         if flags.Input.isMC:
             from InDetPhysValMonitoring.InDetPhysValDecorationConfig import (
                 InDetPhysHitDecoratorAlgCfg)
@@ -230,6 +241,18 @@ def ITkTrackRecoCfg(flags):
             TrackContainerName=TrackContainer,
             xAODTrackParticlesFromTracksContainerName=(
                 f"{TrackContainer}TrackParticles")))
+
+    if flags.Tracking.doStoreSiSPSeededTracks:
+        result.merge(ITkTrackParticleCnvAlgCfg(
+            flags,
+            name = "ITkSiSPSeededTracksCnvAlg",
+            TrackContainerName = "SiSPSeededTracks",
+            xAODTrackParticlesFromTracksContainerName=(
+                "SiSPSeededTracksTrackParticles"),
+            AssociationMapName=(
+                "PRDtoTrackMapCombinedITkTracks")))
+
+
 
     # output
     result.merge(ITkTrackRecoOutputCfg(flags))
@@ -252,7 +275,7 @@ def ITkTrackRecoOutputCfg(flags):
 
     # exclude IDTIDE/IDTRKVALID decorations
     excludedAuxData += '.-TrkBLX.-TrkBLY.-TrkBLZ.-TrkIBLX.-TrkIBLY.-TrkIBLZ.-TrkL1X.-TrkL1Y.-TrkL1Z.-TrkL2X.-TrkL2Y.-TrkL2Z'
-    if not flags.ITk.Tracking.writeExtendedPRDInfo:
+    if not flags.Tracking.writeExtendedPRDInfo:
         excludedAuxData += '.-msosLink'
 
     # Save PRD
@@ -282,7 +305,7 @@ def ITkTrackRecoOutputCfg(flags):
     toAOD += [
         f"xAOD::TrackParticleAuxContainer#InDetTrackParticlesAux.{excludedAuxData}"]
 
-    if flags.ITk.Tracking.writeExtendedPRDInfo:
+    if flags.Tracking.writeExtendedPRDInfo:
         toAOD += [
             "xAOD::TrackMeasurementValidationContainer#ITkPixelClusters",
             "xAOD::TrackMeasurementValidationAuxContainer#ITkPixelClustersAux.",
@@ -297,19 +320,20 @@ def ITkTrackRecoOutputCfg(flags):
     if (flags.Tracking.doLargeD0 and
             flags.Tracking.storeSeparateLargeD0Container):
         toAOD += [
-            'xAOD::TrackParticleContainer#InDet{}TrackParticles'.format(
-                flags.ITk.Tracking.LargeD0Pass.extension
-            ),
-            'xAOD::TrackParticleAuxContainer#InDet{}TrackParticlesAux.'.format(
-                flags.ITk.Tracking.LargeD0Pass.extension
-            )
+            "xAOD::TrackParticleContainer#InDetLargeD0TrackParticles",
+            f"xAOD::TrackParticleAuxContainer#InDetLargeD0TrackParticlesAux.{excludedAuxData}"
         ]
 
-    if flags.Tracking.doStoreTrackSeeds:
+    if flags.Tracking.doStoreSiSPSeededTracks:
         toAOD += [
-            "xAOD::TrackParticleContainer#SiSPSeedSegmentsTrackParticles",
-            "xAOD::TrackParticleAuxContainer#SiSPSeedSegmentsTrackParticlesAux."
+            "xAOD::TrackStateValidationContainer#SiSP_ITkPixel_MSOSs",
+            "xAOD::TrackStateValidationAuxContainer#SiSP_ITkPixel_MSOSsAux.",
+            "xAOD::TrackStateValidationContainer#SiSP_ITkStrip_MSOSs",
+            "xAOD::TrackStateValidationAuxContainer#SiSP_ITkStrip_MSOSsAux.",
+            "xAOD::TrackParticleContainer#SiSPSeededTracksTrackParticles",
+            f"xAOD::TrackParticleAuxContainer#SiSPSeededTracksTrackParticlesAux.{excludedAuxData}"
         ]
+
 
     result = ComponentAccumulator()
     result.merge(addToESD(flags, toAOD+toESD))

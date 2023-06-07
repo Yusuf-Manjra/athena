@@ -29,7 +29,9 @@ namespace RootAuxDynIO
    hasAuxStore(std::string_view fieldname, TClass *tc) {
       // check the name first, and only if it does not match AUX_POSTFIX ask TClass
       return endsWithAuxPostfix(fieldname)
-         or (tc and RootType(tc).Properties().HasProperty("IAuxStore"));
+         or ( tc and ( tc->GetBaseClass("SG::IAuxStore")
+                       // the IAuxStore property is used in DataModelTests
+                       or RootType(tc).Properties().HasProperty("IAuxStore") ));
    }
 
 
@@ -83,9 +85,8 @@ namespace RootAuxDynIO
          msg << "GetExpectedType() failed for branch: " << bname;
          return false;
       }
-      if( tc and ( endsWithAuxPostfix(bname)
-                   or (tc->GetAttributeMap() && tc->GetAttributeMap()->HasKey("IAuxStore")) ) ) {
-         return tc->GetBaseClass("SG::IAuxStoreHolder") != nullptr;
+      if( hasAuxStore(bname, tc) ) {
+          return tc->GetBaseClass("SG::IAuxStoreHolder") != nullptr;
       }
       return false;
    }

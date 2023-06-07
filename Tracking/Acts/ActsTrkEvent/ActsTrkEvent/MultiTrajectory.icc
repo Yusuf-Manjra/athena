@@ -15,6 +15,19 @@ ActsTrk::MultiTrajectory<RWState>::MultiTrajectory(
 }
 
 template <bool RWState>
+template <bool OtherRWState>
+ActsTrk::MultiTrajectory<RWState>::MultiTrajectory(
+    const MultiTrajectory<OtherRWState>& other) 
+    : m_trackStates(other.m_trackStates),
+      m_trackParameters(other.m_trackParameters),
+      m_trackJacobians(other.m_trackJacobians),
+      m_trackMeasurements(other.m_trackMeasurements) {
+  for ( auto& decoration: other.m_decorations) {
+    m_decorations.push_back(decoration);
+  }
+}
+
+template <bool RWState>
 bool ActsTrk::MultiTrajectory<RWState>::has_backends() const {
   return m_trackStates != nullptr and m_trackParameters != nullptr and
          m_trackJacobians != nullptr and m_trackMeasurements != nullptr;
@@ -81,13 +94,10 @@ ActsTrk::MultiTrajectory<RWState>::addTrackState_impl(
     m_trackMeasurements->push_back(meas);
     state->setCalibrated(m_trackMeasurements->size() - 1);
   }
-
-  state->setProjector(kInvalid);
   if (ACTS_CHECK_BIT(mask, TrackStatePropMask::Calibrated)) {
     state->setCalibrated(addMeasurement());
     // TODO: in Acts there is m_projections collection
     // https://github.com/acts-project/acts/blob/main/Core/src/EventData/VectorMultiTrajectory.cpp#L83
-    state->setProjector(addParam());
   }
 
   state->setJacobian(kInvalid);
@@ -124,13 +134,15 @@ constexpr bool ActsTrk::MultiTrajectory<RWState>::has_impl(
     case "jacobian"_hash:
       return trackStates[istate]->jacobian() < kInvalid;
     case "projector"_hash:
-      return trackStates[istate]->projector() < kInvalid;
+      return trackStates[istate]->calibrated() < kInvalid;
     case "calibrated"_hash:
       return trackStates[istate]->calibrated() < kInvalid;
     case "calibratedCov"_hash:
       return trackStates[istate]->calibrated() < kInvalid;
     case "measdim"_hash:
       return trackStates[istate]->measDim() < kInvalid;
+    case "uncalibratedSourceLink"_hash:
+      return !trackStates[istate]->uncalibratedMeasurementLink().isDefault();
     default:
       for (auto& d : m_decorations) {
         if (d.hash == key) {
@@ -193,7 +205,7 @@ const std::any ActsTrk::MultiTrajectory<RWState>::component_impl(
     case "jacobian"_hash:
       return trackStates[istate]->jacobianPtr();
     case "projector"_hash:
-      return trackStates[istate]->projectorPtr();
+      return trackMeasurements().at(trackStates[istate]->calibrated())->projectorPtr();
     case "calibrated"_hash: {
       return trackStates[istate]->calibratedPtr();
     }
@@ -237,7 +249,7 @@ std::any ActsTrk::MultiTrajectory<RWState>::component_impl(
     case "jacobian"_hash:
       return (*m_trackStates)[istate]->jacobianPtr();
     case "projector"_hash:
-      return (*m_trackStates)[istate]->projectorPtr();
+      return trackMeasurements().at((*m_trackStates)[istate]->calibrated())->projectorPtr();
     case "calibrated"_hash:
       return (*m_trackStates)[istate]->calibratedPtr();
     case "calibratedCov"_hash:
@@ -255,35 +267,23 @@ std::any ActsTrk::MultiTrajectory<RWState>::component_impl(
   }
 }
 
+/**
+   * Implementation of uncalibrated link fetch
+*/ 
 template <bool RWState>
-ATH_MEMBER_REQUIRES_DEF(RWState == ActsTrk::IsReadWrite, void)
-ActsTrk::MultiTrajectory<RWState>::setUncalibratedSourceLink_impl(
-    const Acts::SourceLink& sourceLink,
-    ActsTrk::MultiTrajectory<RWState>::IndexType istate) {
-  auto el =
-      sourceLink.get<ElementLink<xAOD::UncalibratedMeasurementContainer>>();
-  (*m_trackStates)[istate]->setUncalibratedMeasurementLink(el);
-  (*m_trackStates)[istate]->setGeometryId(sourceLink.geometryId().value());
-}
-
-template <bool RWState>
-ATH_MEMBER_REQUIRES_DEF(RWState == ActsTrk::IsReadOnly, Acts::SourceLink)
-ActsTrk::MultiTrajectory<RWState>::getUncalibratedSourceLink_impl(
-    ActsTrk::MultiTrajectory<RWState>::IndexType istate) const {
-  auto el = (*m_trackStates)[istate]->uncalibratedMeasurementLink();
-  auto geoID = (*m_trackStates)[istate]->geometryId();
+typename Acts::SourceLink ActsTrk::MultiTrajectory<RWState>::getUncalibratedSourceLink_impl(ActsTrk::MultiTrajectory<RWState>::IndexType istate) const{
+  auto el = trackStates()[istate]->uncalibratedMeasurementLink();
+  auto geoID = trackStates()[istate]->geometryId();
   return Acts::SourceLink(geoID, el);
 }
-
 template <bool RWState>
-ATH_MEMBER_REQUIRES_DEF(RWState == ActsTrk::IsReadWrite, Acts::SourceLink)
-ActsTrk::MultiTrajectory<RWState>::getUncalibratedSourceLink_impl(
-    ActsTrk::MultiTrajectory<RWState>::IndexType istate) {
-  auto el = (*m_trackStates)[istate]->uncalibratedMeasurementLink();
-  auto geoID = (*m_trackStates)[istate]->geometryId();
+ATH_MEMBER_REQUIRES_DEF(RWState == ActsTrk::IsReadWrite,
+                      Acts::SourceLink)
+ActsTrk::MultiTrajectory<RWState>::getUncalibratedSourceLink_impl(ActsTrk::MultiTrajectory<RWState>::IndexType istate) {
+  auto el = trackStates()[istate]->uncalibratedMeasurementLink();
+  auto geoID = trackStates()[istate]->geometryId();
   return Acts::SourceLink(geoID, el);
 }
-
 
 // Implementation of unset
 template <bool RWState>
@@ -422,3 +422,4 @@ void ActsTrk::MultiTrajectory<RWState>::shareFrom_impl(ActsTrk::MultiTrajectory<
       throw std::domain_error{"Unable to share this component"};
   }
 }
+

@@ -495,7 +495,7 @@ bool StripDigitizationTool::digitizeElement(const EventContext& ctx, SiChargedDi
 
   // Loop over the hits and created charged diodes:
   while (i != e) {
-    TimedHitPtr<SiHit> phit{*i++};
+    const TimedHitPtr<SiHit>& phit{*i++};
 
     // skip hits which are more than 10us away
     if (std::abs(phit->meanTime()) < 10000. * CLHEP::ns) {
@@ -612,7 +612,7 @@ void StripDigitizationTool::SetupRdoOutputType(Gaudi::Details::PropertyBase &) {
 class DigitizeNonHitElementsDebugPrinter
 {
 public:
-  DigitizeNonHitElementsDebugPrinter(const SCT_ID* detID) :
+  explicit DigitizeNonHitElementsDebugPrinter(const SCT_ID* detID) :
     m_detID{detID}, m_msgNo{-1} {
     }
 

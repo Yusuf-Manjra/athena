@@ -10,6 +10,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.Enums import MetadataCategory
 
 
 # Main algorithm config
@@ -47,6 +48,7 @@ def FTAG1CoreCfg(flags, name_tag='FTAG1', extra_SmartCollections=None, extra_All
     # Define contents of the format
     # =============================
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     
     FTAG1SlimmingHelper = SlimmingHelper(name_tag+"SlimmingHelper", NamesAndTypes = flags.Input.TypedCollections, flags = flags)
@@ -167,6 +169,7 @@ def FTAG1CoreCfg(flags, name_tag='FTAG1', extra_SmartCollections=None, extra_All
     # Output stream    
     FTAG1ItemList = FTAG1SlimmingHelper.GetItemList()
     acc.merge(OutputStreamCfg(flags, "DAOD_"+name_tag, ItemList=FTAG1ItemList, AcceptAlgs=[name_tag+"Kernel"]))
+    acc.merge(SetupMetaDataForStreamCfg(flags, "DAOD_"+name_tag, AcceptAlgs=[name_tag+"Kernel"], createMetadata=[MetadataCategory.CutFlowMetaData, MetadataCategory.TruthMetaData]))
 
     return acc
 
@@ -201,7 +204,6 @@ def V0ToolCfg(flags, augmentationTools=None, tool_name_prefix="FTAG1", container
     
     from DerivationFrameworkBPhys.commonBPHYMethodsCfg import BPHY_V0ToolCfg, BPHY_InDetDetailedTrackSelectorToolCfg, BPHY_VertexPointEstimatorCfg, BPHY_TrkVKalVrtFitterCfg
     from JpsiUpsilonTools.JpsiUpsilonToolsConfig import PrimaryVertexRefittingToolCfg, JpsiFinderCfg
-    from TrkConfig.AtlasExtrapolatorConfig import InDetExtrapolatorCfg
 
     V0Tools = acc.popToolsAndMerge(BPHY_V0ToolCfg(flags, tool_name_prefix))
     acc.addPublicTool(V0Tools)
@@ -282,13 +284,11 @@ def V0ToolCfg(flags, augmentationTools=None, tool_name_prefix="FTAG1", container
             LambdaContainerName    = LambdaContainerName,
             LambdabarContainerName = LambdabarContainerName,
             CheckVertexContainers  = [container_name_prefix+'JpsiCandidates'])
-    JpsiV0VertexFit = CompFactory.Trk.TrkVKalVrtFitter(
-            name                 = "JpsiV0VertexFit",
-            Extrapolator         = acc.popToolsAndMerge(InDetExtrapolatorCfg(flags)),
-            FirstMeasuredPoint   = False,
-            CascadeCnstPrecision = 1e-6,
-            MakeExtendedVertex   = True)
+
+    from TrkConfig.TrkVKalVrtFitterConfig import JpsiV0VertexFitCfg
+    JpsiV0VertexFit = acc.popToolsAndMerge(JpsiV0VertexFitCfg(flags))
     acc.addPublicTool(JpsiV0VertexFit)
+
     JpsiKshort  = CompFactory.DerivationFramework.JpsiPlusV0Cascade(
             name                    = tool_name_prefix+"JpsiKshort",
             V0Tools                 = V0Tools,

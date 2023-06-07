@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 #include "AthenaMonitoringKernel/GenericMonitoringTool.h"
 #include "JetMonitoring/JetHistoAttributeFiller.h"
@@ -92,10 +92,10 @@ namespace {
     gr.setAutoFill(false);
 
     for(const xAOD::Jet* j:jets){
+      auto vecX = vX->vector(*j);
       auto vecY = vY->vector(*j);
-      auto vecX = vY->vector(*j);
       size_t Nx= vecX.size();
-      size_t Ny= vecX.size();
+      size_t Ny= vecY.size();
       size_t N =  Nx<Ny  ? Nx : Ny;
       for(size_t i=0;i<N;i++) {sX=vecX[i];sY=vecY[i]; gr.fill(); }          
     }        
@@ -143,16 +143,16 @@ StatusCode JetHistoAttributeFiller::initialize() {
   ATH_CHECK(m_varX.retrieve() );
   m_nVar = 1;
   if( ! m_varY.isEnabled() ){
-    ATH_MSG_INFO( "Filling 1 var X=("<< m_varX->describe() << ")");
+    ATH_MSG_DEBUG( "Filling 1 var X=("<< m_varX->describe() << ")");
   }else { // has Y variable
     ATH_CHECK(m_varY.retrieve() );
     m_nVar = 2;
     if ( ! m_varZ.isEnabled()) {
-      ATH_MSG_INFO( "Filling 2 vars X=("<< m_varX->describe() << ") Y=("<<m_varY->describe() << ")");
+      ATH_MSG_DEBUG( "Filling 2 vars X=("<< m_varX->describe() << ") Y=("<<m_varY->describe() << ")");
     }else{
       ATH_CHECK(m_varZ.retrieve() );
       m_nVar = 3;
-      ATH_MSG_INFO( "Filling 3 vars X=("<< m_varX->describe() << ") Y=("<<m_varY->describe() << ") Z=("<<m_varZ->describe() << ")");
+      ATH_MSG_DEBUG( "Filling 3 vars X=("<< m_varX->describe() << ") Y=("<<m_varY->describe() << ") Z=("<<m_varZ->describe() << ")");
     }
     
   }  

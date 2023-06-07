@@ -25,9 +25,9 @@ def StandaloneMuonOutputCfg(flags):
         aod_items += ["xAOD::TrackParticleAuxContainer#EMEO_MuonSpectrometerTrackParticlesAux."]
         aod_items += ["xAOD::MuonSegmentContainer#xAODNSWSegments"]
         aod_items += ["xAOD::MuonSegmentAuxContainer#xAODNSWSegmentsAux."]
-    
-    aod_items += [ "xAOD::MuonSegmentContainer#NCB_MuonSegments" ]
-    aod_items += [ "xAOD::MuonSegmentAuxContainer#NCB_MuonSegmentsAux." ]
+
+    aod_items += ["xAOD::MuonSegmentContainer#NCB_MuonSegments"]
+    aod_items += ["xAOD::MuonSegmentAuxContainer#NCB_MuonSegmentsAux."]
 
     # TrackParticles
     aod_items += ["xAOD::TrackParticleContainer#MuonSpectrometerTrackParticles"]
@@ -74,6 +74,9 @@ def StandaloneMuonOutputCfg(flags):
     if flags.Detector.EnablesTGC:
         esd_items += ["Muon::sTgcPrepDataContainer#STGC_Measurements"]
         esd_items += ["Muon::NSW_PadTriggerDataContainer#NSW_PadTrigger_RDO"]
+        esd_items += ["xAOD::NSWTPRDOContainer#*", "xAOD::NSWTPRDOAuxContainer#*"]
+        
+        
     if flags.Detector.EnableCSC:
         esd_items += ["Muon::CscPrepDataContainer#CSC_Clusters"]
         esd_items += ["Muon::CscStripPrepDataContainer#CSC_Measurements"]
@@ -88,6 +91,10 @@ def StandaloneMuonOutputCfg(flags):
     esd_items += ["Muon::TgcCoinDataContainer#TrigT1CoinDataCollectionNextNextBC"]
     esd_items += ["Muon::RpcCoinDataContainer#RPC_triggerHits"]
     esd_items += ["RpcSectorLogicContainer#RPC_SECTORLOGIC"]
+    
+    # trigger info for RPC time calibration
+    if flags.Output.doWriteRDO or flags.Muon.doWriteRpcRDO:
+        esd_items += ["RpcPadContainer#RPCPAD"]
 
     # Segments
     esd_items += ["Trk::SegmentCollection#NCB_TrackMuonSegments"]
@@ -97,7 +104,7 @@ def StandaloneMuonOutputCfg(flags):
     if flags.Muon.runCommissioningChain:
         esd_items += ["TrackCollection#EMEO_MuonSpectrometerTracks"]
     if flags.Detector.EnableMM or flags.Detector.EnablesTGC:
-            esd_items += ["Trk::SegmentCollection#TrackMuonNSWSegments"]
+        esd_items += ["Trk::SegmentCollection#TrackMuonNSWSegments"]
 
     # Truth
     if flags.Input.isMC:
@@ -128,7 +135,7 @@ def StandaloneMuonOutputCfg(flags):
         #     if flags.Detector.EnableMM: esd_items+=["MuonSimDataCollection#MM_SDO"]
 
     if flags.Output.doWriteESD:
-        result = OutputStreamCfg(flags, "ESD", esd_items)
+        result.merge(OutputStreamCfg(flags, "ESD", esd_items))
     if flags.Output.doWriteAOD:
         result.merge(OutputStreamCfg(flags, "AOD", aod_items))
     return result
@@ -158,19 +165,20 @@ def MuonReconstructionCfg(flags):
                                                           TrackContainerName="EMEO_MuonSpectrometerTracks",
                                                           xAODTrackParticlesFromTracksContainerName="EMEO_MuonSpectrometerTrackParticles"))
 
-    # FIXME - this is copied from the old configuration, but I'm not sure it really belongs here. 
+    # FIXME - this is copied from the old configuration, but I'm not sure it really belongs here.
     # It's probably better to have as part of TrackBuilding, or Segment building...
     if flags.Input.isMC:
         # filter TrackRecordCollection (true particles in muon spectrometer)
         if "MuonEntryLayerFilter" not in flags.Input.Collections:
-            result.addEventAlgo( CompFactory.TrackRecordFilter())
+            result.addEventAlgo(CompFactory.TrackRecordFilter())
         if "MuonExitLayerFilter" not in flags.Input.Collections:
-            result.addEventAlgo( CompFactory.TrackRecordFilter("TrackRecordFilterMuonExitLayer",
-                                         inputName="MuonExitLayer",
-                                         outputName="MuonExitLayerFilter"))
+            result.addEventAlgo(CompFactory.TrackRecordFilter("TrackRecordFilterMuonExitLayer",
+                                                              inputName="MuonExitLayer",
+                                                              outputName="MuonExitLayerFilter"))
 
         # Segment truth association decorations
-        result.addEventAlgo( CompFactory.Muon.MuonSegmentTruthAssociationAlg("MuonSegmentTruthAssociationAlg"))
+        result.addEventAlgo(CompFactory.Muon.MuonSegmentTruthAssociationAlg(
+            "MuonSegmentTruthAssociationAlg"))
 
         # Now tracks
         track_cols = ["MuonSpectrometerTracks"]
@@ -201,8 +209,9 @@ def MuonReconstructionCfg(flags):
 
     if flags.Muon.doMSVertex:
         msvertexrecotool = CompFactory.Muon.MSVertexRecoTool(
-            MyExtrapolator=result.popToolsAndMerge(AtlasExtrapolatorCfg(flags)),
-            TGCKey = 'TGC_MeasurementsAllBCs' if not flags.Muon.useTGCPriorNextBC else 'TGC_Measurements')
+            MyExtrapolator=result.popToolsAndMerge(
+                AtlasExtrapolatorCfg(flags)),
+            TGCKey='TGC_MeasurementsAllBCs' if not flags.Muon.useTGCPriorNextBC else 'TGC_Measurements')
         the_alg = CompFactory.MSVertexRecoAlg(
             name="MSVertexRecoAlg", MSVertexRecoTool=msvertexrecotool)
         # Not explicitly configuring MSVertexTrackletTool

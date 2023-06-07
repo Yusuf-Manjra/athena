@@ -11,7 +11,7 @@
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 from DerivationFrameworkEGamma.ElectronsCPDetailedContent import GSFTracksCPDetailedContent
-from AthenaConfiguration.Enums import LHCPeriod
+from AthenaConfiguration.Enums import LHCPeriod, MetadataCategory
 
 # Main algorithm config
 def PHYSVALKernelCfg(ConfigFlags, name='PHYSVALKernel', **kwargs):
@@ -26,6 +26,18 @@ def PHYSVALKernelCfg(ConfigFlags, name='PHYSVALKernel', **kwargs):
     if ConfigFlags.Tracking.doLargeD0:
         from DerivationFrameworkLLP.PhysValLLPConfig import PhysValLLPCfg
         acc.merge(PhysValLLPCfg(ConfigFlags))
+
+        # LRT Egamma
+        from DerivationFrameworkEGamma.EGammaLRTConfig import EGammaLRTCfg
+        acc.merge(EGammaLRTCfg(ConfigFlags))
+
+        from DerivationFrameworkLLP.LLPToolsConfig import LRTElectronLHSelectorsCfg
+        acc.merge(LRTElectronLHSelectorsCfg(ConfigFlags))
+
+        # LRT Muons
+        from DerivationFrameworkMuons.MuonsCommonConfig import MuonsCommonCfg
+        acc.merge(MuonsCommonCfg(ConfigFlags,
+                                suff="LRT"))
 
     # R = 0.4 LCTopo jets (for tau validation)
     from JetRecConfig.StandardSmallRJets import AntiKt4LCTopo
@@ -59,13 +71,16 @@ def PHYSVALCfg(ConfigFlags):
     # Define contents of the format
     # =============================
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
 
     PHYSVALSlimmingHelper = SlimmingHelper("PHYSVALSlimmingHelper", NamesAndTypes = ConfigFlags.Input.TypedCollections, ConfigFlags = ConfigFlags)
     PHYSVALSlimmingHelper.SmartCollections = ["EventInfo",
                                               "Electrons",
+                                              "LRTElectrons",
                                               "Photons",
                                               "Muons",
+                                              "MuonsLRT",
                                               "PrimaryVertices",
                                               "InDetTrackParticles",
                                               "InDetLargeD0TrackParticles",
@@ -84,9 +99,10 @@ def PHYSVALCfg(ConfigFlags):
                                               "AntiKtVR30Rmax4Rmin02PV0TrackJets"]
 
     PHYSVALSlimmingHelper.AllVariables =  ["EventInfo",
-                                           "Electrons", "ForwardElectrons",
+                                           "Electrons", "ForwardElectrons","LRTElectrons",
                                            "Photons",
                                            "Muons", "CombinedMuonTrackParticles","ExtrapolatedMuonTrackParticles",
+                                           "MuonsLRT",
                                            "MuonSpectrometerTrackParticles","MSOnlyExtrapolatedMuonTrackParticles","MuonSegments",
                                            "PrimaryVertices",
                                            "InDetTrackParticles","InDetForwardTrackParticles",
@@ -206,13 +222,13 @@ def PHYSVALCfg(ConfigFlags):
 
         from DerivationFrameworkMCTruth.MCTruthCommonConfig import addTruth3ContentToSlimmerTool
         addTruth3ContentToSlimmerTool(PHYSVALSlimmingHelper)
-        PHYSVALSlimmingHelper.AllVariables += ['TruthHFWithDecayParticles','TruthHFWithDecayVertices','TruthCharm','TruthPileupParticles','InTimeAntiKt4TruthJets','OutOfTimeAntiKt4TruthJets']
+        PHYSVALSlimmingHelper.AllVariables += ['TruthHFWithDecayParticles','TruthHFWithDecayVertices','TruthCharm','TruthPileupEvents','TruthPileupParticles','InTimeAntiKt4TruthJets','OutOfTimeAntiKt4TruthJets']
         PHYSVALSlimmingHelper.SmartCollections += ['AntiKt4TruthJets']
         # End of isMC clause
 
     PHYSVALSlimmingHelper.ExtraVariables += ["AntiKt10TruthTrimmedPtFrac5SmallR20Jets.Tau1_wta.Tau2_wta.Tau3_wta.D2.GhostBHadronsFinalCount",
-                                             "Electrons.TruthLink",
-                                             "Muons.TruthLink",
+                                             "Electrons.TruthLink","LRTElectrons.TruthLink",
+                                             "Muons.TruthLink","MuonsLRT.TruthLink",
                                              "Photons.TruthLink",
                                              "AntiKt2PV0TrackJets.pt.eta.phi.m",
                                              "AntiKt4EMTopoJets.DFCommonJets_QGTagger_truthjet_nCharged.DFCommonJets_QGTagger_truthjet_pt.DFCommonJets_QGTagger_truthjet_eta.DFCommonJets_QGTagger_NTracks.DFCommonJets_QGTagger_TracksWidth.DFCommonJets_QGTagger_TracksC1.PartonTruthLabelID",
@@ -278,6 +294,7 @@ def PHYSVALCfg(ConfigFlags):
     # Output stream
     PHYSVALItemList = PHYSVALSlimmingHelper.GetItemList()
     acc.merge(OutputStreamCfg(ConfigFlags, "DAOD_PHYSVAL", ItemList=PHYSVALItemList, AcceptAlgs=["PHYSVALKernel"]))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, "DAOD_PHYSVAL", AcceptAlgs=["PHYSVALKernel"], createMetadata=[MetadataCategory.CutFlowMetaData]))
 
     return acc
 

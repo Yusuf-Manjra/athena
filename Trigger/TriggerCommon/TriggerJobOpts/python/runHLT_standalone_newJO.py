@@ -58,19 +58,7 @@ flags.addFlag("Trigger.disabledSignatures",[])
 flags.addFlag("Trigger.selectChains",[])       
 flags.addFlag("Trigger.disableChains",[]) 
 
-flags.Trigger.enabledSignatures = ['Muon', 'Tau','MinBias','Bphysics','Egamma', 'Electron', 'Photon', 'MET', 'Jet']
-# missing: 'Bjet'
-
-# disable bBhv chains cause they cause terrible crash
-# this is hack, it should be setup in the tests in TriggerTest package
-# hopefully will be removed soon
-flags.Trigger.disableChains= lambda pf: [] if "HI" in pf.Trigger.triggerMenuSetup else [
-    "HLT_e5_lhvloose_bBeeM6000_L1BKeePrimary", "HLT_2e5_lhvloose_bBeeM6000_L1BKeePrimary",
-    "HLT_e5_lhvloose_bBeeM6000_L1BKeePrescaled", "HLT_2e5_lhvloose_bBeeM6000_L1BKeePrescaled",
-    "HLT_e5_lhvloose_bBeeM6000_L1EM22VHI", "HLT_e5_lhvloose_bBeeM6000_L14J15",     
-    "HLT_e5_lhvloose_bBeeM6000_L1All"
-    ]
-
+flags.Trigger.enabledSignatures = ['Muon', 'Tau','MinBias','Bphysics','Egamma', 'Electron', 'Photon', 'MET', 'Jet','Bjet','Calib']
 #--------------#
 #Leave commented lines for tests, since this is under development
 #flags.Trigger.triggerMenuModifier=[ 'emptyMenu','HLT_mu8_L1MU5VF']
@@ -117,7 +105,6 @@ from TriggerJobOpts.TriggerHistSvcConfig import TriggerHistSvcConfig
 acc.merge(TriggerHistSvcConfig(flags))
 
 
-
 from TriggerMenuMT.HLT.Config.GenerateMenuMT_newJO import generateMenuMT
 from TriggerJobOpts.TriggerConfig import triggerRunCfg
 menu = triggerRunCfg(flags, menu=generateMenuMT)
@@ -152,6 +139,9 @@ if log.getEffectiveLevel() <= logging.DEBUG:
 if flags.Common.isOnline:
   from TrigOnlineMonitor.TrigOnlineMonitorConfig import trigOpMonitorCfg
   acc.merge( trigOpMonitorCfg(flags) )
+
+from AthenaConfiguration.AccumulatorCache import AccumulatorDecorator
+AccumulatorDecorator.printStats()
 
 log.info("Running ...")
 status = acc.run()

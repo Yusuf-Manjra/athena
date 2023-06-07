@@ -17,29 +17,29 @@ def CombinedTrackingPassFlagSets(flags):
 
     # Primary Pass
     if flags.Tracking.doVtxLumi:
-        flags = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                      "InDet.Tracking.VtxLumiPass")
+        flags = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                      "Tracking.VtxLumiPass")
     elif flags.Tracking.doVtxBeamSpot:
-        flags = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                      "InDet.Tracking.VtxBeamSpotPass")
+        flags = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                      "Tracking.VtxBeamSpotPass")
     elif flags.Beam.Type is BeamType.Cosmics:
-        flags = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                      "InDet.Tracking.CosmicsPass")
+        flags = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                      "Tracking.CosmicsPass")
     elif flags.Reco.EnableHI:
-        flags = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                      "InDet.Tracking.HeavyIonPass")
+        flags = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                      "Tracking.HeavyIonPass")
     elif flags.Tracking.doHighPileup:
-        flags = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                      "InDet.Tracking.HighPileupPass")
+        flags = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                      "Tracking.HighPileupPass")
     elif flags.Tracking.doMinBias:
-        flags = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                      "InDet.Tracking.MinBiasPass")
-    elif flags.InDet.Tracking.doRobustReco:
-        flags = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                      "InDet.Tracking.RobustRecoPass")
+        flags = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                      "Tracking.MinBiasPass")
+    elif flags.Tracking.doRobustReco:
+        flags = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                      "Tracking.RobustRecoPass")
     else:
-        flags = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                      "InDet.Tracking.MainPass")
+        flags = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                      "Tracking.MainPass")
 
     flags_set += [flags]
 
@@ -47,48 +47,48 @@ def CombinedTrackingPassFlagSets(flags):
     if flags.Tracking.doLargeD0 or flags.Tracking.doLowPtLargeD0:
 
         if flags.Tracking.doLowPtLargeD0:
-            flagsLRT = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                             "InDet.Tracking.LowPtLargeD0Pass")
+            flagsLRT = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                             "Tracking.LowPtLargeD0Pass")
         elif flags.Tracking.doLargeD0:
-            flagsLRT = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                             "InDet.Tracking.R3LargeD0Pass")
+            flagsLRT = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                             "Tracking.R3LargeD0Pass")
 
         flags_set += [flagsLRT]
 
     # LowPt pass
-    if flags.InDet.Tracking.doLowPt:
-        flagsLowPt = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                           "InDet.Tracking.LowPtPass")
+    if flags.Tracking.doLowPt:
+        flagsLowPt = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                           "Tracking.LowPtPass")
         flags_set += [flagsLowPt]
 
     # VeryLowPt pass
-    if flags.InDet.Tracking.doVeryLowPt:
-        flagsVeryLowPt = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                               "InDet.Tracking.VeryLowPtPass")
+    if flags.Tracking.doVeryLowPt:
+        flagsVeryLowPt = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                               "Tracking.VeryLowPtPass")
         flags_set += [flagsVeryLowPt]
 
     # TRT standalone pass
-    if flags.InDet.Tracking.doTRTStandalone:
-        flagsTRTStandalone = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                                   "InDet.Tracking.TRTStandalonePass")
+    if flags.Tracking.doTRTStandalone:
+        flagsTRTStandalone = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                                   "Tracking.TRTStandalonePass")
         flags_set += [flagsTRTStandalone]
 
     # Forward tracklets
-    if flags.InDet.Tracking.doForwardTracks:
-        flagsForward = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                             "InDet.Tracking.ForwardPass")
+    if flags.Tracking.doForwardTracks:
+        flagsForward = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                             "Tracking.ForwardPass")
         flags_set += [flagsForward]
 
     # Disappearing pixel tracklets
-    if flags.InDet.Tracking.doTrackSegmentsDisappearing:
-        flagsDisappearing = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                                  "InDet.Tracking.DisappearingPass")
+    if flags.Tracking.doTrackSegmentsDisappearing:
+        flagsDisappearing = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                                  "Tracking.DisappearingPass")
         flags_set += [flagsDisappearing]
 
     # Beam gas
-    if flags.InDet.Tracking.doBeamGas:
-        flagsBeamGas = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                             "InDet.Tracking.BeamGasPass")
+    if flags.Tracking.doBeamGas:
+        flagsBeamGas = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                             "Tracking.BeamGasPass")
         flags_set += [flagsBeamGas]
 
     _flags_set = flags_set  # Put into cache
@@ -103,16 +103,16 @@ def ClusterSplitProbabilityContainerName(flags):
         return ITkClusterSplitProbabilityContainerName(flags)
 
     flags_set = CombinedTrackingPassFlagSets(flags)
-    extension = flags_set[-1].InDet.Tracking.ActiveConfig.extension
+    extension = flags_set[-1].Tracking.ActiveConfig.extension
 
     # No ambi processing for TRT standalone, so pick the previous pass
     if extension == "TRTStandalone":
-        extension = flags_set[-2].InDet.Tracking.ActiveConfig.extension
+        extension = flags_set[-2].Tracking.ActiveConfig.extension
 
     ClusterSplitProbContainer = "InDetAmbiguityProcessorSplitProb" + extension
 
     # Only primary pass + back-tracking
-    if len(flags_set) == 1 and flags.InDet.Tracking.doBackTracking:
+    if len(flags_set) == 1 and flags.Tracking.doBackTracking:
         ClusterSplitProbContainer = (
             "InDetTRT_SeededAmbiguityProcessorSplitProb" + extension)
     return ClusterSplitProbContainer
@@ -219,9 +219,9 @@ def InDetTrackRecoCfg(flags):
     # ------------------------------------------------------------
 
     # Pixel track segment finding
-    if flags.InDet.Tracking.doTrackSegmentsPixel:
-        flagsPixel = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                           "InDet.Tracking.PixelPass")
+    if flags.Tracking.doTrackSegmentsPixel:
+        flagsPixel = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                           "Tracking.PixelPass")
         PixelTrackContainer = "ResolvedPixelTracks"
 
         result.merge(TrackingSiPatternCfg(
@@ -233,7 +233,7 @@ def InDetTrackRecoCfg(flags):
 
         ClusterSplitProbContainer = (
             "InDetAmbiguityProcessorSplitProb" +
-            flagsPixel.InDet.Tracking.ActiveConfig.extension)
+            flagsPixel.Tracking.ActiveConfig.extension)
 
         if flags.Tracking.doTruth:
             result.merge(InDetTrackTruthCfg(
@@ -252,9 +252,9 @@ def InDetTrackRecoCfg(flags):
                 "InDetPixelTrackParticles")))
 
     # SCT track segment finding
-    if flags.InDet.Tracking.doTrackSegmentsSCT:
-        flagsSCT = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                         "InDet.Tracking.SCTPass")
+    if flags.Tracking.doTrackSegmentsSCT:
+        flagsSCT = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                         "Tracking.SCTPass")
         SCTTrackContainer = "ResolvedSCTTracks"
 
         result.merge(TrackingSiPatternCfg(
@@ -266,7 +266,7 @@ def InDetTrackRecoCfg(flags):
 
         ClusterSplitProbContainer = (
             "InDetAmbiguityProcessorSplitProb" +
-            flagsSCT.InDet.Tracking.ActiveConfig.extension)
+            flagsSCT.Tracking.ActiveConfig.extension)
 
         from xAODTrackingCnv.xAODTrackingCnvConfig import (
             TrackParticleCnvAlgNoPIDCfg)
@@ -278,9 +278,9 @@ def InDetTrackRecoCfg(flags):
                 "InDetSCTTrackParticles")))
 
     # TRT track segment finding
-    if flags.InDet.Tracking.doTrackSegmentsTRT:
-        flagsTRT = flags.cloneAndReplace("InDet.Tracking.ActiveConfig",
-                                         "InDet.Tracking.TRTPass")
+    if flags.Tracking.doTrackSegmentsTRT:
+        flagsTRT = flags.cloneAndReplace("Tracking.ActiveConfig",
+                                         "Tracking.TRTPass")
         from InDetConfig.TRTSegmentFindingConfig import (
             TRTSegmentFinding_TrackSegments_Cfg)
         result.merge(TRTSegmentFinding_TrackSegments_Cfg(flagsTRT))
@@ -314,13 +314,13 @@ def InDetTrackRecoCfg(flags):
 
         extension = (
             "" if isPrimaryPass else
-            current_flags.InDet.Tracking.ActiveConfig.extension)
+            current_flags.Tracking.ActiveConfig.extension)
 
         # ---------------------------------------
         # ----   TRTStandalone pass
         # ---------------------------------------
 
-        if flags.InDet.Tracking.doTRTStandalone and extension == "TRTStandalone":
+        if flags.Tracking.doTRTStandalone and extension == "TRTStandalone":
             result.merge(TRTStandaloneCfg(
                 current_flags,
                 InputCollections=InputCombinedInDetTracks))
@@ -331,7 +331,7 @@ def InDetTrackRecoCfg(flags):
             StatTrackCollections += [TRTTrackContainer]
             StatTrackTruthCollections += [TRTTrackContainer+"TruthCollection"]
 
-            if flags.InDet.Tracking.doTrackSegmentsTRT:
+            if flags.Tracking.doTrackSegmentsTRT:
                 result.merge(TrackParticleCnvAlgNoPIDCfg(
                     flags,
                     name=TRTTrackContainer+"CnvAlg",
@@ -350,8 +350,8 @@ def InDetTrackRecoCfg(flags):
         # for track overlay, save resolved track name
         # for final merged track collection
         if (flags.Overlay.doTrackOverlay and
-            current_flags.InDet.Tracking.ActiveConfig.storeSeparateContainer and
-                not current_flags.InDet.Tracking.ActiveConfig.useTRTExtension):
+            current_flags.Tracking.ActiveConfig.storeSeparateContainer and
+                not current_flags.Tracking.ActiveConfig.useTRTExtension):
             ResolvedTracks = flags.Overlay.SigPrefix + ResolvedTracks
 
         # Tweak to match old config key
@@ -381,14 +381,14 @@ def InDetTrackRecoCfg(flags):
 
         TrackContainer = ResolvedTracks
         if (flags.Overlay.doTrackOverlay and
-                current_flags.InDet.Tracking.ActiveConfig.storeSeparateContainer):
+                current_flags.Tracking.ActiveConfig.storeSeparateContainer):
             TrackContainer = "Resolved" + extension + "Tracks"
 
         # ---------------------------------------
         # --- TRT extension
         # ---------------------------------------
 
-        if current_flags.InDet.Tracking.ActiveConfig.useTRTExtension:
+        if current_flags.Tracking.ActiveConfig.useTRTExtension:
             ExtendedTracks = "Extended" + extension + "Tracks"
             # Tweaks to match old config key
             if extension == "Disappearing":
@@ -415,7 +415,7 @@ def InDetTrackRecoCfg(flags):
         # --- Store separate container if needed
         # ---------------------------------------
 
-        if current_flags.InDet.Tracking.ActiveConfig.storeSeparateContainer:
+        if current_flags.Tracking.ActiveConfig.storeSeparateContainer:
             # Dummy Merger to fill additional info
             # for PRD-associated pixel tracklets
             # Can also run on all separate collections like R3LargeD0
@@ -473,7 +473,7 @@ def InDetTrackRecoCfg(flags):
         else:  # Do not store separate track container
             ClusterSplitProbContainer = (
                 "InDetAmbiguityProcessorSplitProb" +
-                current_flags.InDet.Tracking.ActiveConfig.extension)
+                current_flags.Tracking.ActiveConfig.extension)
             InputCombinedInDetTracks += [TrackContainer]
 
         InputExtendedInDetTracks += [TrackContainer]
@@ -488,7 +488,7 @@ def InDetTrackRecoCfg(flags):
             # --- TRT Segments
             # ---------------------------------------
 
-            if flags.InDet.Tracking.doTRTSegments:
+            if flags.Tracking.doTRTSegments:
                 from InDetConfig.TRTSegmentFindingConfig import (
                     TRTSegmentFindingCfg)
                 result.merge(TRTSegmentFindingCfg(
@@ -499,7 +499,7 @@ def InDetTrackRecoCfg(flags):
             # --- BackTracking
             # ---------------------------------------
 
-            if flags.InDet.Tracking.doBackTracking:
+            if flags.Tracking.doBackTracking:
                 from InDetConfig.BackTrackingConfig import BackTrackingCfg
                 result.merge(BackTrackingCfg(
                     current_flags,
@@ -508,7 +508,7 @@ def InDetTrackRecoCfg(flags):
 
                 ClusterSplitProbContainer = (
                     "InDetTRT_SeededAmbiguityProcessorSplitProb" +
-                    current_flags.InDet.Tracking.ActiveConfig.extension)
+                    current_flags.Tracking.ActiveConfig.extension)
                 TRTSeededTracks = "TRTSeededTracks"
                 ResolvedTRTSeededTracks = "ResolvedTRTSeededTracks"
                 InputCombinedInDetTracks += [ResolvedTRTSeededTracks]
@@ -523,8 +523,8 @@ def InDetTrackRecoCfg(flags):
             # ---------------------------------------
 
             if (flags.Tracking.doTruth and
-                (flags.InDet.Tracking.doPseudoTracking or
-                 flags.InDet.Tracking.doIdealPseudoTracking)):
+                (flags.Tracking.doPseudoTracking or
+                 flags.Tracking.doIdealPseudoTracking)):
 
                 from TrkConfig.TrkTruthTrackAlgsConfig import TruthTrackingCfg
                 result.merge(TruthTrackingCfg(current_flags))
@@ -564,8 +564,8 @@ def InDetTrackRecoCfg(flags):
     if flags.Tracking.doTruth:
         result.merge(InDetTrackTruthCfg(flags))
 
-        if (flags.InDet.Tracking.doPseudoTracking or
-            flags.InDet.Tracking.doIdealPseudoTracking):
+        if (flags.Tracking.doPseudoTracking or
+            flags.Tracking.doIdealPseudoTracking):
             result.merge(InDetTrackTruthCfg(
                 flags,
                 Tracks="InDetPseudoTracks",
@@ -590,8 +590,8 @@ def InDetTrackRecoCfg(flags):
             flags),
         AssociationMapName="PRDtoTrackMapCombinedInDetTracks"))
 
-    if (flags.InDet.Tracking.doPseudoTracking or
-        flags.InDet.Tracking.doIdealPseudoTracking):
+    if (flags.Tracking.doPseudoTracking or
+        flags.Tracking.doIdealPseudoTracking):
         result.merge(TrackParticleCnvAlgCfg(
             flags,
             name="PseudoTrackParticleCnvAlg",
@@ -600,6 +600,7 @@ def InDetTrackRecoCfg(flags):
                 "InDetPseudoTrackParticles"),
             AssociationMapName=(
                 "PRDtoTrackMapCombinedInDetTracks")))
+
     if flags.Tracking.doTIDE_AmbiTrackMonitoring:
         from xAODTrackingCnv.xAODTrackingCnvConfig import (
             ObserverTrackParticleCnvAlgCfg)
@@ -627,15 +628,13 @@ def InDetTrackRecoCfg(flags):
             xAODTrackParticlesFromTracksContainerName=(
                 "SiSPSeedSegmentsTrackParticles")))
 
-    if flags.InDet.Tracking.doStoreSiSPSeededTracks:
+    if flags.Tracking.doStoreSiSPSeededTracks:
         from xAODTrackingCnv.xAODTrackingCnvConfig import (
             TrackParticleCnvAlgNoPIDCfg)
-        TrackContainer = "SiSPSeededTracks"
-
         result.merge(TrackParticleCnvAlgNoPIDCfg(
             flags,
             name = "SiSPSeededTracksCnvAlg",
-            TrackContainerName = TrackContainer,
+            TrackContainerName = "SiSPSeededTracks",
             xAODTrackParticlesFromTracksContainerName=(
                 "SiSPSeededTracksTrackParticles"),
             AssociationMapName=(
@@ -669,10 +668,10 @@ def InDetTrackRecoCfg(flags):
     # --- Extra optional decorations
     # ---------------------------------------
 
-    if flags.InDet.Tracking.writeExtendedPRDInfo:
+    if flags.Tracking.writeExtendedPRDInfo:
 
         if (flags.Tracking.doTIDE_AmbiTrackMonitoring or
-                flags.InDet.Tracking.doPseudoTracking):
+                flags.Tracking.doPseudoTracking):
 
             from InDetConfig.InDetPrepRawDataToxAODConfig import (
                 InDetPixelPrepDataToxAOD_ExtraTruthCfg,
@@ -719,7 +718,7 @@ def InDetTrackRecoCfg(flags):
                     "ObserverInDetCommonKernel",
                     AugmentationTools=[ObserverTrackStateOnSurfaceDecorator]))
 
-        if flags.InDet.Tracking.doPseudoTracking:
+        if flags.Tracking.doPseudoTracking:
             from DerivationFrameworkInDet.InDetToolsConfig import (
                 PseudoTrackStateOnSurfaceDecoratorCfg)
             PseudoTrackStateOnSurfaceDecorator = result.getPrimaryAndMerge(
@@ -729,7 +728,7 @@ def InDetTrackRecoCfg(flags):
                     "PseudoInDetCommonKernel",
                     AugmentationTools=[PseudoTrackStateOnSurfaceDecorator]))
 
-        if flags.InDet.Tracking.doStoreSiSPSeededTracks:
+        if flags.Tracking.doStoreSiSPSeededTracks:
             from DerivationFrameworkInDet.InDetToolsConfig import (
                 SiSPTrackStateOnSurfaceDecoratorCfg)
             SiSPTrackStateOnSurfaceDecorator = result.getPrimaryAndMerge(
@@ -789,7 +788,7 @@ def InDetTrackRecoOutputCfg(flags):
 
     # exclude IDTIDE/IDTRKVALID decorations
     excludedAuxData += '.-TrkBLX.-TrkBLY.-TrkBLZ.-TrkIBLX.-TrkIBLY.-TrkIBLZ.-TrkL1X.-TrkL1Y.-TrkL1Z.-TrkL2X.-TrkL2Y.-TrkL2Z'
-    if not flags.InDet.Tracking.writeExtendedPRDInfo:
+    if not flags.Tracking.writeExtendedPRDInfo:
         excludedAuxData += '.-msosLink'
 
     # exclude IDTIDE decorations
@@ -835,25 +834,25 @@ def InDetTrackRecoOutputCfg(flags):
     if flags.Tracking.doStoreTrackSeeds:
         toESD += ["TrackCollection#SiSPSeedSegments"]
 
-    if flags.InDet.Tracking.doTrackSegmentsPixel:
+    if flags.Tracking.doTrackSegmentsPixel:
         toESD += ["TrackCollection#ResolvedPixelTracks"]
         if flags.Tracking.doTruth:
             toESD += ["TrackTruthCollection#ResolvedPixelTracksTruthCollection"]
             toESD += ["DetailedTrackTruthCollection#ResolvedPixelTracksDetailedTruth"]
 
-    if flags.InDet.Tracking.doTrackSegmentsSCT:
+    if flags.Tracking.doTrackSegmentsSCT:
         toESD += ["TrackCollection#ResolvedSCTTracks"]
         if flags.Tracking.doTruth:
             toESD += ["TrackTruthCollection#ResolvedSCTTracksTruthCollection"]
             toESD += ["DetailedTrackTruthCollection#ResolvedSCTTracksDetailedTruth"]
 
-    if flags.InDet.Tracking.doTrackSegmentsTRT:
+    if flags.Tracking.doTrackSegmentsTRT:
         toESD += ["TrackCollection#StandaloneTRTTracks"]
         if flags.Tracking.doTruth:
             toESD += ["TrackTruthCollection#StandaloneTRTTracksTruthCollection"]
             toESD += ["DetailedTrackTruthCollection#StandaloneTRTTracksDetailedTruth"]
 
-    if flags.InDet.Tracking.doPseudoTracking:
+    if flags.Tracking.doPseudoTracking:
         toESD += ["TrackCollection#InDetPseudoTracks"]
         if flags.Tracking.doTruth:
             toESD += ["TrackTruthCollection#InDetPseudoTracksTruthCollection"]
@@ -863,17 +862,13 @@ def InDetTrackRecoOutputCfg(flags):
         toESD += ["TrackCollection#ObservedTracksCollection"]
 
     # add the forward tracks for combined muon reconstruction
-    if flags.InDet.Tracking.doForwardTracks:
+    if flags.Tracking.doForwardTracks:
         toESD += ["TrackCollection#ResolvedForwardTracks"]
         if flags.Tracking.doTruth:
             toESD += ["TrackTruthCollection#ResolvedForwardTracksTruthCollection"]
             toESD += ["DetailedTrackTruthCollection#ResolvedForwardTracksDetailedTruth"]
 
-    if flags.InDet.Tracking.doBeamGas:
-        # TODO
-        pass
-
-    if flags.InDet.Tracking.doTrackSegmentsDisappearing:
+    if flags.Tracking.doTrackSegmentsDisappearing:
         toESD += ["TrackCollection#DisappearingTracks"]
         if flags.Tracking.doTruth:
             toESD += ["TrackTruthCollection#DisappearingTracksTruthCollection"]
@@ -881,7 +876,7 @@ def InDetTrackRecoOutputCfg(flags):
 
     # Add TRT Segments (only if standalone is off).
     # TODO: no TP converter?
-    # if not flags.InDet.doTRTStandalone:
+    # if not flags.doTRTStandalone:
     #    toESD += ["Trk::SegmentCollection#TRTSegments"]
 
     # Save (Detailed) Track Truth
@@ -916,23 +911,23 @@ def InDetTrackRecoOutputCfg(flags):
     toAOD += ["xAOD::TrackParticleContainer#InDetLargeD0TrackParticles"]
     toAOD += [
         f"xAOD::TrackParticleAuxContainer#InDetLargeD0TrackParticlesAux.{excludedAuxData}"]
-    if flags.InDet.Tracking.doTrackSegmentsPixel:
+    if flags.Tracking.doTrackSegmentsPixel:
         toAOD += ["xAOD::TrackParticleContainer#InDetPixelTrackParticles"]
         toAOD += [
             f"xAOD::TrackParticleAuxContainer#InDetPixelTrackParticlesAux.{excludedAuxData}"]
-    if flags.InDet.Tracking.doTrackSegmentsDisappearing:
+    if flags.Tracking.doTrackSegmentsDisappearing:
         toAOD += ["xAOD::TrackParticleContainer#InDetDisappearingTrackParticles"]
         toAOD += [
             f"xAOD::TrackParticleAuxContainer#InDetDisappearingTrackParticlesAux.{excludedAuxData}"]
-    if flags.InDet.Tracking.doTrackSegmentsSCT:
+    if flags.Tracking.doTrackSegmentsSCT:
         toAOD += ["xAOD::TrackParticleContainer#InDetSCTTrackParticles"]
         toAOD += [
             f"xAOD::TrackParticleAuxContainer#InDetSCTTrackParticlesAux.{excludedAuxData}"]
-    if flags.InDet.Tracking.doTrackSegmentsTRT:
+    if flags.Tracking.doTrackSegmentsTRT:
         toAOD += ["xAOD::TrackParticleContainer#InDetTRTTrackParticles"]
         toAOD += [
             f"xAOD::TrackParticleAuxContainer#InDetTRTTrackParticlesAux.{excludedAuxData}"]
-    if flags.InDet.Tracking.doPseudoTracking:
+    if flags.Tracking.doPseudoTracking:
         toAOD += ["xAOD::TrackParticleContainer#InDetPseudoTrackParticles"]
         toAOD += [
             f"xAOD::TrackParticleAuxContainer#InDetPseudoTrackParticlesAux.{excludedAuxData}"]
@@ -946,7 +941,7 @@ def InDetTrackRecoOutputCfg(flags):
         if flags.Tracking.doTruth:
             toAOD += ["TrackTruthCollection#InDetObservedTrackTruthCollection"]
             toAOD += ["DetailedTrackTruthCollection#ObservedDetailedTracksTruth"]
-    if flags.InDet.Tracking.doStoreSiSPSeededTracks:
+    if flags.Tracking.doStoreSiSPSeededTracks:
         toAOD += ["xAOD::TrackParticleContainer#SiSPSeededTracksTrackParticles"]
         toAOD += [
             f"xAOD::TrackParticleAuxContainer#SiSPSeededTracksTrackParticlesAux.{excludedAuxData}"]
@@ -956,7 +951,7 @@ def InDetTrackRecoOutputCfg(flags):
             "xAOD::TrackParticleContainer#SiSPSeedSegmentsTrackParticles",
             "xAOD::TrackParticleAuxContainer#SiSPSeedSegmentsTrackParticlesAux."
         ]
-    if flags.InDet.Tracking.writeExtendedPRDInfo:
+    if flags.Tracking.writeExtendedPRDInfo:
         toAOD += [
             "xAOD::TrackMeasurementValidationContainer#PixelClusters",
             "xAOD::TrackMeasurementValidationAuxContainer#PixelClustersAux.",
@@ -980,7 +975,7 @@ def InDetTrackRecoOutputCfg(flags):
                 "xAOD::TrackStateValidationContainer#ObservedTrack_TRT_MSOSs",
                 "xAOD::TrackStateValidationAuxContainer#ObservedTrack_TRT_MSOSsAux."
             ]
-        if flags.InDet.Tracking.doPseudoTracking:
+        if flags.Tracking.doPseudoTracking:
             toAOD += [
                 "xAOD::TrackStateValidationContainer#Pseudo_Pixel_MSOSs",
                 "xAOD::TrackStateValidationAuxContainer#Pseudo_Pixel_MSOSsAux.",
@@ -988,6 +983,15 @@ def InDetTrackRecoOutputCfg(flags):
                 "xAOD::TrackStateValidationAuxContainer#Pseudo_SCT_MSOSsAux.",
                 "xAOD::TrackStateValidationContainer#Pseudo_TRT_MSOSs",
                 "xAOD::TrackStateValidationAuxContainer#Pseudo_TRT_MSOSsAux."
+            ]
+        if flags.InDet.Tracking.doStoreSiSPSeededTracks:
+            toAOD += [
+                "xAOD::TrackStateValidationContainer#SiSP_Pixel_MSOSs",
+                "xAOD::TrackStateValidationAuxContainer#SiSP_Pixel_MSOSsAux.",
+                "xAOD::TrackStateValidationContainer#SiSP_SCT_MSOSs",
+                "xAOD::TrackStateValidationAuxContainer#SiSP_SCT_MSOSsAux.",
+                "xAOD::TrackStateValidationContainer#SiSP_TRT_MSOSs",
+                "xAOD::TrackStateValidationAuxContainer#SiSP_TRT_MSOSsAux."
             ]
 
     result = ComponentAccumulator()

@@ -17,7 +17,7 @@
 #include "AtlasHepMC/GenParticle.h"
 #include "AtlasHepMC/GenVertex.h"
 #include "AtlasHepMC/MagicNumbers.h"
-#include "HepPID/ParticleIDMethods.hh"
+#include "TruthUtils/HepMCHelpers.h"
 #include "GaudiKernel/SystemOfUnits.h"
 #include <algorithm>
 
@@ -128,7 +128,7 @@ StatusCode TruthParticleFilterTool::execute()
  * @brief Test to see if we want to keep a particle.
  */
 bool
-TruthParticleFilterTool::isAccepted (HepMC::ConstGenParticlePtr p)
+TruthParticleFilterTool::isAccepted (const HepMC::ConstGenParticlePtr& p)
 {
   bool ok = false;
 
@@ -163,11 +163,11 @@ TruthParticleFilterTool::isAccepted (HepMC::ConstGenParticlePtr p)
     ok = true;
 
   //  OK if we should select hadrons and are in hadron range 
-  if( m_writeHadrons && HepPID::isHadron (pdg_id) && barcode < HepMC::PHOTOSMIN )
+  if( m_writeHadrons && MC::isHadron (pdg_id) && barcode < HepMC::PHOTOSMIN )
     ok = true;
 
   // OK if we should select b hadrons and are in hadron range 
-  if( m_writeBHadrons && barcode < HepMC::PHOTOSMIN && HepPID::isHadron (pdg_id) && HepPID::hasBottom (pdg_id) )
+  if( m_writeBHadrons && barcode < HepMC::PHOTOSMIN && MC::isBottomHadron (pdg_id) )
     ok= true;
 
   // PHOTOS range: check whether photons come from parton range or 
@@ -187,9 +187,9 @@ TruthParticleFilterTool::isAccepted (HepMC::ConstGenParticlePtr p)
       if (mother) motherPDGID = mother->pdg_id();
     }
 #endif
-    if( m_writePartons && !HepPID::isHadron( motherPDGID ) )
+    if( m_writePartons && !MC::isHadron( motherPDGID ) )
       ok = true;
-    if( m_writeHadrons && HepPID::isHadron( motherPDGID ) )
+    if( m_writeHadrons && MC::isHadron( motherPDGID ) )
       ok = true;
   }
 
@@ -249,7 +249,7 @@ TruthParticleFilterTool::isAccepted (HepMC::ConstGenParticlePtr p)
   return ok;
 }
 
-bool TruthParticleFilterTool::isLeptonFromTau(HepMC::ConstGenParticlePtr part) const{
+bool TruthParticleFilterTool::isLeptonFromTau(const HepMC::ConstGenParticlePtr& part) const{
 
   int pdg = part->pdg_id();
 
@@ -294,7 +294,7 @@ bool TruthParticleFilterTool::isLeptonFromTau(HepMC::ConstGenParticlePtr part) c
   return false;
 }
 
-bool TruthParticleFilterTool::isFromTau(HepMC::ConstGenParticlePtr part) {
+bool TruthParticleFilterTool::isFromTau(const HepMC::ConstGenParticlePtr& part) {
 
   int pdg = part->pdg_id();
 
@@ -304,16 +304,22 @@ bool TruthParticleFilterTool::isFromTau(HepMC::ConstGenParticlePtr part) {
   // Simple loop catch
   if (prod==part->end_vertex()) return false;
 
+#ifdef HEPMC3
+  // More complex loop catch
+  if ( find(m_barcode_trace.begin(),m_barcode_trace.end(),prod->id()) != m_barcode_trace.end()){
+    ATH_MSG_DEBUG( "Found a loop (a la Sherpa sample).  Backing out." );
+    return false;
+  }
+  m_barcode_trace.push_back(prod->id());
+   auto itrParent=prod->particles_in().begin();
+   auto endParent=prod->particles_in().end();
+#else
   // More complex loop catch
   if ( find(m_barcode_trace.begin(),m_barcode_trace.end(),HepMC::barcode(prod)) != m_barcode_trace.end()){
     ATH_MSG_DEBUG( "Found a loop (a la Sherpa sample).  Backing out." );
     return false;
   }
   m_barcode_trace.push_back(HepMC::barcode(prod));
-#ifdef HEPMC3
-   auto itrParent=prod->particles_in().begin();
-   auto endParent=prod->particles_in().end();
-#else
   auto itrParent = prod->particles_in_const_begin();
   auto endParent = prod->particles_in_const_end();
 #endif
@@ -351,7 +357,7 @@ bool TruthParticleFilterTool::isFromTau(HepMC::ConstGenParticlePtr part) {
   return false;
 }
 
-bool TruthParticleFilterTool::isBSM(HepMC::ConstGenParticlePtr part) const{
+bool TruthParticleFilterTool::isBSM(const HepMC::ConstGenParticlePtr& part) const{
 
   int pdg = part->pdg_id();
 
@@ -368,7 +374,7 @@ bool TruthParticleFilterTool::isBSM(HepMC::ConstGenParticlePtr part) const{
   return false;
 }
 
-bool TruthParticleFilterTool::isBoson(HepMC::ConstGenParticlePtr part) const{
+bool TruthParticleFilterTool::isBoson(const HepMC::ConstGenParticlePtr& part) const{
 
   int pdg = part->pdg_id();
 
@@ -382,7 +388,7 @@ bool TruthParticleFilterTool::isBoson(HepMC::ConstGenParticlePtr part) const{
   return true;
 }
 
-bool TruthParticleFilterTool::isFsrFromLepton(HepMC::ConstGenParticlePtr part) const {
+bool TruthParticleFilterTool::isFsrFromLepton(const HepMC::ConstGenParticlePtr& part) const {
   int pdg = part->pdg_id();
   if(std::abs(pdg) != 22) return false; // photon
   if(HepMC::is_simulation_particle(part)) return false; // Geant photon

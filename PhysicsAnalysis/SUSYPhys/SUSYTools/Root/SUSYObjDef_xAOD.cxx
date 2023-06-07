@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 // Local include(s):
@@ -373,16 +373,19 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
     m_trig2016combination_singleLep(""),
     m_trig2017combination_singleLep(""),
     m_trig2018combination_singleLep(""),
+    m_trigNToys_diLep(-99),
     m_trig2015combination_diLep(""),
     m_trig2016combination_diLep(""),
     m_trig2017combination_diLep(""),
     m_trig2018combination_diLep(""),
     m_trigGlobalEffCorrTool_diLep(""),
+    m_trigNToys_multiLep(-99),
     m_trig2015combination_multiLep(""),
     m_trig2016combination_multiLep(""),
     m_trig2017combination_multiLep(""),
     m_trig2018combination_multiLep(""),
     m_trigGlobalEffCorrTool_multiLep(""),
+    m_trigNToys_diPhoton(-99),
     m_trig2015combination_diPhoton(""),
     m_trig2016combination_diPhoton(""),
     m_trig2017combination_diPhoton(""),
@@ -407,12 +410,12 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
     m_pmgSHnjetWeighter(""),
     m_pmgSHnjetWeighterWZ(""),
     //
-    m_acc_eleIdBaseline(""),
-    m_acc_eleId(""),
-    m_acc_photonIdBaseline(""),
-    m_acc_photonId(""),
+    m_acc_eleIdBaseline("DFCommonElectronsLHLooseBL"),
+    m_acc_eleId("DFCommonElectronsLHTight"),
+    m_acc_photonIdBaseline("DFCommonPhotonsIsEMTight"),
+    m_acc_photonId("DFCommonPhotonsIsEMTight"),
     //
-    m_acc_jetClean("")
+    m_acc_jetClean("DFCommonJets_jetClean_LooseBad")
 {
   //General settings
   declareProperty( "DataSource", m_dataSource = Undefined );
@@ -585,7 +588,7 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
   //--- Tools configuration
   //PRW
   declareProperty( "AutoconfigurePRWTool", m_autoconfigPRW );
-  declareProperty( "AutoconfigurePRWToolPath", m_autoconfigPRWPath ); // e.g. dev/PileupReweighting/share/ 
+  declareProperty( "AutoconfigurePRWToolPath", m_autoconfigPRWPath ); // e.g. dev/PileupReweighting/share/
   declareProperty( "AutoconfigurePRWToolFile", m_autoconfigPRWFile ); // e.g. DSID407xxx/pileup_mc16a_dsid407352_FS.root
   declareProperty( "AutoconfigurePRWToolCombinedmode", m_autoconfigPRWCombinedmode );
   declareProperty( "AutoconfigurePRWToolRPVmode", m_autoconfigPRWRPVmode );
@@ -621,7 +624,7 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
   declareProperty( "EleEffCorrFNList", m_EG_corrFNList );
   declareProperty( "IsRun3", m_isRun3 );
   declareProperty( "IsPHYSLITE", m_isPHYSLITE );
-  
+
   //For electron trigger SF tools
   declareProperty( "ElectronTriggerSFStringSingle",      m_electronTriggerSFStringSingle);
 
@@ -757,7 +760,7 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
   m_mu_iso_support = {
      "PflowLoose_FixedRad", "PflowLoose_VarRad", "PflowTight_FixedRad", "PflowTight_VarRad",  // PFlow (new naming) recommended WPs
      "TightTrackOnly_FixedRad", "TightTrackOnly_VarRad", "HighPtTrackOnly",                   // TrackOnly (new naming) recommended WPs
-     "PLVLoose", "PLVTight",                                                                  // PLV recommended WPs 
+     "PLVLoose", "PLVTight",                                                                  // PLV recommended WPs
      "Loose_VarRad", "Loose_FixedRad", "Tight_VarRad", "Tight_FixedRad",                      // Other WPs (new naming)
      "PLImprovedTight", "PLImprovedVeryTight"                                                 // New PLIV WPs, fallback support below b/o SFs
   };
@@ -819,29 +822,22 @@ StatusCode SUSYObjDef_xAOD::initialize() {
   bool autoconf(false);
 #ifndef XAOD_STANDALONE // For now metadata is Athena-only
   if ( m_dataSource < 0 ) {
-    bool local_isData(false), local_isAtlfast(false);
     autoconf = true;
-    ATH_MSG_INFO("Autoconfigure isData and isAtlfast");
+    ATH_MSG_INFO("Autoconfiguring: dataSource, mcCampaign, isPHYSLITE");
     std::string projectName = "";
     ATH_CHECK( AthAnalysisHelper::retrieveMetadata("/TagInfo", "project_name", projectName, inputMetaStore() ) );
-    if ( projectName == "IS_SIMULATION" ) local_isData = false;
-    else if (projectName.compare(0, 4, "data") == 0 ) local_isData = true;
-    else {
+    if ( projectName == "IS_SIMULATION" ) {
+        std::string simFlavour = "";
+        ATH_CHECK( AthAnalysisHelper::retrieveMetadata("/Simulation/Parameters", "SimulationFlavour", simFlavour, inputMetaStore() ) );
+        TString s(simFlavour); s.ToUpper();
+        m_dataSource = s.Contains("ATLFAST") ? AtlfastII : FullSim;
+    } else if (projectName.compare(0, 4, "data") == 0 ) {
+        m_dataSource = Data;
+    } else {
       ATH_MSG_ERROR("Failed to autoconfigure -- project_name matches neither IS_SIMULATION nor data!");
       return StatusCode::FAILURE;
     }
 
-    if (!local_isData) {
-      std::string simFlavour = "";
-      ATH_CHECK( AthAnalysisHelper::retrieveMetadata("/Simulation/Parameters", "SimulationFlavour", simFlavour, inputMetaStore() ) );
-      boost::to_upper(simFlavour);
-      local_isAtlfast = (simFlavour.find("ATLFAST") != std::string::npos);
-    }
-    if (local_isData) {m_dataSource = Data;}
-    else {
-      if (local_isAtlfast) {m_dataSource = AtlfastII;}
-      else {m_dataSource = FullSim;}
-    }
   }
 #endif
 
@@ -889,7 +885,7 @@ StatusCode SUSYObjDef_xAOD::initialize() {
 
   m_inputMETCore = m_isPHYSLITE? "MET_Core_AnalysisMET":"MET_Core_" + m_inputMETSuffix;
   m_inputMETMap  = m_isPHYSLITE? "METAssoc_AnalysisMET":"METAssoc_" + m_inputMETSuffix;
-  
+
   ATH_MSG_DEBUG ( "Build MET Core:     " << m_inputMETCore);
   ATH_MSG_DEBUG ( "Build MET with map: " << m_inputMETMap);
 
@@ -919,6 +915,9 @@ StatusCode SUSYObjDef_xAOD::initialize() {
     // need to set a full path if you don't use the one in CVMFS
     ATH_CHECK( autoconfigurePileupRWTool(m_autoconfigPRWPath, m_autoconfigPRWFile, false, m_autoconfigPRWRPVmode, m_autoconfigPRWCombinedmode, m_autoconfigPRWHFFilter) );
 
+  ATH_CHECK( m_outElectronLocation.initialize() );
+  ATH_CHECK( m_outMuonLocation.initialize() );
+
   ATH_CHECK( this->SUSYToolsInit() );
 
   ATH_MSG_VERBOSE("Done with tool retrieval");
@@ -941,7 +940,7 @@ StatusCode SUSYObjDef_xAOD::autoconfigurePileupRWTool(const std::string& PRWfile
     std::string amiTag("");
     std::string mcCampaignMD("");
     std::string simFlavour("");
-    std::string simType(""); 
+    std::string simType("");
     const xAOD::FileMetaData* fmd = nullptr;
 
     // configure PRW rtag options from m_autoconfigPRWRtags string
@@ -1017,8 +1016,7 @@ StatusCode SUSYObjDef_xAOD::autoconfigurePileupRWTool(const std::string& PRWfile
 	} else {
 	  // OK, this is a fall-back option without using MetaData but one has to manually set 'mcCampaign' property
 	  ATH_MSG_WARNING( "autoconfigurePileupRWTool(): access to FileMetaData failed -> getting the mc channel number (DSID) from the event store." );
-	  const xAOD::EventInfo* evtInfo = nullptr;
-	  ATH_CHECK( evtStore()->retrieve( evtInfo, "EventInfo" ) );
+	  const xAOD::EventInfo* evtInfo = GetEventInfo();
 	  dsid = evtInfo->mcChannelNumber();
 
 	  std::string NoMetadataButPropertyOK("");
@@ -1357,23 +1355,26 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   configFromFile(m_EG_corrModel, "Ele.EffNPcorrModel", rEnv, "TOTAL");
   configFromFile(m_EG_corrFNList, "Ele.EffCorrFNList", rEnv, "None");
   configFromFile(m_electronTriggerSFStringSingle, "Ele.TriggerSFStringSingle", rEnv, "SINGLE_E_2015_e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose_2016_2018_e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0");
-  configFromFile(m_eleEffMapFilePath, "Ele.EffMapFilePath", rEnv, "ElectronEfficiencyCorrection/2015_2025/rel22.2/2022_Summer_Prerecom_v1/map1.txt");
-  configFromFile(m_trig2015combination_singleLep, "Trig.Singlelep2015", rEnv, "e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose || mu20_iloose_L1MU15_OR_mu50"); 
-  configFromFile(m_trig2016combination_singleLep, "Trig.Singlelep2016", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50"); 
-  configFromFile(m_trig2017combination_singleLep, "Trig.Singlelep2017", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50"); 
-  configFromFile(m_trig2018combination_singleLep, "Trig.Singlelep2018", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50"); 
-  configFromFile(m_trig2015combination_diLep, "Trig.Dilep2015", rEnv, "e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose || mu20_iloose_L1MU15_OR_mu50 || 2e12_lhloose_L12EM10VH || e17_lhloose_mu14 || e7_lhmedium_mu24 || mu18_mu8noL1 || 2mu10"); 
-  configFromFile(m_trig2016combination_diLep, "Trig.Dilep2016", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e17_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_L1EM22VHI_mu8noL1 || mu22_mu8noL1 || 2mu14"); 
-  configFromFile(m_trig2017combination_diLep, "Trig.Dilep2017", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || mu22_mu8noL1 || 2mu14"); 
-  configFromFile(m_trig2018combination_diLep, "Trig.Dilep2018", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || mu22_mu8noL1 || 2mu14"); 
-  configFromFile(m_trig2015combination_multiLep, "Trig.Multi2015", rEnv, "e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose || mu20_iloose_L1MU15_OR_mu50 || 2e12_lhloose_L12EM10VH || e17_lhloose_2e9_lhloose || 2e12_lhloose_mu10 || e12_lhloose_2mu10 || e17_lhloose_mu14 || e7_lhmedium_mu24 || mu18_mu8noL1 || 2mu10 || 3mu6"); 
-  configFromFile(m_trig2016combination_multiLep, "Trig.Multi2016", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e17_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_L1EM22VHI_mu8noL1 || e17_lhloose_nod0_2e9_lhloose_nod0 || e12_lhloose_nod0_2mu10 || 2e12_lhloose_nod0_mu10 || mu22_mu8noL1 || 2mu14 || 3mu6"); 
-  configFromFile(m_trig2017combination_multiLep, "Trig.Multi2017", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || e24_lhvloose_nod0_2e12_lhvloose_nod0_L1EM20VH_3EM10VH || e12_lhloose_nod0_2mu10 || 2e12_lhloose_nod0_mu10 || mu22_mu8noL1 || 2mu14 || 3mu6"); 
-  configFromFile(m_trig2018combination_multiLep, "Trig.Multi2018", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || e24_lhvloose_nod0_2e12_lhvloose_nod0_L1EM20VH_3EM10VH || e12_lhloose_nod0_2mu10 || 2e12_lhloose_nod0_mu10 || mu22_mu8noL1 || 2mu14 || 3mu6"); 
+  configFromFile(m_eleEffMapFilePath, "Ele.EffMapFilePath", rEnv, "ElectronEfficiencyCorrection/2015_2025/rel22.2/2022_Summer_Prerecom_v1/map4.txt");
+  configFromFile(m_trig2015combination_singleLep, "Trig.Singlelep2015", rEnv, "e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose || mu20_iloose_L1MU15_OR_mu50");
+  configFromFile(m_trig2016combination_singleLep, "Trig.Singlelep2016", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50");
+  configFromFile(m_trig2017combination_singleLep, "Trig.Singlelep2017", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50");
+  configFromFile(m_trig2018combination_singleLep, "Trig.Singlelep2018", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50");
+  configFromFile(m_trigNToys_diLep, "Trig.DilepNToys", rEnv, 250); // 0 means calculate from formula instead - needs to be supported for the trigger combination
+  configFromFile(m_trig2015combination_diLep, "Trig.Dilep2015", rEnv, "e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose || mu20_iloose_L1MU15_OR_mu50 || 2e12_lhloose_L12EM10VH || e17_lhloose_mu14 || e7_lhmedium_mu24 || mu18_mu8noL1 || 2mu10");
+  configFromFile(m_trig2016combination_diLep, "Trig.Dilep2016", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e17_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_L1EM22VHI_mu8noL1 || mu22_mu8noL1 || 2mu14");
+  configFromFile(m_trig2017combination_diLep, "Trig.Dilep2017", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || mu22_mu8noL1 || 2mu14");
+  configFromFile(m_trig2018combination_diLep, "Trig.Dilep2018", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || mu22_mu8noL1 || 2mu14");
+  configFromFile(m_trigNToys_multiLep, "Trig.MultiNToys", rEnv, 250); // 0 means calculate from formula instead - needs to be supported for the trigger combination
+  configFromFile(m_trig2015combination_multiLep, "Trig.Multi2015", rEnv, "e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose || mu20_iloose_L1MU15_OR_mu50 || 2e12_lhloose_L12EM10VH || e17_lhloose_2e9_lhloose || 2e12_lhloose_mu10 || e12_lhloose_2mu10 || e17_lhloose_mu14 || e7_lhmedium_mu24 || mu18_mu8noL1 || 2mu10 || 3mu6");
+  configFromFile(m_trig2016combination_multiLep, "Trig.Multi2016", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e17_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_L1EM22VHI_mu8noL1 || e17_lhloose_nod0_2e9_lhloose_nod0 || e12_lhloose_nod0_2mu10 || 2e12_lhloose_nod0_mu10 || mu22_mu8noL1 || 2mu14 || 3mu6");
+  configFromFile(m_trig2017combination_multiLep, "Trig.Multi2017", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || e24_lhvloose_nod0_2e12_lhvloose_nod0_L1EM20VH_3EM10VH || e12_lhloose_nod0_2mu10 || 2e12_lhloose_nod0_mu10 || mu22_mu8noL1 || 2mu14 || 3mu6");
+  configFromFile(m_trig2018combination_multiLep, "Trig.Multi2018", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || e24_lhvloose_nod0_2e12_lhvloose_nod0_L1EM20VH_3EM10VH || e12_lhloose_nod0_2mu10 || 2e12_lhloose_nod0_mu10 || mu22_mu8noL1 || 2mu14 || 3mu6");
+  configFromFile(m_trigNToys_diPhoton, "Trig.DiphotonNToys", rEnv, 250); // 0 means calculate from formula instead - needs to be supported for the trigger combination
   configFromFile(m_trig2015combination_diPhoton, "Trig.Diphoton2015", rEnv, "g35_loose_g25_loose");
-  configFromFile(m_trig2016combination_diPhoton, "Trig.Diphotonp2016", rEnv, "g35_loose_g25_loose"); 
-  configFromFile(m_trig2017combination_diPhoton, "Trig.Diphotonp2017", rEnv, "g35_medium_g25_medium_L12EM20VH"); 
-  configFromFile(m_trig2018combination_diPhoton, "Trig.Diphotonp2018", rEnv, "g35_medium_g25_medium_L12EM20VH"); 
+  configFromFile(m_trig2016combination_diPhoton, "Trig.Diphotonp2016", rEnv, "g35_loose_g25_loose");
+  configFromFile(m_trig2017combination_diPhoton, "Trig.Diphotonp2017", rEnv, "g35_medium_g25_medium_L12EM20VH");
+  configFromFile(m_trig2018combination_diPhoton, "Trig.Diphotonp2018", rEnv, "g35_medium_g25_medium_L12EM20VH");
   //
   configFromFile(m_muBaselinePt, "MuonBaseline.Pt", rEnv, 10000.);
   configFromFile(m_muBaselineEta, "MuonBaseline.Eta", rEnv, 2.7);
@@ -1399,7 +1400,7 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   //
   // LRT muons
   configFromFile(m_muLRT, "Muon.LRTOR", rEnv, false);
-  // 
+  //
   configFromFile(m_badmuQoverP, "BadMuon.qoverp", rEnv, 0.4);
   //
   configFromFile(m_muCalibrationMode, "Muon.CalibrationMode", rEnv, 1); // 0: "setup1"(correctData), 1: "setup2"(additionalMCSys)
@@ -1439,7 +1440,7 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   configFromFile(m_jetUncertaintiesAnalysisFile, "Jet.AnalysisFile", rEnv, "default"); // https://twiki.cern.ch/twiki/bin/view/AtlasProtected/JetUncertaintiesRel21Summer2018SmallR
   configFromFile(m_jetUncertaintiesCalibArea, "Jet.UncertCalibArea", rEnv, "default"); // Defaults to default area set by tool
   configFromFile(m_jetUncertaintiesPDsmearing, "Jet.UncertPDsmearing", rEnv, false); // for non "SimpleJER" config, run the PDSmear systematics. This are labelled with an __2 if they are being used, but otherwise will have the same tree name as the JET_JER systematic trees.
-  configFromFile(m_fatJets, "Jet.LargeRcollection", rEnv, "AntiKt10UFOCSSKSoftDropBeta100Zcut10Jets"); // set to "None" to turn off large jets 
+  configFromFile(m_fatJets, "Jet.LargeRcollection", rEnv, "AntiKt10UFOCSSKSoftDropBeta100Zcut10Jets"); // set to "None" to turn off large jets
   configFromFile(m_fatJetUncConfig, "Jet.LargeRuncConfig", rEnv, ""); // waiting for rec
   configFromFile(m_fatJetUncVars, "Jet.LargeRuncVars", rEnv, "default"); // do all if not specified
   configFromFile(m_WtagConfig, "Jet.WtaggerConfig", rEnv, "SmoothedContainedWTagger_AntiKt10UFOCSSKSoftDrop_FixedSignalEfficiency80_20220221.dat");
@@ -1465,7 +1466,7 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   configFromFile(m_badJetCut, "BadJet.Cut", rEnv, "LooseBad");
   //
   configFromFile(m_doFwdJVT, "FwdJet.doJVT", rEnv, false); // https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/PileupJetRecommendations
-  configFromFile(m_fJvtWP, "FwdJet.JvtWP", rEnv, "Loose"); 
+  configFromFile(m_fJvtWP, "FwdJet.JvtWP", rEnv, "Loose");
   configFromFile(m_fJvtPtMax, "FwdJet.JvtPtMax", rEnv, 120e3);
   configFromFile(m_fJvtEtaMin, "FwdJet.JvtEtaMin", rEnv, 2.5);
   configFromFile(m_fJvtConfig, "FwdJet.JvtConfig", rEnv, "May2020/");
@@ -1476,7 +1477,7 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   configFromFile(m_BtagTagger, "Btag.Tagger", rEnv, "DL1r");
   configFromFile(m_BtagWP, "Btag.WP", rEnv, "FixedCutBEff_77");
   configFromFile(m_BtagMinPt, "Btag.MinPt", rEnv, -1.); // Not calibrated below 20
-  
+
   configFromFile(m_bTaggingCalibrationFilePath, "Btag.CalibPath", rEnv, "xAODBTaggingEfficiency/13TeV/2022-22-13TeV-MC20-CDI-2022-07-28_v1.root");
   configFromFile(m_BtagSystStrategy, "Btag.SystStrategy", rEnv, "Envelope");
 
@@ -1551,7 +1552,7 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   configFromFile(m_trkMETsyst, "MET.DoTrkSyst", rEnv, true);
   configFromFile(m_caloMETsyst, "MET.DoCaloSyst", rEnv, false);
   configFromFile(m_trkJetsyst, "MET.DoTrkJetSyst", rEnv, false);
-  configFromFile(m_metsysConfigPrefix, "METSys.ConfigPrefix", rEnv, "METUtilities/data17_13TeV/prerec_Jan16");
+  configFromFile(m_metsysConfigPrefix, "METSys.ConfigPrefix", rEnv, "METUtilities/R22_PreRecs");
   configFromFile(m_metJetSelection, "MET.JetSelection", rEnv, "Tight"); // Loose, Tight (default), Tighter, Tenacious
   configFromFile(m_softTermParam, "METSig.SoftTermParam", rEnv, met::Random);
   configFromFile(m_treatPUJets, "METSig.TreatPUJets", rEnv, true);
@@ -1632,23 +1633,23 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   ATH_CHECK( validConfig(m_strictConfigCheck) );
 
   //** cache trigger chains for electron matching
-  GetTriggerTokens(m_electronTriggerSFStringSingle, v_trigs15_cache_singleEle, v_trigs16_cache_singleEle, v_trigs17_cache_singleEle, v_trigs18_cache_singleEle);
+  GetTriggerTokens(m_electronTriggerSFStringSingle, m_v_trigs15_cache_singleEle, m_v_trigs16_cache_singleEle, m_v_trigs17_cache_singleEle, m_v_trigs18_cache_singleEle);
 
   //** cache trigger chains for matching (both electrons and muons)
-  GetTriggerTokens(m_electronTriggerSFStringSingle, v_trigs15_cache_singleEle, v_trigs16_cache_singleEle, v_trigs17_cache_singleEle, v_trigs18_cache_singleEle);
+  GetTriggerTokens(m_electronTriggerSFStringSingle, m_v_trigs15_cache_singleEle, m_v_trigs16_cache_singleEle, m_v_trigs17_cache_singleEle, m_v_trigs18_cache_singleEle);
 
-  v_trigs15_cache_singleLep = GetTriggerOR(m_trig2015combination_singleLep);
-  v_trigs16_cache_singleLep = GetTriggerOR(m_trig2016combination_singleLep);
-  v_trigs17_cache_singleLep = GetTriggerOR(m_trig2017combination_singleLep);
-  v_trigs18_cache_singleLep = GetTriggerOR(m_trig2018combination_singleLep);
-  v_trigs15_cache_diLep = GetTriggerOR(m_trig2015combination_diLep);
-  v_trigs16_cache_diLep = GetTriggerOR(m_trig2016combination_diLep);
-  v_trigs17_cache_diLep = GetTriggerOR(m_trig2017combination_diLep);
-  v_trigs18_cache_diLep = GetTriggerOR(m_trig2018combination_diLep);
-  v_trigs15_cache_multiLep = GetTriggerOR(m_trig2015combination_multiLep);
-  v_trigs16_cache_multiLep = GetTriggerOR(m_trig2016combination_multiLep);
-  v_trigs17_cache_multiLep = GetTriggerOR(m_trig2017combination_multiLep);
-  v_trigs18_cache_multiLep = GetTriggerOR(m_trig2018combination_multiLep);
+  m_v_trigs15_cache_singleLep = GetTriggerOR(m_trig2015combination_singleLep);
+  m_v_trigs16_cache_singleLep = GetTriggerOR(m_trig2016combination_singleLep);
+  m_v_trigs17_cache_singleLep = GetTriggerOR(m_trig2017combination_singleLep);
+  m_v_trigs18_cache_singleLep = GetTriggerOR(m_trig2018combination_singleLep);
+  m_v_trigs15_cache_diLep = GetTriggerOR(m_trig2015combination_diLep);
+  m_v_trigs16_cache_diLep = GetTriggerOR(m_trig2016combination_diLep);
+  m_v_trigs17_cache_diLep = GetTriggerOR(m_trig2017combination_diLep);
+  m_v_trigs18_cache_diLep = GetTriggerOR(m_trig2018combination_diLep);
+  m_v_trigs15_cache_multiLep = GetTriggerOR(m_trig2015combination_multiLep);
+  m_v_trigs16_cache_multiLep = GetTriggerOR(m_trig2016combination_multiLep);
+  m_v_trigs17_cache_multiLep = GetTriggerOR(m_trig2017combination_multiLep);
+  m_v_trigs18_cache_multiLep = GetTriggerOR(m_trig2018combination_multiLep);
 
   return StatusCode::SUCCESS;
 }
@@ -1658,7 +1659,7 @@ const std::vector<std::string> SUSYObjDef_xAOD::split(const std::string& s, cons
   assert(delim.length() == 1);
   std::vector<std::string> retval;
   retval.reserve(std::count(s.begin(), s.end(), delim[0]) + 1);
-  // if only 1 
+  // if only 1
   if (s.find(delim)==std::string::npos) {
      retval.emplace_back(s);
      return retval;
@@ -1704,8 +1705,8 @@ void SUSYObjDef_xAOD::getTauConfig(const std::string& tauConfigPath, std::vector
   static const std::string trueBool = "TRUE";
 
   // Now find the pT and eta window
-  std::vector<std::string> _pT_window;
-  std::vector<std::string> _eta_window;
+  std::vector<std::string> v_pT_window;
+  std::vector<std::string> v_eta_window;
   pT_window.clear();
   eta_window.clear();
   float pT_min = -99.0;
@@ -1714,9 +1715,9 @@ void SUSYObjDef_xAOD::getTauConfig(const std::string& tauConfigPath, std::vector
   float eta_max = -99.0;
   for (const auto& cut : cuts) {
     if(cut == "PtRegion") {
-      _pT_window = split(rEnv.GetValue("PtRegion", ""), ";");
-      std::transform(std::begin(_pT_window),
-		     std::end(_pT_window),
+      v_pT_window = split(rEnv.GetValue("PtRegion", ""), ";");
+      std::transform(std::begin(v_pT_window),
+		     std::end(v_pT_window),
 		     std::back_inserter(pT_window),
 		     [](const std::string& s) { return std::stof(s); }
 		     );
@@ -1725,9 +1726,9 @@ void SUSYObjDef_xAOD::getTauConfig(const std::string& tauConfigPath, std::vector
     } else if (cut == "PtMax") {
       pT_max = rEnv.GetValue("PtMax", NAN);
     } else if (cut == "AbsEtaRegion") {
-      _eta_window = split(rEnv.GetValue("AbsEtaRegion", ""), ";");
-      std::transform(std::begin(_eta_window),
-		     std::end(_eta_window),
+      v_eta_window = split(rEnv.GetValue("AbsEtaRegion", ""), ";");
+      std::transform(std::begin(v_eta_window),
+		     std::end(v_eta_window),
 		     std::back_inserter(eta_window),
 		     [](const std::string& s) { return std::stof(s); }
 		     );
@@ -1995,7 +1996,7 @@ StatusCode SUSYObjDef_xAOD::applySystematicVariation( const CP::SystematicSet& s
   m_currentSyst = systConfig;
 
   // NB: SystematicSet typically has only one component (see SUSYToolsTester macro)
-  // The PDSmear systematics have been initialised as the second component of the JET_JER systematic, here we'll catch the uncertainties which are to use the PDSmear initialised tool. 
+  // The PDSmear systematics have been initialised as the second component of the JET_JER systematic, here we'll catch the uncertainties which are to use the PDSmear initialised tool.
   if (!m_jetUncertaintiesTool.empty() && systConfig.name().find("__2") == std::string::npos) {
     StatusCode ret = m_jetUncertaintiesTool->applySystematicVariation(systConfig);
     if ( ret != StatusCode::SUCCESS) {
@@ -2136,7 +2137,7 @@ StatusCode SUSYObjDef_xAOD::applySystematicVariation( const CP::SystematicSet& s
   if (!m_trigGlobalEffCorrTool_diLep.empty()) {
     StatusCode ret = m_trigGlobalEffCorrTool_diLep->applySystematicVariation(systConfig);
     for(auto &sfop : m_elecTrigEffTools){
-      StatusCode ret1 = sfop->applySystematicVariation(systConfig); 
+      StatusCode ret1 = sfop->applySystematicVariation(systConfig);
       if (ret1 != StatusCode::SUCCESS) { ATH_MSG_ERROR("Cannot configure m_elecTrigEffTools (dilepton trigger) for systematic var. " << systConfig.name() ); return ret1; }
     }
     for(auto &sfop : m_elecTrigSFTools){
@@ -2157,7 +2158,7 @@ StatusCode SUSYObjDef_xAOD::applySystematicVariation( const CP::SystematicSet& s
   if (!m_trigGlobalEffCorrTool_multiLep.empty()) {
     StatusCode ret = m_trigGlobalEffCorrTool_multiLep->applySystematicVariation(systConfig);
     for(auto &sfop : m_elecTrigEffTools){
-      StatusCode ret1 = sfop->applySystematicVariation(systConfig); 
+      StatusCode ret1 = sfop->applySystematicVariation(systConfig);
       if (ret1 != StatusCode::SUCCESS) { ATH_MSG_ERROR("Cannot configure m_elecTrigEffTools (multilep trigger) for systematic var. " << systConfig.name() ); return ret1; }
     }
     for(auto &sfop : m_elecTrigSFTools){
@@ -2232,7 +2233,7 @@ StatusCode SUSYObjDef_xAOD::applySystematicVariation( const CP::SystematicSet& s
   if (!m_trigGlobalEffCorrTool_diPhoton.empty()) {
     StatusCode ret = m_trigGlobalEffCorrTool_diPhoton->applySystematicVariation(systConfig);
     for(auto &sfop : m_photonTrigEffTools){
-      StatusCode ret1 = sfop->applySystematicVariation(systConfig); 
+      StatusCode ret1 = sfop->applySystematicVariation(systConfig);
       if (ret1 != StatusCode::SUCCESS) { ATH_MSG_ERROR("Cannot configure m_photonTrigEffTools (diphoton trigger) for systematic var. " << systConfig.name() ); return ret1; }
     }
     for(auto &sfop : m_photonTrigSFTools){
@@ -2355,7 +2356,7 @@ std::vector<ST::SystInfo> SUSYObjDef_xAOD::getSystInfoList() const {
   infodef.affectsType = Unknown;
   infodef.affectedWeights.clear();
   sysInfoList.push_back(infodef);
-  
+
 
   // add all recommended systematics
   for (const auto& systSet : CP::make_systematics_vector(recommendedSystematics)) {
@@ -2368,7 +2369,7 @@ std::vector<ST::SystInfo> SUSYObjDef_xAOD::getSystInfoList() const {
 	  CP::SystematicVariation sys_JER(JER_systematicName);
 	  sysInfoList.push_back(getSystInfo(sys_JER));
 	}
-    }    
+    }
 
   }
 
@@ -2752,13 +2753,17 @@ StatusCode SUSYObjDef_xAOD::NearbyLeptonCorrections(xAOD::ElectronContainer *ele
   return StatusCode::SUCCESS;
 }
 
-
+const xAOD::EventInfo* SUSYObjDef_xAOD::GetEventInfo() const {
+  const xAOD::EventInfo* evtInfo = nullptr;
+  if ( evtStore()->retrieve( evtInfo, "EventInfo" ).isFailure() ) {
+    throw std::runtime_error("Unable to fetch EventInfo.");
+  }
+  return evtInfo;
+}
 
 float SUSYObjDef_xAOD::GetPileupWeight() {
 
-  const xAOD::EventInfo* evtInfo = nullptr;
-  ATH_CHECK( evtStore()->retrieve( evtInfo, "EventInfo" ) );
-
+  const xAOD::EventInfo* evtInfo = GetEventInfo();
   float pu_weight = m_prwTool->getCombinedWeight(*evtInfo);
 
   if(!isfinite(pu_weight)) pu_weight = 1.;
@@ -2773,9 +2778,7 @@ float SUSYObjDef_xAOD::GetPileupWeightPrescaledTrigger(const std::string & trigg
      https://twiki.cern.ch/twiki/bin/view/AtlasProtected/ExtendedPileupReweighting#Prescaling%20MC
   */
 
-  const xAOD::EventInfo* evtInfo = nullptr;
-  ATH_CHECK( evtStore()->retrieve( evtInfo, "EventInfo" ) );
-
+  const xAOD::EventInfo* evtInfo = GetEventInfo();
   float pu_weight = m_prwTool->getCombinedWeight(*evtInfo,trigger_expr);
 
   if(!isfinite(pu_weight)) pu_weight = 1.;
@@ -2784,26 +2787,22 @@ float SUSYObjDef_xAOD::GetPileupWeightPrescaledTrigger(const std::string & trigg
 }
 
 ULong64_t SUSYObjDef_xAOD::GetPileupWeightHash() {
-  const xAOD::EventInfo* evtInfo = nullptr;
-  ATH_CHECK( evtStore()->retrieve( evtInfo, "EventInfo" ) );
+  const xAOD::EventInfo* evtInfo = GetEventInfo();
   return m_prwTool->getPRWHash( *evtInfo );
 }
 
 float SUSYObjDef_xAOD::GetDataWeight(const std::string& trig) {
-  const xAOD::EventInfo* evtInfo = nullptr;
-  ATH_CHECK( evtStore()->retrieve( evtInfo, "EventInfo" ) );
+  const xAOD::EventInfo* evtInfo = GetEventInfo();
   return m_prwTool->getDataWeight( *evtInfo, trig );
 }
 
 float SUSYObjDef_xAOD::GetCorrectedAverageInteractionsPerCrossing(bool includeDataSF) {
-  const xAOD::EventInfo* evtInfo = nullptr;
-  ATH_CHECK( evtStore()->retrieve( evtInfo, "EventInfo" ) );
+  const xAOD::EventInfo* evtInfo = GetEventInfo();
   return m_prwTool->getCorrectedAverageInteractionsPerCrossing( *evtInfo, includeDataSF );
 }
 
 float SUSYObjDef_xAOD::GetCorrectedActualInteractionsPerCrossing(bool includeDataSF) {
-  const xAOD::EventInfo* evtInfo = nullptr;
-  ATH_CHECK( evtStore()->retrieve( evtInfo, "EventInfo" ) );
+  const xAOD::EventInfo* evtInfo = GetEventInfo();
   return m_prwTool->getCorrectedActualInteractionsPerCrossing( *evtInfo, includeDataSF );
 }
 
@@ -2813,8 +2812,7 @@ double SUSYObjDef_xAOD::GetSumOfWeights(int channel) {
 
 unsigned int SUSYObjDef_xAOD::GetRandomRunNumber(bool muDependentRRN) {
 
-  const xAOD::EventInfo* evtInfo = nullptr;
-  ATH_CHECK( evtStore()->retrieve( evtInfo, "EventInfo" ) );
+  const xAOD::EventInfo* evtInfo = GetEventInfo();
   if (randomrunnumber.isAvailable(*(evtInfo)) && muDependentRRN) {
     return randomrunnumber(*(evtInfo));
   }
@@ -2828,8 +2826,7 @@ unsigned int SUSYObjDef_xAOD::GetRandomRunNumber(bool muDependentRRN) {
 
 StatusCode SUSYObjDef_xAOD::ApplyPRWTool(bool muDependentRRN) {
 
-  const xAOD::EventInfo* evtInfo = nullptr;
-  ATH_CHECK( evtStore()->retrieve( evtInfo, "EventInfo" ) );
+  const xAOD::EventInfo* evtInfo = GetEventInfo();
   if(!evtInfo->isAvailable<unsigned int>("RandomRunNumber"))
     ATH_CHECK( m_prwTool->apply( *evtInfo, muDependentRRN ) );
   return StatusCode::SUCCESS;
@@ -2837,8 +2834,7 @@ StatusCode SUSYObjDef_xAOD::ApplyPRWTool(bool muDependentRRN) {
 
 unsigned int SUSYObjDef_xAOD::GetRunNumber() const {
 
-  const xAOD::EventInfo* evtInfo = nullptr;
-  ATH_CHECK( evtStore()->retrieve( evtInfo, "EventInfo" ) );
+  const xAOD::EventInfo* evtInfo = GetEventInfo();
 
   // For data, we can just directly use the run number
   if (isData()) { return evtInfo->runNumber(); }

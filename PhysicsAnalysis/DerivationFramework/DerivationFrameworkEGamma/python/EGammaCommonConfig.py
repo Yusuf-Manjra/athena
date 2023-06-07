@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 # ********************************************************************
 # EGammaCommonConfig.py
@@ -15,6 +15,9 @@ def EGammaCommonCfg(ConfigFlags):
     """Main config method for e-gamma decorations"""
 
     acc = ComponentAccumulator()
+
+    includeFwdElectrons = 'ForwardElectrons' in ConfigFlags.Input.Collections
+
 
     # ====================================================================
     # PHOTON ETA (=ETA2), ET (=E/COSH(ETA2))
@@ -71,8 +74,8 @@ def EGammaCommonCfg(ConfigFlags):
     from ElectronPhotonSelectorTools.ElectronLikelihoodToolMapping import electronLHmenu
 
     lhMenu = electronLHmenu.offlineMC21
-    from AtlasGeoModel.CommonGMJobProperties import CommonGeometryFlags as geoFlags
-    if geoFlags.Run() == "RUN2" :
+    from AthenaConfiguration.Enums import LHCPeriod
+    if ConfigFlags.GeoModel.Run is LHCPeriod.Run2:
         lhMenu = electronLHmenu.offlineMC20
 
     # Very Loose
@@ -154,36 +157,39 @@ def EGammaCommonCfg(ConfigFlags):
     # ====================================================================
     # ELECTRON CHARGE SELECTION
     # ====================================================================
-    from ElectronPhotonSelectorTools.AsgElectronChargeIDSelectorToolConfig import AsgElectronChargeIDSelectorToolCfg
-    ElectronChargeIDSelector = acc.popToolsAndMerge(AsgElectronChargeIDSelectorToolCfg(
-        ConfigFlags,
-        name="ElectronChargeIDSelectorLoose"))
-    ElectronChargeIDSelector.primaryVertexContainer = "PrimaryVertices"
-    ElectronChargeIDSelector.TrainingFile = "ElectronPhotonSelectorTools/ChargeID/ECIDS_20180731rel21Summer2018.root"
-    acc.addPublicTool(ElectronChargeIDSelector)
+    if ConfigFlags.Derivation.Egamma.addECIDS:
+        from ElectronPhotonSelectorTools.AsgElectronChargeIDSelectorToolConfig import AsgElectronChargeIDSelectorToolCfg
+        ElectronChargeIDSelector = acc.popToolsAndMerge(AsgElectronChargeIDSelectorToolCfg(
+            ConfigFlags,
+            name="ElectronChargeIDSelectorLoose"))
+        ElectronChargeIDSelector.primaryVertexContainer = "PrimaryVertices"
+        ElectronChargeIDSelector.TrainingFile = "ElectronPhotonSelectorTools/ChargeID/ECIDS_20180731rel21Summer2018.root"
+        acc.addPublicTool(ElectronChargeIDSelector)
 
     # ====================================================================
     # FWD ELECTRON LH SELECTORS
     # ====================================================================
-    from ElectronPhotonSelectorTools.AsgForwardElectronLikelihoodToolConfig import AsgForwardElectronLikelihoodToolCfg
+    if includeFwdElectrons:
 
-    ForwardElectronLHSelectorLoose = acc.popToolsAndMerge(AsgForwardElectronLikelihoodToolCfg(
-        ConfigFlags,
-        name="ForwardElectronLHSelectorLoose",
-        WorkingPoint="LooseLHForwardElectron"))
-    acc.addPublicTool(ForwardElectronLHSelectorLoose)
+        from ElectronPhotonSelectorTools.AsgForwardElectronLikelihoodToolConfig import AsgForwardElectronLikelihoodToolCfg
 
-    ForwardElectronLHSelectorMedium = acc.popToolsAndMerge(AsgForwardElectronLikelihoodToolCfg(
-        ConfigFlags,
-        name="ForwardElectronLHSelectorMedium",
-        WorkingPoint="MediumLHForwardElectron"))
-    acc.addPublicTool(ForwardElectronLHSelectorMedium)
+        ForwardElectronLHSelectorLoose = acc.popToolsAndMerge(AsgForwardElectronLikelihoodToolCfg(
+            ConfigFlags,
+            name="ForwardElectronLHSelectorLoose",
+            WorkingPoint="LooseLHForwardElectron"))
+        acc.addPublicTool(ForwardElectronLHSelectorLoose)
 
-    ForwardElectronLHSelectorTight = acc.popToolsAndMerge(AsgForwardElectronLikelihoodToolCfg(
-        ConfigFlags,
-        name="ForwardElectronLHSelectorTight",
-        WorkingPoint="TightLHForwardElectron"))
-    acc.addPublicTool(ForwardElectronLHSelectorTight)
+        ForwardElectronLHSelectorMedium = acc.popToolsAndMerge(AsgForwardElectronLikelihoodToolCfg(
+            ConfigFlags,
+            name="ForwardElectronLHSelectorMedium",
+            WorkingPoint="MediumLHForwardElectron"))
+        acc.addPublicTool(ForwardElectronLHSelectorMedium)
+
+        ForwardElectronLHSelectorTight = acc.popToolsAndMerge(AsgForwardElectronLikelihoodToolCfg(
+            ConfigFlags,
+            name="ForwardElectronLHSelectorTight",
+            WorkingPoint="TightLHForwardElectron"))
+        acc.addPublicTool(ForwardElectronLHSelectorTight)
 
     # ====================================================================
     # PHOTON SELECTION (loose and tight cut-based)
@@ -360,45 +366,50 @@ def EGammaCommonCfg(ConfigFlags):
         StoreTResult = False))
 
     # decorate electrons with the output of ECIDS
-    ElectronPassECIDS = acc.getPrimaryAndMerge(EGElectronLikelihoodToolWrapperCfg(
-        ConfigFlags,
-        name="ElectronPassECIDS",
-        EGammaElectronLikelihoodTool=ElectronChargeIDSelector,
-        EGammaFudgeMCTool="",
-        CutType="",
-        StoreGateEntryName="DFCommonElectronsECIDS",
-        ContainerName="Electrons",
-        StoreTResult=True))
+    if ConfigFlags.Derivation.Egamma.addECIDS:
+        ElectronPassECIDS = acc.getPrimaryAndMerge(EGElectronLikelihoodToolWrapperCfg(
+            ConfigFlags,
+            name="ElectronPassECIDS",
+            EGammaElectronLikelihoodTool=ElectronChargeIDSelector,
+            EGammaFudgeMCTool="",
+            CutType="",
+            StoreGateEntryName="DFCommonElectronsECIDS",
+            ContainerName="Electrons",
+            StoreTResult=True))
 
-    # decorate forward electrons with the output of LH loose
-    ForwardElectronPassLHLoose = acc.getPrimaryAndMerge(EGElectronLikelihoodToolWrapperCfg(
-        ConfigFlags,
-        name="ForwardElectronPassLHLoose",
-        EGammaElectronLikelihoodTool=ForwardElectronLHSelectorLoose,
-        EGammaFudgeMCTool="",
-        CutType="",
-        StoreGateEntryName="DFCommonForwardElectronsLHLoose",
-        ContainerName="ForwardElectrons"))
+    if includeFwdElectrons:
+        # decorate forward electrons with the output of LH loose
+        ForwardElectronPassLHLoose = acc.getPrimaryAndMerge(
+            EGElectronLikelihoodToolWrapperCfg(
+                ConfigFlags,
+                name="ForwardElectronPassLHLoose",
+                EGammaElectronLikelihoodTool=ForwardElectronLHSelectorLoose,
+                EGammaFudgeMCTool="",
+                CutType="",
+                StoreGateEntryName="DFCommonForwardElectronsLHLoose",
+                ContainerName="ForwardElectrons"))
 
-    # decorate forward electrons with the output of LH medium
-    ForwardElectronPassLHMedium = acc.getPrimaryAndMerge(EGElectronLikelihoodToolWrapperCfg(
-        ConfigFlags,
-        name="ForwardElectronPassLHMedium",
-        EGammaElectronLikelihoodTool=ForwardElectronLHSelectorMedium,
-        EGammaFudgeMCTool="",
-        CutType="",
-        StoreGateEntryName="DFCommonForwardElectronsLHMedium",
-        ContainerName="ForwardElectrons"))
+        # decorate forward electrons with the output of LH medium
+        ForwardElectronPassLHMedium = acc.getPrimaryAndMerge(
+            EGElectronLikelihoodToolWrapperCfg(
+                ConfigFlags,
+                name="ForwardElectronPassLHMedium",
+                EGammaElectronLikelihoodTool=ForwardElectronLHSelectorMedium,
+                EGammaFudgeMCTool="",
+                CutType="",
+                StoreGateEntryName="DFCommonForwardElectronsLHMedium",
+                ContainerName="ForwardElectrons"))
 
-    # decorate forward electrons with the output of LH tight
-    ForwardElectronPassLHTight = acc.getPrimaryAndMerge(EGElectronLikelihoodToolWrapperCfg(
-        ConfigFlags,
-        name="ForwardElectronPassLHTight",
-        EGammaElectronLikelihoodTool=ForwardElectronLHSelectorTight,
-        EGammaFudgeMCTool="",
-        CutType="",
-        StoreGateEntryName="DFCommonForwardElectronsLHTight",
-        ContainerName="ForwardElectrons"))
+        # decorate forward electrons with the output of LH tight
+        ForwardElectronPassLHTight = acc.getPrimaryAndMerge(
+            EGElectronLikelihoodToolWrapperCfg(
+                ConfigFlags,
+                name="ForwardElectronPassLHTight",
+                EGammaElectronLikelihoodTool=ForwardElectronLHSelectorTight,
+                EGammaFudgeMCTool="",
+                CutType="",
+                StoreGateEntryName="DFCommonForwardElectronsLHTight",
+                ContainerName="ForwardElectrons"))
 
     # decorate photons with the output of IsEM loose
     # on MC, fudge the shower shapes before computing the ID (but the
@@ -476,7 +487,7 @@ def EGammaCommonCfg(ConfigFlags):
             StoreGateEntryName="DFCommonPhotonsCleaning",
             ContainerName="Photons"))
 
-    # decorate central electrons and photons with a flag to tell the the
+    # decorate central electrons and photons with a flag to tell if the
     # candidates are affected by the crack bug in mc16a and data 2015+2016
     from DerivationFrameworkEGamma.EGammaToolsConfig import EGCrackVetoCleaningToolCfg
     PhotonPassCrackVeto = acc.getPrimaryAndMerge(EGCrackVetoCleaningToolCfg(
@@ -508,10 +519,6 @@ def EGammaCommonCfg(ConfigFlags):
                            ElectronPassDNNLoose,
                            ElectronPassDNNMedium,
                            ElectronPassDNNTight,
-                           ForwardElectronPassLHLoose,
-                           ForwardElectronPassLHMedium,
-                           ForwardElectronPassLHTight,
-                           ElectronPassECIDS,
                            PhotonPassIsEMLoose,
                            PhotonPassIsEMTight,
                            PhotonPassIsEMTightPtIncl,
@@ -520,17 +527,26 @@ def EGammaCommonCfg(ConfigFlags):
                            ElectronPassCrackVeto,
                            ElectronAmbiguity]
 
+    if ConfigFlags.Derivation.Egamma.addECIDS:
+        EGAugmentationTools.extend([ElectronPassECIDS])
+
+    if includeFwdElectrons:
+        EGAugmentationTools.extend([
+            ForwardElectronPassLHLoose,
+            ForwardElectronPassLHMedium,
+            ForwardElectronPassLHTight,
+        ])
+
+
     # ==================================================
     # Truth Related tools
     if ConfigFlags.Input.isMC:
-        simBarcodeOffset = ConfigFlags.Sim.SimBarcodeOffset
 
         # Decorate Electron with bkg electron type/origin
         from MCTruthClassifier.MCTruthClassifierConfig import MCTruthClassifierCfg
         BkgElectronMCTruthClassifier = acc.popToolsAndMerge(MCTruthClassifierCfg(
             ConfigFlags,
             name="BkgElectronMCTruthClassifier",
-            barcodeG4Shift = simBarcodeOffset+1,
             ParticleCaloExtensionTool = ""))
         acc.addPublicTool(BkgElectronMCTruthClassifier)
 
@@ -538,8 +554,7 @@ def EGammaCommonCfg(ConfigFlags):
         BkgElectronClassificationTool = acc.getPrimaryAndMerge(BkgElectronClassificationCfg(
             ConfigFlags,
             name="BkgElectronClassificationTool",
-            MCTruthClassifierTool=BkgElectronMCTruthClassifier,
-            barcodeCut=simBarcodeOffset))
+            MCTruthClassifierTool=BkgElectronMCTruthClassifier))
         EGAugmentationTools.append(BkgElectronClassificationTool)
 
         # Decorate egammaTruthParticles with truth-particle-level etcone20,30,40
@@ -575,8 +590,8 @@ def EGammaCommonCfg(ConfigFlags):
 
         # Schedule PseudoJetTruth
         constit_algs = getInputAlgs(cst.Truth, flags=ConfigFlags)
-        constit_algs = reOrderAlgs( [a for a in constit_algs if a is not None])
-
+        constit_algs, ca = reOrderAlgs( [a for a in constit_algs if a is not None])
+        acc.merge(ca)
         for a in constit_algs:
             acc.addEventAlgo(a)
         constitPJAlg = getConstitPJGAlg(cst.Truth, suffix=None)
@@ -619,8 +634,11 @@ def EGammaCommonCfg(ConfigFlags):
     from IsolationAlgs.DerivationTrackIsoConfig import DerivationTrackIsoCfg
     acc.merge(DerivationTrackIsoCfg(ConfigFlags, object_types = ('Electrons', 'Muons')))
 
-    from IsolationAlgs.IsolationSteeringDerivConfig import IsolationSteeringDerivCfg
-    acc.merge(IsolationSteeringDerivCfg(ConfigFlags))
+    hasFlowObject = ('JetETMissChargedParticleFlowObjects' in ConfigFlags.Input.Collections and
+                     'JetETMissNeutralParticleFlowObjects' in ConfigFlags.Input.Collections)
+    if hasFlowObject:
+        from IsolationAlgs.IsolationSteeringDerivConfig import IsolationSteeringDerivCfg
+        acc.merge(IsolationSteeringDerivCfg(ConfigFlags))
 
     return acc
 

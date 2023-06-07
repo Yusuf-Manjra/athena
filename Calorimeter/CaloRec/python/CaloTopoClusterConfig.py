@@ -142,8 +142,8 @@ def getTopoMoments(flags):
 
 
     if not flags.Common.isOnline:
-        from LArConfiguration.LArElecCalibDBConfig import LArElecCalibDbCfg
-        result.merge(LArElecCalibDbCfg(flags,["HVScaleCorr"]))
+        from LArConfiguration.LArElecCalibDBConfig import LArElecCalibDBCfg
+        result.merge(LArElecCalibDBCfg(flags,["HVScaleCorr"]))
         if flags.Input.isMC:
             TopoMoments.LArHVFraction=CompFactory.LArHVFraction(HVScaleCorrKey="LArHVScaleCorr")
         else:
@@ -298,7 +298,7 @@ def CaloTopoClusterSplitterToolCfg(flags):
     result.setPrivateTools(TopoSplitter)
     return result
 
-def CaloTopoClusterCfg(flags, cellsname="AllCalo", clustersname=None):
+def CaloTopoClusterCfg(flags, cellsname="AllCalo", clustersname=None, clustersnapname="CaloTopoClusters"):
     """
     Configures topo clustering
 
@@ -356,7 +356,7 @@ def CaloTopoClusterCfg(flags, cellsname="AllCalo", clustersname=None):
     CaloTopoCluster.ClustersOutputName=clustersname
     
     if doLCCalib:
-        theCaloClusterSnapshot=CaloClusterSnapshot(OutputName="CaloTopoClusters",SetCrossLinks=True)        
+        theCaloClusterSnapshot=CaloClusterSnapshot(OutputName=clustersnapname,SetCrossLinks=True)        
         CaloTopoCluster.ClusterCorrectionTools += [theCaloClusterSnapshot]
         #if not clustersname:
         CaloTopoCluster.ClusterCorrectionTools += getTopoClusterLocalCalibTools(flags)
@@ -457,7 +457,7 @@ if __name__=="__main__":
     cfg.addEventAlgo(theNegativeEnergyCaloClustersThinner,"AthAlgSeq")
 
     
-    cfg.addEventAlgo(CompFactory.ClusterDumper("TopoDumper",ContainerName=theKey,FileName="NewTopoClusters.txt"))
+    cfg.addEventAlgo(CompFactory.ClusterDumper("TopoDumper",ContainerName=theKey,FileName="NewTopoClusters.txt"),sequenceName="AthAlgSeq")
 
 #    cfg.getService("StoreGateSvc").Dump=True
 

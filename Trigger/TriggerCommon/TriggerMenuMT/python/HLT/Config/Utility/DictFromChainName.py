@@ -1,3 +1,4 @@
+#! /bin/env python
 # Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 """
@@ -10,9 +11,11 @@ __author__  = 'Catrin Bernius'
 __version__=""
 __doc__="Decoding of chain name into a dictionary"
 
+from TriggerMenuMT.HLT.Menu.EventBuildingInfo import isRoIBasedPEB
 from TrigConfHLTUtils.HLTUtils import string2hash
 from AthenaCommon.Logging import logging
 import re
+from copy import deepcopy
 
 import collections.abc
 
@@ -160,11 +163,9 @@ def verifyExplicitL1Thresholds(chainname,chainparts,L1thresholds):
             counter += 1
     assert counter>0, f"Did not find explicit L1 seeds in chain parts for {chainname}!"
 
-from ...Menu.SignatureDicts import getSignatureInformation, JetRecoKeys
-from ...Jet.JetRecoCommon import etaRangeAbbrev
-from copy import deepcopy
-
 def unifyJetRecoParts(chainParts):
+    from TriggerMenuMT.HLT.Menu.SignatureDicts import getSignatureInformation, JetRecoKeys
+
     """
     Postprocess the jet chainParts to set all the reco config consistently
     For formatting reasons, we extract these from the last jet chainPart
@@ -209,6 +210,8 @@ def analyseChainName(chainName, L1thresholds, L1item):
 
     # ---- dictionary with all chain properties ----
     from TriggerMenuMT.HLT.Menu.SignatureDicts import ChainDictTemplate
+    from TriggerMenuMT.HLT.Menu.SignatureDicts import getSignatureInformation
+    from TriggerMenuMT.HLT.Jet.JetRecoCommon import etaRangeAbbrev
     genchainDict = deepcopy(ChainDictTemplate)
     genchainDict['chainName'] = chainName
 
@@ -671,10 +674,6 @@ def dictFromChainName(flags, chainInfo):
     log.debug("Analysing chain with name: %s", chainName)
     chainDict = analyseChainName(chainName,  l1Thresholds, L1item)
     log.debug('ChainProperties: %s', chainDict)
-    
-    from TriggerMenuMT.HLT.CommonSequences.EventBuildingSequences import isRoIBasedPEB
-    # TODO: pass flags by argument instead of import, or find a way to determine PEB type without initialising a temporary PEB tool (which needs flags)
-    _isRoIBasedPEB = isRoIBasedPEB(flags, chainDict['eventBuildType'])
 
     for chainPart in chainDict['chainParts']:
         # fill the sigFolder and subSigs folder
@@ -716,7 +715,7 @@ def dictFromChainName(flags, chainInfo):
 
         if thisChainPartName in ['noalg']:
             # All streamers should be unseeded except RoI-based PEB streamers which need a real RoI for PEB
-            if 'FSNOSEED' not in thisL1 and not _isRoIBasedPEB:
+            if 'FSNOSEED' not in thisL1 and not isRoIBasedPEB(chainDict['eventBuildType']):
                 log.error("noalg chains should be seeded from FSNOSEED. Check %s seeded from %s (defined L1: %s),  signature %s",chainDict['chainName'],thisL1,l1Thresholds,thisSignature)
                 #incorrectL1=True
 
@@ -751,5 +750,38 @@ def dictFromChainName(flags, chainInfo):
 
     return chainDict
 
+def main():
 
+    from AthenaConfiguration.AllConfigFlags import initConfigFlags
+    flags = initConfigFlags()
+
+    parser = flags.getArgumentParser()
+    parser.add_argument(
+        'chain',
+        type=str,
+        help='Chain name to be parsed into chain dictionary')
+    parser.add_argument(
+        '-t', '--thresholds',
+        nargs='+',
+        help='L1 thresholds, needed for multileg or fullscan chains')
+    args = flags.fillFromArgs(parser=parser)
+    flags.lock()
+
+    if args.thresholds:
+        from TriggerMenuMT.HLT.Config.Utility.ChainDefInMenu import ChainProp
+        cd = dictFromChainName(flags, ChainProp(args.chain,l1SeedThresholds=args.thresholds,groups=[]))
+    else:
+        cd = dictFromChainName(flags, args.chain)
+    
+    from pprint import pprint
+    pprint(cd)
+
+    import json
+    with open(f'{args.chain}.dict.json','w') as f:
+        json.dump(cd, f, indent=2)
+
+    return 0
+
+if __name__=='__main__':
+    main()
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 // Header for this module
@@ -9,14 +9,18 @@
 #include "GaudiKernel/MsgStream.h"
 #include "GaudiKernel/SystemOfUnits.h"
 
+// EDM includes
+#include "xAODEventInfo/EventInfo.h"
+
 // Used for retrieving the collection
 #include "xAODJet/JetContainer.h"
 #include "xAODTruth/TruthParticle.h"
 #include "xAODTruth/TruthVertex.h"
 #include "StoreGate/StoreGateSvc.h"
+#include "StoreGate/WriteDecorHandle.h"
 
 // Other classes used by this class
-#include "TruthUtils/PIDHelpers.h"
+#include "TruthUtils/HepMCHelpers.h"
 #include "AtlasHepMC/GenEvent.h"
 // #include "GeneratorObjects/McEventCollection.h"
 #include "TruthUtils/HepMCHelpers.h"
@@ -24,11 +28,14 @@
 #include "xAODTruth/TruthParticleContainer.h"
 #include "xAODTruth/TruthParticleAuxContainer.h"
 #include "GeneratorObjects/xAODTruthParticleLink.h"
+// Tool handle interface
+#include "MCTruthClassifier/IMCTruthClassifier.h"
 
 //--------------------------------------------------------------------------
 
 xAODHTFilter::xAODHTFilter(const std::string &name, ISvcLocator *pSvcLocator)
     : GenFilter(name, pSvcLocator), m_total(0), m_passed(0), m_ptfailed(0)
+      , m_classif("MCTruthClassifier/DFCommonTruthClassifier")
 {
   declareProperty("MinJetPt", m_MinJetPt = 0 * Gaudi::Units::GeV);
   declareProperty("MaxJetEta", m_MaxJetEta = 10.0);
@@ -39,6 +46,7 @@ xAODHTFilter::xAODHTFilter(const std::string &name, ISvcLocator *pSvcLocator)
   declareProperty("UseLeptonsFromWZTau", m_UseLep = false, "Include e/mu from W/Z/tau decays in the HT");
   declareProperty("MinLeptonPt", m_MinLepPt = 0 * Gaudi::Units::GeV);
   declareProperty("MaxLeptonEta", m_MaxLepEta = 10.0);
+  declareProperty("EventInfoName",m_eventInfoName="EventInfo");   
 }
 
 //--------------------------------------------------------------------------
@@ -65,6 +73,9 @@ StatusCode xAODHTFilter::filterInitialize()
   if (m_UseLep)
     ATH_MSG_INFO(" including W/Z/tau leptons in range " << m_MinLepPt << "<p_T GeV and abs(eta)<" << m_MaxLepEta);
 
+  ATH_CHECK(m_mcFilterHTKey.initialize());
+  ATH_CHECK(m_classif.retrieve());
+
   return StatusCode::SUCCESS;
 }
 
@@ -89,7 +100,11 @@ StatusCode xAODHTFilter::filterEvent()
       evtStore()->retrieve(truthjetTES, m_TruthJetContainerName).isFailure() || !truthjetTES)
   {
     ATH_MSG_INFO("No xAOD::JetContainer found in StoreGate with key " << m_TruthJetContainerName);
+#ifdef HEPMC3
+    setFilterPassed(m_MinHT < 1. || keepAll());
+#else
     setFilterPassed(m_MinHT < 1.);
+#endif
     return StatusCode::SUCCESS;
   }
 
@@ -140,23 +155,17 @@ StatusCode xAODHTFilter::filterEvent()
 
         if (m_UseNu && MC::PID::isNeutrino(pdgid) && (theParticle->isGenStable()))
         {
-          if (fromWZ(theParticle) || fromTau(theParticle))
+          if (isPrompt(theParticle))
           {
             HT += theParticle->pt();
           }
         }
 
         // pick muons and electrons specifically -- isLepton selects both charged leptons and neutrinos
-        if (m_UseLep && (std::abs(pdgid) == 11 || std::abs(pdgid) == 13) && theParticle->isGenStable() && (theParticle)->pt() > m_MinLepPt * Gaudi::Units::GeV && std::abs(theParticle->eta()) < m_MaxLepEta)
+        if ( m_UseLep && (std::abs(pdgid) == 11 || std::abs(pdgid) == 13) && theParticle->isGenStable() && (theParticle)->pt() > m_MinLepPt * Gaudi::Units::GeV && std::abs(theParticle->eta()) < m_MaxLepEta)
         {
-          bool isFromWZ = fromWZ(theParticle);
-          if (isFromWZ || fromTau(theParticle))
+          if (isPrompt(theParticle))
           {
-            ATH_MSG_VERBOSE("Adding W/Z/tau lepton with pt " << theParticle->pt()
-                                                             << ", eta " << theParticle->eta()
-                                                             << ", phi " << theParticle->phi()
-                                                             << ", status " << theParticle->status()
-                                                             << ", pdgId " << pdgid);
             HT += theParticle->pt();
           }
         }
@@ -167,78 +176,70 @@ StatusCode xAODHTFilter::filterEvent()
   HT /= Gaudi::Units::GeV; // Make sure we're in GeV
   ATH_MSG_DEBUG("HT: " << HT);
 
-  if (HT < m_MinHT || HT >= m_MaxHT)
+#ifdef HEPMC3
+    // fill the HT value
+    // Event passed.  Will add HT to xAOD::EventInfo
+    // Get MC event collection for setting weight
+    const McEventCollection* mecc = 0;
+    if ( evtStore()->retrieve( mecc ).isFailure() || !mecc ){
+      setFilterPassed(false);
+      ATH_MSG_ERROR("Could not retrieve MC Event Collection - might not work");
+      return StatusCode::SUCCESS;
+    } 
+  
+    McEventCollection* mec = const_cast<McEventCollection*> (&(*mecc));
+    for (unsigned int i = 0; i < mec->size(); ++i) {
+      if (!(*mec)[i]) continue;
+   
+      (*mec)[i]->add_attribute("filterHT", std::make_shared<HepMC3::DoubleAttribute>(HT));
+    }
+
+  if ((HT < m_MinHT || HT >= m_MaxHT) && (!keepAll()))
+#else
+  if ((HT < m_MinHT || HT >= m_MaxHT) )
+#endif
   {
     ATH_MSG_DEBUG("Failed filter on HT: " << HT << " is not between " << m_MinHT << " and " << m_MaxHT);
     setFilterPassed(false);
   }
   else
   {
-    // Made it to the end - success!
+   // Made it to the end - success! 
     m_passed++;
     setFilterPassed(true);
-  }
-
+   }
   return StatusCode::SUCCESS;
 }
 
-bool xAODHTFilter::fromWZ(const xAOD::TruthParticle *part) const
-{
-  // !!! IMPORTANT !!! This is a TEMPORARY function
-  //  it's used in place of code in MCTruthClassifier as long as this package is not dual-use
-  //  when MCTruthClassifier is made dual-use, this function should be discarded.
-  // see ATLJETMET-26
-  //
-  // Loop through parents
-  // Hit a hadron -> return false
-  // Hit a parton -> return true
-  //   This catch is important - we *cannot* look explicitly for the W or Z, because some
-  //    generators do not include the W or Z in the truth record (like Sherpa)
-  //   This code, like the code before it, really assumes one incoming particle per vertex...
-  if (!part->hasProdVtx())
-    return false;
-
-  unsigned int nIncomingParticles = part->prodVtx()->nIncomingParticles();
-  for (unsigned int iPart = 0; iPart < nIncomingParticles; iPart++)
+bool xAODHTFilter::isPrompt( const xAOD::TruthParticle *part ) const
   {
-    const xAOD::TruthParticle *incoming_particle = part->prodVtx()->incomingParticle(iPart);
-    int parent_pdgid = incoming_particle->pdgId();
-    if (MC::PID::isW(parent_pdgid) || MC::PID::isZ(parent_pdgid))
-      return true;
-    if (MC::PID::isHadron(parent_pdgid))
-      return false;
-    if (std::abs(parent_pdgid) < 9)
-      return true;
-    if (parent_pdgid == part->pdgId())
-      return fromWZ(incoming_particle);
-  }
-  return false;
-}
-bool xAODHTFilter::fromTau(const xAOD::TruthParticle *part) const
-{
-  // !!! IMPORTANT !!! This is a TEMPORARY function
-  //  it's used in place of code in MCTruthClassifier as long as this package is not dual-use
-  //  when MCTruthClassifier is made dual-use, this function should be discarded.
-  // see ATLJETMET-26
-  //
-  // Loop through parents
-  // Find a tau -> return true
-  // Find a hadron or parton -> return false
-  //   This code, like the code before it, really assumes one incoming particle per vertex...
-  if (!part->hasProdVtx())
-    return false;
+    MCTruthPartClassifier::ParticleOrigin orig = m_classif->particleTruthClassifier( part ).second;
+    ATH_MSG_DEBUG("Particle has origin " << orig);
 
-  unsigned int nIncomingParticles = part->prodVtx()->nIncomingParticles();
-  for (unsigned int iPart = 0; iPart < nIncomingParticles; iPart++)
-  {
-    const xAOD::TruthParticle *incoming_particle = part->prodVtx()->incomingParticle(iPart);
-    int parent_pdgid = incoming_particle->pdgId();
-    if (std::abs(parent_pdgid) == 15 && fromWZ(incoming_particle))
-      return true;
-    if (MC::PID::isHadron(parent_pdgid) || std::abs(parent_pdgid) < 9)
+    switch(orig) {
+    case MCTruthPartClassifier::NonDefined:
+    case MCTruthPartClassifier::PhotonConv:
+    case MCTruthPartClassifier::DalitzDec:
+    case MCTruthPartClassifier::ElMagProc:
+    case MCTruthPartClassifier::Mu:
+    case MCTruthPartClassifier::LightMeson:
+    case MCTruthPartClassifier::StrangeMeson:
+    case MCTruthPartClassifier::CharmedMeson:
+    case MCTruthPartClassifier::BottomMeson:
+    case MCTruthPartClassifier::CCbarMeson:
+    case MCTruthPartClassifier::JPsi:
+    case MCTruthPartClassifier::BBbarMeson:
+    case MCTruthPartClassifier::LightBaryon:
+    case MCTruthPartClassifier::StrangeBaryon:
+    case MCTruthPartClassifier::CharmedBaryon:
+    case MCTruthPartClassifier::BottomBaryon:
+    case MCTruthPartClassifier::PionDecay:
+    case MCTruthPartClassifier::KaonDecay:
       return false;
-    if (parent_pdgid == incoming_particle->pdgId())
-      return fromTau(incoming_particle);
+    default:
+      break;
+    }
+
+    return true;
   }
-  return false;
-}
+

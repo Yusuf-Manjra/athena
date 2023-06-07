@@ -34,9 +34,7 @@
 #include "GeneratorFilters/xAODHTFilter.h"
 #include "GeneratorFilters/xAODFourLeptonMassFilter.h"
 #include "GeneratorFilters/xAODJetFilter.h"
-
-
-
+#include "GeneratorFilters/xAODParticleFilter.h"
 
 
 // slimmers for 22.6
@@ -101,7 +99,7 @@
 #include "GeneratorFilters/TruthJetFilter.h"
 #include "GeneratorFilters/VBFHbbEtaSortingFilter.h"  
 #include "GeneratorFilters/ZtoLeptonFilter.h"
-
+#include "GeneratorFilters/ParticleDecayFilter.h"
 
 //filters accepted for 22.6 (xAOD format)
 DECLARE_COMPONENT( QCDTruthJetFilter )
@@ -139,9 +137,7 @@ DECLARE_COMPONENT( xAODXtoVVDecayFilterExtended )
 DECLARE_COMPONENT( xAODHTFilter )
 DECLARE_COMPONENT( xAODFourLeptonMassFilter)
 DECLARE_COMPONENT( xAODJetFilter)
-
-
-
+DECLARE_COMPONENT( xAODParticleFilter)
 
 //slimmers accepted for 22.6
 DECLARE_COMPONENT( PileupTruthParticleSlimmer )
@@ -205,3 +201,4 @@ DECLARE_COMPONENT( TrimuMassRangeFilter )
 DECLARE_COMPONENT( TruthJetFilter )
 DECLARE_COMPONENT( VBFHbbEtaSortingFilter )
 DECLARE_COMPONENT( ZtoLeptonFilter )
+DECLARE_COMPONENT( ParticleDecayFilter )

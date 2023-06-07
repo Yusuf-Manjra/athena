@@ -6,11 +6,14 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.Enums import MetadataCategory
 
 def TEST5CPToolCfg(flags):
     """Configure the example muon CP tool"""
     acc = ComponentAccumulator()
-    mst = CompFactory.CP.MuonSelectionTool('TEST5MuonSelectionTool')
+    mst = CompFactory.CP.MuonSelectionTool(name = 'TEST5MuonSelectionTool', 
+                                           TurnOffMomCorr = True,
+                                           AllowSettingGeometryOnTheFly = True)
     acc.addPublicTool(mst, primary=True)
     acc.addPublicTool(CompFactory.DerivationFramework.AsgSelectionToolWrapper(name = "TEST5MuonToolWrapper",
                                                                               AsgSelectionTool = mst,
@@ -45,11 +48,14 @@ def TEST5Cfg(ConfigFlags):
     acc.merge(TEST5KernelCfg(ConfigFlags, name="TEST5Kernel",StreamName = "OutputStreamDAOD_TEST5"))
 
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     TEST5SlimmingHelper = SlimmingHelper("TEST5SlimmingHelper", NamesAndTypes = ConfigFlags.Input.TypedCollections, ConfigFlags = ConfigFlags)
     TEST5SlimmingHelper.SmartCollections = ["EventInfo","InDetTrackParticles","PrimaryVertices","Muons"]
     TEST5SlimmingHelper.ExtraVariables += ["InDetTrackParticles.DFDecoratorExample"]
     TEST5SlimmingHelper.ExtraVariables += ["Muons.TEST5GoodMuons"]
+    TEST5SlimmingHelper.StaticContent += ["std::vector<float>#DFAugmentationExample"]
     TEST5ItemList = TEST5SlimmingHelper.GetItemList()
     acc.merge(OutputStreamCfg(ConfigFlags, "DAOD_TEST5", ItemList=TEST5ItemList, AcceptAlgs=["TEST5Kernel"]))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, "DAOD_TEST5", AcceptAlgs=["TEST5Kernel"], createMetadata=[MetadataCategory.CutFlowMetaData]))
     return acc

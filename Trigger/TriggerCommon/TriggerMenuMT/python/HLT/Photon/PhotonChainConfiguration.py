@@ -8,18 +8,17 @@ log = logging.getLogger(__name__)
 
 from ..Config.ChainConfigurationBase import ChainConfigurationBase
 from AthenaConfiguration.ComponentFactory import isComponentAccumulatorCfg
+from ..CommonSequences.CaloSequences import fastCaloMenuSequence
+from ..Photon.FastPhotonMenuSequences import fastPhotonMenuSequence
+from ..Photon.PrecisionPhotonMenuSequences import precisionPhotonMenuSequence
 
 if isComponentAccumulatorCfg():
     pass
 else:
-    from ..CommonSequences.CaloSequences import fastCaloMenuSequence
-    from ..Photon.FastPhotonMenuSequences import fastPhotonMenuSequence
-    from ..Photon.PrecisionPhotonMenuSequences import precisionPhotonMenuSequence
     from ..Photon.PrecisionPhotonCaloIsoMenuSequences import precisionPhotonCaloIsoMenuSequence
-    from ..Photon.PrecisionCaloMenuSequences import precisionCaloMenuSequence
     from ..Photon.HipTRTMenuSequences import hipTRTMenuSequence
     from TrigEgammaHypo.TrigEgammaHypoConf import TrigEgammaTopoHypoTool
-
+    from ..Photon.PrecisionCaloMenuSequences import precisionCaloMenuSequence
 
 
 from AthenaMonitoringKernel.GenericMonitoringTool import GenericMonitoringTool
@@ -39,8 +38,8 @@ def precisionPhotonMenuSequenceCfg(flags, name, ion, is_probe_leg=False):
 def precisionCaloMenuSequenceCfg(flags, name, ion, is_probe_leg=False):
     return precisionCaloMenuSequence(flags, name, ion=ion, is_probe_leg=is_probe_leg)
 
-def fastPhotonCaloSequenceCfg( flags, doRinger = False, is_probe_leg=False ):
-    return fastCaloMenuSequence(flags, 'Photon', doRinger=doRinger, is_probe_leg=is_probe_leg)
+def fastPhotonCaloSequenceCfg( flags, is_probe_leg=False ):
+    return fastCaloMenuSequence(flags, 'Photon', is_probe_leg=is_probe_leg)
     
 def fastPhotonSequenceCfg( flags, is_probe_leg=False ):    
     return fastPhotonMenuSequence( flags, is_probe_leg=is_probe_leg )
@@ -154,9 +153,8 @@ class PhotonChainConfiguration(ChainConfigurationBase):
     # --------------------
     def getFastCalo(self, flags, is_probe_leg=False):
         stepName = "PhotonFastCalo"
-        doRinger = 'ringer' in self.chainPart['L2IDAlg']
         
-        return self.getStep(flags,1,stepName,[ fastPhotonCaloSequenceCfg], doRinger = doRinger, is_probe_leg=is_probe_leg)
+        return self.getStep(flags,1,stepName,[ fastPhotonCaloSequenceCfg], is_probe_leg=is_probe_leg)
 
     def getFastPhoton(self, flags, is_probe_leg=False):
         stepName = "FastPhoton"
@@ -207,3 +205,4 @@ class PhotonChainConfiguration(ChainConfigurationBase):
 
         return self.getStep(flags,5,stepName,sequenceCfgArray=[precisionPhotonCaloIsoMenuSequenceCfg], name = 'Photon', comboTools=comboTools, ion=do_ion, is_probe_leg=is_probe_leg)
     
+

@@ -28,6 +28,9 @@
 #include "FolderTypes.h"
 #include "IovStore.h"
 
+#include <map> 
+#include "nlohmann/json.hpp"
+
 class MsgStream;
 class IOVDbConn;
 class IOpaqueAddress;
@@ -42,7 +45,7 @@ public:
   IOVDbFolder(IOVDbConn* conn, const IOVDbParser& folderprop, MsgStream& msg,
               IClassIDSvc* clidsvc, IIOVDbMetaDataTool* metadatatool,
               const bool checklock, const bool outputToFile=false,
-              const std::string & source="COOL_DATABASE");
+              const std::string & source="COOL_DATABASE", const bool crestToFile=false);
   ~IOVDbFolder();
   
 
@@ -284,7 +287,12 @@ private:
   std::vector<unsigned int> m_cacheccend;
   IOVDbNamespace::IovStore m_iovs;
   const bool m_outputToFile{false};
+  const bool m_crestToFile{false};
   const std::string m_source;
+  std::string m_globaltag = "";
+  std::map<std::string, std::string> m_cresttagmap; // pairs: COOL folder - CREST tag name
+  std::string m_crest_tag = "";
+  nlohmann::json m_tag_info = nullptr;
 };
 
 inline const std::string& IOVDbFolder::folderName() const {return m_foldername;}

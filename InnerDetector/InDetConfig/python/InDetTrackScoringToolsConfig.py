@@ -8,9 +8,6 @@ from AthenaConfiguration.ComponentFactory import CompFactory
 # InDet configs
 #########################
 
-# InDetAmbiScoringTool
-
-
 def InDetAmbiScoringToolBaseCfg(flags, name='InDetAmbiScoringTool', **kwargs):
     acc = ComponentAccumulator()
 
@@ -18,11 +15,6 @@ def InDetAmbiScoringToolBaseCfg(flags, name='InDetAmbiScoringTool', **kwargs):
         from TrkConfig.AtlasExtrapolatorConfig import InDetExtrapolatorCfg
         kwargs.setdefault("Extrapolator", acc.popToolsAndMerge(
             InDetExtrapolatorCfg(flags)))
-
-    if "SummaryTool" not in kwargs:
-        from TrkConfig.TrkTrackSummaryToolConfig import InDetTrackSummaryToolCfg
-        kwargs.setdefault("SummaryTool", acc.popToolsAndMerge(
-            InDetTrackSummaryToolCfg(flags)))
 
     if 'DriftCircleCutTool' not in kwargs:
         from InDetConfig.InDetTrackSelectorToolConfig import (
@@ -44,10 +36,10 @@ def InDetAmbiScoringToolBaseCfg(flags, name='InDetAmbiScoringTool', **kwargs):
     kwargs.setdefault("doEmCaloSeed", have_calo_rois)
     kwargs.setdefault("useAmbigFcn", True)
     kwargs.setdefault("useTRT_AmbigFcn", False)
-    kwargs.setdefault("maxZImp", flags.InDet.Tracking.ActiveConfig.maxZImpact)
-    kwargs.setdefault("maxEta", flags.InDet.Tracking.ActiveConfig.maxEta)
-    kwargs.setdefault("usePixel", flags.InDet.Tracking.ActiveConfig.usePixel)
-    kwargs.setdefault("useSCT", flags.InDet.Tracking.ActiveConfig.useSCT)
+    kwargs.setdefault("maxZImp", flags.Tracking.ActiveConfig.maxZImpact)
+    kwargs.setdefault("maxEta", flags.Tracking.ActiveConfig.maxEta)
+    kwargs.setdefault("usePixel", flags.Tracking.ActiveConfig.usePixel)
+    kwargs.setdefault("useSCT", flags.Tracking.ActiveConfig.useSCT)
 
     acc.setPrivateTools(CompFactory.InDet.InDetAmbiScoringTool(name, **kwargs))
     return acc
@@ -56,23 +48,21 @@ def InDetAmbiScoringToolBaseCfg(flags, name='InDetAmbiScoringTool', **kwargs):
 def InDetAmbiScoringToolCfg(flags, name='InDetAmbiScoringTool', **kwargs):
     kwargs.setdefault("minTRTonTrk", 0)
     kwargs.setdefault("minTRTPrecisionFraction", 0)
-    kwargs.setdefault("minPt", flags.InDet.Tracking.ActiveConfig.minPT)
+    kwargs.setdefault("minPt", flags.Tracking.ActiveConfig.minPT)
     kwargs.setdefault("maxRPhiImp",
-                      flags.InDet.Tracking.ActiveConfig.maxPrimaryImpact)
-    kwargs.setdefault("maxRPhiImpEM",
-                      flags.InDet.Tracking.ActiveConfig.maxEMImpact)
-    kwargs.setdefault("minSiClusters",
-                      flags.InDet.Tracking.ActiveConfig.minClusters)
-    kwargs.setdefault("minPixel", flags.InDet.Tracking.ActiveConfig.minPixel)
-    kwargs.setdefault("maxSiHoles", flags.InDet.Tracking.ActiveConfig.maxHoles)
+                      flags.Tracking.ActiveConfig.maxPrimaryImpact)
+    kwargs.setdefault("maxRPhiImpEM", flags.Tracking.ActiveConfig.maxEMImpact)
+    kwargs.setdefault("minSiClusters", flags.Tracking.ActiveConfig.minClusters)
+    kwargs.setdefault("minPixel", flags.Tracking.ActiveConfig.minPixel)
+    kwargs.setdefault("maxSiHoles", flags.Tracking.ActiveConfig.maxHoles)
     kwargs.setdefault("maxPixelHoles",
-                      flags.InDet.Tracking.ActiveConfig.maxPixelHoles)
-    kwargs.setdefault("maxSCTHoles",
-                      flags.InDet.Tracking.ActiveConfig.maxSctHoles)
+                      flags.Tracking.ActiveConfig.maxPixelHoles)
+    kwargs.setdefault("maxSCTHoles", flags.Tracking.ActiveConfig.maxSctHoles)
     kwargs.setdefault("maxDoubleHoles",
-                      flags.InDet.Tracking.ActiveConfig.maxDoubleHoles)
+                      flags.Tracking.ActiveConfig.maxDoubleHoles)
 
-    return InDetAmbiScoringToolBaseCfg(flags, name + flags.InDet.Tracking.ActiveConfig.extension, **kwargs)
+    return InDetAmbiScoringToolBaseCfg(
+        flags, name + flags.Tracking.ActiveConfig.extension, **kwargs)
 
 
 def InDetAmbiScoringToolSiCfg(flags, name='InDetAmbiScoringToolSi', **kwargs):
@@ -82,45 +72,42 @@ def InDetAmbiScoringToolSiCfg(flags, name='InDetAmbiScoringToolSi', **kwargs):
 
 def InDetExtenScoringToolCfg(flags, name='InDetExtenScoringTool', **kwargs):
     kwargs.setdefault("minTRTonTrk",
-                      flags.InDet.Tracking.ActiveConfig.minTRTonTrk)
+                      flags.Tracking.ActiveConfig.minTRTonTrk)
     kwargs.setdefault("minTRTPrecisionFraction",
-                      flags.InDet.Tracking.ActiveConfig.minTRTPrecFrac)
+                      flags.Tracking.ActiveConfig.minTRTPrecFrac)
     return InDetAmbiScoringToolCfg(flags, name, **kwargs)
 
 
-def InDetTRT_SeededScoringToolCfg(flags, name='InDetTRT_SeededScoringTool', **kwargs):
+def InDetTRT_SeededScoringToolCfg(
+        flags, name='InDetTRT_SeededScoringTool', **kwargs):
     kwargs.setdefault("useAmbigFcn", False)
     kwargs.setdefault("useTRT_AmbigFcn", True)
     kwargs.setdefault("minTRTonTrk",
-                      flags.InDet.Tracking.ActiveConfig.minSecondaryTRTonTrk)
+                      flags.Tracking.ActiveConfig.minSecondaryTRTonTrk)
     kwargs.setdefault("minTRTPrecisionFraction",
-                      flags.InDet.Tracking.ActiveConfig.minSecondaryTRTPrecFrac)
-    kwargs.setdefault("minPt",
-                      flags.InDet.Tracking.ActiveConfig.minSecondaryPt)
+                      flags.Tracking.ActiveConfig.minSecondaryTRTPrecFrac)
+    kwargs.setdefault("minPt", flags.Tracking.ActiveConfig.minSecondaryPt)
     kwargs.setdefault("maxRPhiImp",
-                      flags.InDet.Tracking.ActiveConfig.maxSecondaryImpact)
+                      flags.Tracking.ActiveConfig.maxSecondaryImpact)
     kwargs.setdefault("minSiClusters",
-                      flags.InDet.Tracking.ActiveConfig.minSecondaryClusters)
+                      flags.Tracking.ActiveConfig.minSecondaryClusters)
     kwargs.setdefault("maxSiHoles",
-                      flags.InDet.Tracking.ActiveConfig.maxSecondaryHoles)
+                      flags.Tracking.ActiveConfig.maxSecondaryHoles)
     kwargs.setdefault("maxPixelHoles",
-                      flags.InDet.Tracking.ActiveConfig.maxSecondaryPixelHoles)
+                      flags.Tracking.ActiveConfig.maxSecondaryPixelHoles)
     kwargs.setdefault("maxSCTHoles",
-                      flags.InDet.Tracking.ActiveConfig.maxSecondarySCTHoles)
+                      flags.Tracking.ActiveConfig.maxSecondarySCTHoles)
     kwargs.setdefault("maxDoubleHoles",
-                      flags.InDet.Tracking.ActiveConfig.maxSecondaryDoubleHoles)
+                      flags.Tracking.ActiveConfig.maxSecondaryDoubleHoles)
 
     return InDetAmbiScoringToolBaseCfg(flags, name, **kwargs)
 
 
-def InDetTrigAmbiScoringToolCfg(flags, name='InDetTrigMT_AmbiguityScoringTool', **kwargs):
-    acc = ComponentAccumulator()
+def InDetTrigAmbiScoringToolCfg(
+        flags, 
+        name='TrigAmbiguityScoringTool', **kwargs):
 
-    if "SummaryTool" not in kwargs:
-        from TrkConfig.TrkTrackSummaryToolConfig import (
-            InDetTrigTrackSummaryToolCfg)
-        kwargs.setdefault("SummaryTool", acc.popToolsAndMerge(
-            InDetTrigTrackSummaryToolCfg(flags)))
+    acc = ComponentAccumulator()
 
     if "Extrapolator" not in kwargs:
         # TODO using offline, consider porting
@@ -134,67 +121,50 @@ def InDetTrigAmbiScoringToolCfg(flags, name='InDetTrigMT_AmbiguityScoringTool', 
         kwargs.setdefault("DriftCircleCutTool", acc.popToolsAndMerge(
             InDetTrigTRTDriftCircleCutToolCfg(flags)))
 
+    kwargs.setdefault("minPt", flags.Tracking.ActiveConfig.minPT)
     kwargs.setdefault("useAmbigFcn", True)
     kwargs.setdefault("useTRT_AmbigFcn", False)
-    kwargs.setdefault("maxZImp", flags.InDet.Tracking.ActiveConfig.maxZImpact)
-    kwargs.setdefault("maxEta", flags.InDet.Tracking.ActiveConfig.maxEta)
-    kwargs.setdefault("usePixel", flags.InDet.Tracking.ActiveConfig.usePixel)
-    kwargs.setdefault("useSCT", flags.InDet.Tracking.ActiveConfig.useSCT)
-    # TODO understand and set appropriately, however current setting is probably a correct one
+    kwargs.setdefault("maxZImp", flags.Tracking.ActiveConfig.maxZImpact)
+    kwargs.setdefault("maxRPhiImp", flags.Tracking.ActiveConfig.maxRPhiImpact)
+    kwargs.setdefault("maxEta", flags.Tracking.ActiveConfig.maxEta)
+    kwargs.setdefault("maxSCTHoles", flags.Tracking.ActiveConfig.maxSCTHoles)
+    kwargs.setdefault("maxSiHoles", flags.Tracking.ActiveConfig.maxSiHoles)
+    kwargs.setdefault("usePixel", flags.Tracking.ActiveConfig.usePixel)
+    kwargs.setdefault("useSCT", flags.Tracking.ActiveConfig.useSCT)
     kwargs.setdefault("doEmCaloSeed", False)
+    kwargs.setdefault("EMROIPhiRZContainer", "")
+    kwargs.setdefault("minTRTonTrk", 0)
+    kwargs.setdefault("minTRTPrecisionFraction", 0)
 
     acc.setPrivateTools(CompFactory.InDet.InDetAmbiScoringTool(
-        name+flags.InDet.Tracking.ActiveConfig.name, **kwargs))
+        name=name+flags.Tracking.ActiveConfig.input_name, **kwargs))
     return acc
-
-# InDetCosmicScoringTool
 
 
 def InDetCosmicsScoringToolCfg(flags, name='InDetCosmicsScoringTool', **kwargs):
     acc = ComponentAccumulator()
 
     kwargs.setdefault("nWeightedClustersMin",
-                      flags.InDet.Tracking.ActiveConfig.nWeightedClustersMin)
+                      flags.Tracking.ActiveConfig.nWeightedClustersMin)
     kwargs.setdefault("minTRTHits", 0)
 
-    if 'SummaryTool' not in kwargs:
-        from TrkConfig.TrkTrackSummaryToolConfig import InDetTrackSummaryToolCfg
-        InDetTrackSummaryTool = acc.popToolsAndMerge(
-            InDetTrackSummaryToolCfg(flags))
-        acc.addPublicTool(InDetTrackSummaryTool)
-        kwargs.setdefault("SummaryTool", InDetTrackSummaryTool)
-
     acc.setPrivateTools(CompFactory.InDet.InDetCosmicScoringTool(
-        name+flags.InDet.Tracking.ActiveConfig.extension, **kwargs))
+        name+flags.Tracking.ActiveConfig.extension, **kwargs))
     return acc
 
 
-def InDetCosmicExtenScoringToolCfg(flags, name='InDetCosmicExtenScoringTool', **kwargs):
+def InDetCosmicExtenScoringToolCfg(
+        flags, name='InDetCosmicExtenScoringTool', **kwargs):
     kwargs.setdefault("nWeightedClustersMin", 0)
-    kwargs.setdefault("minTRTHits",
-                      flags.InDet.Tracking.ActiveConfig.minTRTonTrk)
+    kwargs.setdefault("minTRTHits", flags.Tracking.ActiveConfig.minTRTonTrk)
     return InDetCosmicsScoringToolCfg(flags, name, **kwargs)
 
 
-def InDetCosmicScoringTool_TRTCfg(flags, name='InDetCosmicScoringTool_TRT', **kwargs):
-    acc = ComponentAccumulator()
-
-    if 'SummaryTool' not in kwargs:
-        from TrkConfig.TrkTrackSummaryToolConfig import (
-            InDetTrackSummaryToolNoHoleSearchCfg)
-        InDetTrackSummaryToolNoHoleSearch = acc.popToolsAndMerge(
-            InDetTrackSummaryToolNoHoleSearchCfg(flags))
-        acc.addPublicTool(InDetTrackSummaryToolNoHoleSearch)
-        kwargs.setdefault("SummaryTool", InDetTrackSummaryToolNoHoleSearch)
-
+def InDetCosmicScoringTool_TRTCfg(
+        flags, name='InDetCosmicScoringTool_TRT', **kwargs):
     kwargs.setdefault("minTRTHits",
-                      flags.InDet.Tracking.ActiveConfig.minSecondaryTRTonTrk)
-
-    acc.setPrivateTools(acc.popToolsAndMerge(
-        InDetCosmicExtenScoringToolCfg(flags, name, **kwargs)))
-    return acc
-
-# InDetNNScoringTool
+                      flags.Tracking.ActiveConfig.minSecondaryTRTonTrk)
+    return InDetCosmicExtenScoringToolCfg(flags, name, **kwargs)
 
 
 def InDetNNScoringToolBaseCfg(flags, name='InDetNNScoringTool', **kwargs):
@@ -215,11 +185,6 @@ def InDetNNScoringToolBaseCfg(flags, name='InDetNNScoringTool', **kwargs):
         kwargs.setdefault("Extrapolator", acc.popToolsAndMerge(
             InDetExtrapolatorCfg(flags)))
 
-    if "SummaryTool" not in kwargs:
-        from TrkConfig.TrkTrackSummaryToolConfig import InDetTrackSummaryToolCfg
-        kwargs.setdefault("SummaryTool", acc.popToolsAndMerge(
-            InDetTrackSummaryToolCfg(flags)))
-
     if 'DriftCircleCutTool' not in kwargs:
         from InDetConfig.InDetTrackSelectorToolConfig import (
             InDetTRTDriftCircleCutToolCfg)
@@ -229,14 +194,14 @@ def InDetNNScoringToolBaseCfg(flags, name='InDetNNScoringTool', **kwargs):
     kwargs.setdefault("nnCutConfig",
                       "dev/TrackingCP/LRTAmbiNetwork/20200727_225401/nn-config.json")
     kwargs.setdefault("nnCutThreshold",
-                      flags.InDet.Tracking.nnCutLargeD0Threshold)
+                      flags.Tracking.nnCutLargeD0Threshold)
 
     kwargs.setdefault("useAmbigFcn", True)
     kwargs.setdefault("useTRT_AmbigFcn", False)
-    kwargs.setdefault("maxZImp", flags.InDet.Tracking.ActiveConfig.maxZImpact)
-    kwargs.setdefault("maxEta", flags.InDet.Tracking.ActiveConfig.maxEta)
-    kwargs.setdefault("usePixel", flags.InDet.Tracking.ActiveConfig.usePixel)
-    kwargs.setdefault("useSCT", flags.InDet.Tracking.ActiveConfig.useSCT)
+    kwargs.setdefault("maxZImp", flags.Tracking.ActiveConfig.maxZImpact)
+    kwargs.setdefault("maxEta", flags.Tracking.ActiveConfig.maxEta)
+    kwargs.setdefault("usePixel", flags.Tracking.ActiveConfig.usePixel)
+    kwargs.setdefault("useSCT", flags.Tracking.ActiveConfig.useSCT)
     kwargs.setdefault("doEmCaloSeed", have_calo_rois)
 
     acc.setPrivateTools(CompFactory.InDet.InDetNNScoringTool(name, **kwargs))
@@ -246,32 +211,26 @@ def InDetNNScoringToolBaseCfg(flags, name='InDetNNScoringTool', **kwargs):
 def InDetNNScoringToolCfg(flags, name='InDetNNScoringTool', **kwargs):
     kwargs.setdefault("minTRTonTrk", 0)
     kwargs.setdefault("minTRTPrecisionFraction", 0)
-    kwargs.setdefault("minPt", flags.InDet.Tracking.ActiveConfig.minPT)
+    kwargs.setdefault("minPt", flags.Tracking.ActiveConfig.minPT)
     kwargs.setdefault("maxRPhiImp",
-                      flags.InDet.Tracking.ActiveConfig.maxPrimaryImpact)
-    kwargs.setdefault("maxRPhiImpEM",
-                      flags.InDet.Tracking.ActiveConfig.maxEMImpact)
-    kwargs.setdefault("minSiClusters",
-                      flags.InDet.Tracking.ActiveConfig.minClusters)
-    kwargs.setdefault("minPixel",
-                      flags.InDet.Tracking.ActiveConfig.minPixel)
-    kwargs.setdefault("maxSiHoles",
-                      flags.InDet.Tracking.ActiveConfig.maxHoles)
+                      flags.Tracking.ActiveConfig.maxPrimaryImpact)
+    kwargs.setdefault("maxRPhiImpEM", flags.Tracking.ActiveConfig.maxEMImpact)
+    kwargs.setdefault("minSiClusters", flags.Tracking.ActiveConfig.minClusters)
+    kwargs.setdefault("minPixel", flags.Tracking.ActiveConfig.minPixel)
+    kwargs.setdefault("maxSiHoles", flags.Tracking.ActiveConfig.maxHoles)
     kwargs.setdefault("maxPixelHoles",
-                      flags.InDet.Tracking.ActiveConfig.maxPixelHoles)
-    kwargs.setdefault("maxSCTHoles",
-                      flags.InDet.Tracking.ActiveConfig.maxSctHoles)
+                      flags.Tracking.ActiveConfig.maxPixelHoles)
+    kwargs.setdefault("maxSCTHoles", flags.Tracking.ActiveConfig.maxSctHoles)
     kwargs.setdefault("maxDoubleHoles",
-                      flags.InDet.Tracking.ActiveConfig.maxDoubleHoles)
+                      flags.Tracking.ActiveConfig.maxDoubleHoles)
 
-    return InDetNNScoringToolBaseCfg(flags, name+flags.InDet.Tracking.ActiveConfig.extension, **kwargs)
+    return InDetNNScoringToolBaseCfg(
+        flags, name+flags.Tracking.ActiveConfig.extension, **kwargs)
 
 
 def InDetNNScoringToolSiCfg(flags, name='InDetNNScoringToolSi', **kwargs):
     kwargs.setdefault('DriftCircleCutTool', None)
     return InDetNNScoringToolCfg(flags, name, **kwargs)
-
-# InDetTrtTrackScoringTool
 
 
 def InDetTRT_StandaloneScoringToolCfg(flags, name='InDetTRT_StandaloneScoringTool', **kwargs):
@@ -290,22 +249,21 @@ def InDetTRT_StandaloneScoringToolCfg(flags, name='InDetTRT_StandaloneScoringToo
 
     kwargs.setdefault("useAmbigFcn", True)
     kwargs.setdefault("useSigmaChi2", False)
-    kwargs.setdefault("PtMin", flags.InDet.Tracking.ActiveConfig.minTRTonlyPt)
-    kwargs.setdefault("minTRTonTrk",
-                      flags.InDet.Tracking.ActiveConfig.minTRTonly)
+    kwargs.setdefault("PtMin", flags.Tracking.ActiveConfig.minTRTonlyPt)
+    kwargs.setdefault("minTRTonTrk", flags.Tracking.ActiveConfig.minTRTonly)
     kwargs.setdefault("maxEta", 2.1)
     kwargs.setdefault("UseParameterization",
-                      flags.InDet.Tracking.ActiveConfig.useTRTonlyParamCuts)
+                      flags.Tracking.ActiveConfig.useTRTonlyParamCuts)
     kwargs.setdefault("OldTransitionLogic",
-                      flags.InDet.Tracking.ActiveConfig.useTRTonlyOldLogic)
+                      flags.Tracking.ActiveConfig.useTRTonlyOldLogic)
     kwargs.setdefault("minTRTPrecisionFraction",
-                      flags.InDet.Tracking.ActiveConfig.minSecondaryTRTPrecFrac)
+                      flags.Tracking.ActiveConfig.minSecondaryTRTPrecFrac)
     kwargs.setdefault("TRTTrksEtaBins",
-                      flags.InDet.Tracking.ActiveConfig.TrkSel.TRTTrksEtaBins)
+                      flags.Tracking.ActiveConfig.TrkSel.TRTTrksEtaBins)
     kwargs.setdefault("TRTTrksMinTRTHitsThresholds",
-                      flags.InDet.Tracking.ActiveConfig.TrkSel.TRTTrksMinTRTHitsThresholds)
+                      flags.Tracking.ActiveConfig.TrkSel.TRTTrksMinTRTHitsThresholds)
     kwargs.setdefault("TRTTrksMinTRTHitsMuDependencies",
-                      flags.InDet.Tracking.ActiveConfig.TrkSel.TRTTrksMinTRTHitsMuDependencies)
+                      flags.Tracking.ActiveConfig.TrkSel.TRTTrksMinTRTHitsMuDependencies)
 
     acc.setPrivateTools(
         CompFactory.InDet.InDetTrtTrackScoringTool(name, **kwargs))
@@ -313,14 +271,12 @@ def InDetTRT_StandaloneScoringToolCfg(flags, name='InDetTRT_StandaloneScoringToo
 
 
 def InDetTRT_TrackSegmentScoringToolCfg(flags, name='InDetTRT_TrackSegmentScoringTool', **kwargs):
-    kwargs.setdefault("PtMin", flags.InDet.Tracking.ActiveConfig.minPT)
+    kwargs.setdefault("PtMin", flags.Tracking.ActiveConfig.minPT)
     return InDetTRT_StandaloneScoringToolCfg(flags, name, **kwargs)
 
 #########################
 # ITk configs
 #########################
-
-# InDetAmbiScoringTool
 
 
 def ITkAmbiScoringToolCfg(flags, name='ITkAmbiScoringTool', **kwargs):
@@ -331,17 +287,12 @@ def ITkAmbiScoringToolCfg(flags, name='ITkAmbiScoringTool', **kwargs):
         kwargs.setdefault("Extrapolator", acc.popToolsAndMerge(
             AtlasExtrapolatorCfg(flags)))
 
-    if 'SummaryTool' not in kwargs:
-        from TrkConfig.TrkTrackSummaryToolConfig import ITkTrackSummaryToolCfg
-        kwargs.setdefault("SummaryTool", acc.popToolsAndMerge(
-            ITkTrackSummaryToolCfg(flags)))
-
     if 'InDetEtaDependentCutsSvc' not in kwargs:
         from InDetConfig.InDetEtaDependentCutsConfig import (
             ITkEtaDependentCutsSvcCfg)
         acc.merge(ITkEtaDependentCutsSvcCfg(flags))
         kwargs.setdefault("InDetEtaDependentCutsSvc", acc.getService(
-            "ITkEtaDependentCutsSvc"+flags.ITk.Tracking.ActiveConfig.extension))
+            "ITkEtaDependentCutsSvc"+flags.Tracking.ActiveConfig.extension))
 
     have_calo_rois = (flags.Tracking.doBremRecovery and
                       flags.Tracking.doCaloSeededBrem)
@@ -354,33 +305,24 @@ def ITkAmbiScoringToolCfg(flags, name='ITkAmbiScoringTool', **kwargs):
     kwargs.setdefault("DriftCircleCutTool", None)
     kwargs.setdefault("useAmbigFcn", True)
     kwargs.setdefault("useTRT_AmbigFcn", False)
-    kwargs.setdefault("maxEta", flags.ITk.Tracking.ActiveConfig.maxEta)
-    kwargs.setdefault("usePixel", flags.ITk.Tracking.ActiveConfig.useITkPixel)
-    kwargs.setdefault("useSCT", flags.ITk.Tracking.ActiveConfig.useITkStrip)
+    kwargs.setdefault("maxEta", flags.Tracking.ActiveConfig.maxEta)
+    kwargs.setdefault("usePixel", flags.Tracking.ActiveConfig.useITkPixel)
+    kwargs.setdefault("useSCT", flags.Tracking.ActiveConfig.useITkStrip)
     kwargs.setdefault("doEmCaloSeed", have_calo_rois)
     kwargs.setdefault("useITkAmbigFcn", True)
     kwargs.setdefault("minTRTonTrk", 0)
     kwargs.setdefault("minTRTPrecisionFraction", 0)
 
     acc.setPrivateTools(CompFactory.InDet.InDetAmbiScoringTool(
-        name + flags.ITk.Tracking.ActiveConfig.extension, **kwargs))
+        name + flags.Tracking.ActiveConfig.extension, **kwargs))
     return acc
-
-# InDetCosmicScoringTool
 
 
 def ITkCosmicsScoringToolCfg(flags, name='ITkCosmicsScoringTool', **kwargs):
     acc = ComponentAccumulator()
 
-    if 'SummaryTool' not in kwargs:
-        from TrkConfig.TrkTrackSummaryToolConfig import ITkTrackSummaryToolCfg
-        ITkTrackSummaryTool = acc.popToolsAndMerge(
-            ITkTrackSummaryToolCfg(flags))
-        acc.addPublicTool(ITkTrackSummaryTool)
-        kwargs.setdefault("SummaryTool", ITkTrackSummaryTool)
-
     kwargs.setdefault("nWeightedClustersMin",
-                      flags.ITk.Tracking.ActiveConfig.nWeightedClustersMin)
+                      flags.Tracking.ActiveConfig.nWeightedClustersMin)
     kwargs.setdefault("minTRTHits", 0)
 
     acc.setPrivateTools(CompFactory.InDet.InDetCosmicScoringTool(

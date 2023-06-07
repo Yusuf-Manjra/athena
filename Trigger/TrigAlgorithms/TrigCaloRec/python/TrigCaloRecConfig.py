@@ -5,6 +5,7 @@ from AthenaCommon.Logging import logging
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaMonitoringKernel.GenericMonitoringTool import GenericMonitoringTool
+from TriggerMenuMT.HLT.CommonSequences.FullScanDefs import em_clusters, lc_clusters, fs_towers, fs_cells
 
 from TrigEDMConfig.TriggerEDMRun3 import recordable
 
@@ -20,6 +21,7 @@ def trigCaloClusterMakerMonTool(flags, doMonCells = False):
     maxProcTime = 150000 if doMonCells else 4500
 
     monTool.defineHistogram('container_size', path='EXPERT', type='TH1F',  title="Container Size; Number of Clusters; Number of Events", xbins=50, xmin=0.0, xmax=maxNumberOfClusters)
+    monTool.defineHistogram('container_size_by_mu', path='EXPERT', type='TH1F',  title="Container Size; Number of Clusters; Number of Events", xbins=50, xmin=0.0, xmax=maxNumberOfClusters/60)
     monTool.defineHistogram('TIME_execute', path='EXPERT', type='TH1F', title="Total Execution Time; Execution time [ us ] ; Number of runs", xbins=100, xmin=0.0, xmax=maxProcTime)
     monTool.defineHistogram('TIME_ClustMaker', path='EXPERT', type='TH1F', title="Cluster Maker Time; Execution time [ us ] ; Number of runs", xbins=100, xmin=0.0, xmax=maxProcTime)
     monTool.defineHistogram('TIME_ClustCorr', path='EXPERT', type='TH1F', title="Cluster Correction Time; Execution time [ us ] ; Number of runs", xbins=100, xmin=0.0, xmax=100)
@@ -36,25 +38,31 @@ def trigCaloClusterMakerMonTool(flags, doMonCells = False):
     monTool.defineHistogram('mu,container_size', path='EXPERT', type='TH2F',  title="Container Size versus #mu; #mu; cluster container size", xbins=50, xmin=20.0, xmax=70, ybins=50, ymin=0.0, ymax=maxNumberOfClusters)
 
     if doMonCells:
-        monTool.defineHistogram('count_1thrsigma', path='EXPERT', type='TH1F',  title="count_1thrsigma; count_1thresigma; Number of Events", xbins=50, xmin=0.0, xmax=10e3)
-        monTool.defineHistogram('count_2thrsigma', path='EXPERT', type='TH1F',  title="count_2thrsigma; count_2thresigma; Number of Events", xbins=50, xmin=0.0, xmax=5e3)
-        monTool.defineHistogram('mu,count_1thrsigma', path='EXPERT', type='TH2F',  title="nCells above 1st thr versus #mu; #mu; nCells", xbins=50, xmin=20.0, xmax=70, ybins=50, ymin=0.0, ymax=10e3)
-        monTool.defineHistogram('mu,count_2thrsigma', path='EXPERT', type='TH2F',  title="nCells above 2nd thr versus #mu; #mu; nCells", xbins=50, xmin=20.0, xmax=70, ybins=50, ymin=0.0, ymax=5e3)
+        monTool.defineHistogram('count_1thrsigma', path='EXPERT', type='TH1F',  title="count_1thrsigma; count_1thresigma; Number of Events", xbins=60, xmin=0.0, xmax=12e3)
+        monTool.defineHistogram('count_2thrsigma', path='EXPERT', type='TH1F',  title="count_2thrsigma; count_2thresigma; Number of Events", xbins=60, xmin=0.0, xmax=6e3)
+        monTool.defineHistogram('count_1thrsigma_by_mu2', path='EXPERT', type='TH1F',  title="count_1thrsigma_by_mu2; count_1thresigma_by_mu2; Number of Events", xbins=50, xmin=0.0, xmax=10)
+        monTool.defineHistogram('count_2thrsigma_by_mu2', path='EXPERT', type='TH1F',  title="count_2thrsigma_by_mu2; count_2thresigma_by_mu2; Number of Events", xbins=50, xmin=0.0, xmax=5)
+        monTool.defineHistogram('mu,count_1thrsigma', path='EXPERT', type='TH2F',  title="nCells above 1st thr versus #mu; #mu; nCells", xbins=50, xmin=20.0, xmax=70, ybins=60, ymin=0.0, ymax=12e3)
+        monTool.defineHistogram('mu,count_2thrsigma', path='EXPERT', type='TH2F',  title="nCells above 2nd thr versus #mu; #mu; nCells", xbins=50, xmin=20.0, xmax=70, ybins=60, ymin=0.0, ymax=6e3)
 
     return monTool
 
 
-def HLTCaloCellMaker(flags, name, roisKey='UNSPECIFIED', CellsName=None, monitorCells=True):
+def HLTCaloCellMaker(flags, name, roisKey='UNSPECIFIED', CellsName=None, monitorCells=False):
     """Wrapper for legacy job options"""
     from TriggerMenuMT.HLT.Config.MenuComponents import algorithmCAToGlobalWrapper
     cellmaker = algorithmCAToGlobalWrapper(hltCaloCellMakerCfg, flags, name, roisKey, CellsName, monitorCells)[0]
     return cellmaker
 
 
-def hltCaloCellMakerCfg(flags, name=None, roisKey='UNSPECIFIED', CellsName=None, monitorCells=True):
+def hltCaloCellMakerCfg(flags, name=None, roisKey='UNSPECIFIED', CellsName=None, monitorCells=False, doTau=False):
     acc = ComponentAccumulator()
     from TrigT2CaloCommon.TrigCaloDataAccessConfig import trigCaloDataAccessSvcCfg, CaloDataAccessSvcDependencies
     acc.merge(trigCaloDataAccessSvcCfg(flags))
+    #choose RoI for fullscan
+    if not roisKey:
+        from HLTSeeding.HLTSeedingConfig import mapThresholdToL1RoICollection
+        roisKey = mapThresholdToL1RoICollection("FSNOSEED")
     # choose cells name given parameters
     cellsFromName = 'CaloCellsFS' if "FS" in name else "CaloCells"
     cells = cellsFromName if CellsName is None else CellsName
@@ -79,10 +87,20 @@ def hltCaloCellMakerCfg(flags, name=None, roisKey='UNSPECIFIED', CellsName=None,
                                              ExtraInputs = CaloDataAccessSvcDependencies,
                                              RoIs=roisKey,
                                              monitorCells = monitorCells,
-                                             MonTool = monTool)
+                                             MonTool = monTool,
+                                             TileCellsInROI = False if not doTau else True)
     acc.addEventAlgo(cellMaker, primary=True)
     return acc
 
+def hltCaloCellCorrectorCfg(flags,name='HLTCaloCellCorrector', inputEDM='CellsClusters', outputEDM='CorrectedCellsClusters', eventShape='HIEventShape'):
+    acc = ComponentAccumulator()
+    cellCorrector = CompFactory.HLTCaloCellCorrector(name = name,
+                                                     EventShapeCollection = eventShape,
+                                                     InputCellKey = inputEDM,
+                                                     OutputCellKey = outputEDM)
+    acc.addEventAlgo(cellCorrector)
+    return acc           
+  
 
 def hltCaloCellSeedlessMakerCfg(flags, roisKey='UNSPECIFIED'):
     acc = ComponentAccumulator()
@@ -146,15 +164,17 @@ def hltCaloDMCalib(flags, name = "TrigDMCalib" ):
 
 
 def hltTopoClusterMakerCfg(flags, name, clustersKey="HLT_TopoCaloClustersFS",
-                           cellsKey="CaloCells", doLC=True):
+                           cellsKey=None, doLC=False):
     acc = ComponentAccumulator()
+    cellsFromName = 'CaloCellsFS' if "FS" in clustersKey else "CaloCells"
+    cells = cellsFromName if cellsKey is None else cellsKey
 
     from CaloRec.CaloTopoClusterConfig import (
         CaloTopoClusterToolCfg,
         CaloTopoClusterSplitterToolCfg,
     )
 
-    topoMaker = acc.popToolsAndMerge(CaloTopoClusterToolCfg(flags, cellsname=cellsKey))
+    topoMaker = acc.popToolsAndMerge(CaloTopoClusterToolCfg(flags, cellsname=cells))
     topoMaker.RestrictPSNeighbors = False
     listClusterCorrectionTools = []
     if doLC :
@@ -215,8 +235,9 @@ def hltTopoClusterMakerCfg(flags, name, clustersKey="HLT_TopoCaloClustersFS",
     doMonCells = "FS" in name
     alg = CompFactory.TrigCaloClusterMaker(
         name,
-        Cells=cellsKey,
+        Cells=cells,
         CaloClusters=recordable(clustersKey),
+        CellLinks = clustersKey+"_links",
         ClusterMakerTools = [ topoMaker, topoSplitter, topoMoments], # moments are missing yet
         ClusterCorrectionTools = listClusterCorrectionTools,
         MonCells = doMonCells,
@@ -225,21 +246,6 @@ def hltTopoClusterMakerCfg(flags, name, clustersKey="HLT_TopoCaloClustersFS",
     from CaloTools.CaloNoiseCondAlgConfig import CaloNoiseCondAlgCfg
     acc.merge(CaloNoiseCondAlgCfg(flags))
     acc.addEventAlgo(alg, primary=True)
-    return acc
-
-
-def hltCaloTopoClusteringCfg(
-    flags, namePrefix=None, roisKey="UNSPECIFIED", clustersKey="HLT_TopoCaloClustersRoI"
-):
-    acc = ComponentAccumulator()
-    acc.merge(
-        hltCaloCellMakerCfg(flags, namePrefix + "HLTCaloCellMaker", roisKey=roisKey)
-    )
-    acc.merge(
-        hltTopoClusterMakerCfg(
-            flags, namePrefix + "TrigCaloClusterMaker_topo", clustersKey=clustersKey
-        )
-    )
     return acc
 
 
@@ -255,7 +261,7 @@ def hltCaloTopoClusterCalibratorCfg(flags, name, clustersin, clustersout, **kwar
     acc.merge(caloTopoCoolFolderCfg(flags))
 
     calibrator = CompFactory.TrigCaloClusterCalibrator(
-        name, InputClusters=clustersin, OutputClusters=clustersout, 
+        name, InputClusters=clustersin, OutputClusters=clustersout,
         **kwargs
         #OutputCellLinks = clustersout+"_cellLinks", **kwargs
     )
@@ -283,6 +289,77 @@ def hltCaloTopoClusterCalibratorCfg(flags, name, clustersin, clustersout, **kwar
     acc.addEventAlgo(calibrator, primary=True)
     return acc
 
+##################### Unifying all cluster reco algs together ##################
+from TriggerMenuMT.HLT.Egamma.TrigEgammaKeys	  import getTrigEgammaKeys
+TrigEgammaKeys = getTrigEgammaKeys()
+TrigEgammaKeys_LRT = getTrigEgammaKeys(name = '_LRT')
+TrigEgammaKeys_HI = getTrigEgammaKeys(ion = True)
+
+def hltCaloTopoClusteringCfg(
+    flags, namePrefix=None,nameSuffix=None, CellsName=None, monitorCells=False, roisKey="UNSPECIFIED",clustersKey=None, doLCFS=False, doTau = False):
+    if doTau:
+        CellsName = "CaloCellsLC"
+        clustersKeyFromName = "HLT_TopoCaloClustersLC"
+    elif nameSuffix == "FS":
+        clustersKeyFromName = em_clusters
+    else:
+        clustersKeyFromName = TrigEgammaKeys.precisionTopoClusterContainer
+    clusters = clustersKeyFromName if clustersKey is None else clustersKey
+    acc = ComponentAccumulator()
+    acc.merge(
+        hltCaloCellMakerCfg(flags, namePrefix + "HLTCaloCellMaker"+nameSuffix, roisKey=roisKey, CellsName=CellsName, monitorCells=monitorCells, doTau = doTau)
+    )
+    acc.merge(
+        hltTopoClusterMakerCfg(
+            flags, namePrefix + "HLTCaloClusterMaker"+nameSuffix,cellsKey=CellsName, clustersKey=clusters, doLC=doTau)
+        )
+    if doLCFS:
+        acc.merge( hltCaloTopoClusterCalibratorCfg(
+                                                   flags,
+                                                   "HLTCaloClusterCalibratorLCFS",
+                                                   clustersin=em_clusters,
+                                                   clustersout=lc_clusters,
+                                                   OutputCellLinks=lc_clusters + "_cellLinks",
+                                                  )
+                 )
+    return acc
+
+###################################EgammaSpecific TopoClustering####################################
+def egammaTopoClusteringCfg(flags, RoIs):
+  cfg = hltCaloTopoClusteringCfg(flags, namePrefix="", nameSuffix="RoI", CellsName="CaloCells",  monitorCells=True, roisKey=RoIs)
+  return cfg
+
+
+def egammaTopoClusteringCfg_LRT(flags, RoIs):
+  cfg = hltCaloTopoClusteringCfg(flags, namePrefix="", nameSuffix="RoI_LRT", CellsName="CaloCells",  monitorCells=True, roisKey=RoIs, clustersKey= TrigEgammaKeys_LRT.precisionTopoClusterContainer)
+  return cfg
+
+
+###################################JetMetSpecific TopoClustering####################################
+def jetmetTopoClusteringCfg(flags, RoIs):
+  cfg = hltCaloTopoClusteringCfg(flags, namePrefix="", nameSuffix="FS", CellsName="CaloCellsFS",  monitorCells=False, roisKey=RoIs)
+  return cfg
+
+def jetmetTopoClusteringCfg_LC(flags, RoIs):
+  cfg = hltCaloTopoClusteringCfg(flags, namePrefix="", nameSuffix="FS", CellsName="CaloCellsFS",  monitorCells=False, roisKey=RoIs, doLCFS=True)
+  return cfg
+
+###################################TauSpecific TopoClustering####################################
+def tauTopoClusteringCfg(flags, RoIs):
+  cfg = hltCaloTopoClusteringCfg(flags, namePrefix="Tau", nameSuffix="", CellsName="CaloCellsLC",  monitorCells=False, roisKey=RoIs, clustersKey="HLT_TopoCaloClustersLC", doTau= True)
+  return cfg
+
+def hltCaloTopoClusteringHICfg(
+    flags, CellsName=None, roisKey="UNSPECIFIED", doLC=False,algSuffix='HIRoI', ion=True):
+    from TriggerMenuMT.HLT.Egamma.TrigEgammaKeys import  getTrigEgammaKeys
+    TrigEgammaKeys = getTrigEgammaKeys(ion=ion)
+    eventShape = TrigEgammaKeys.egEventShape
+    clustersKey = TrigEgammaKeys.precisionTopoClusterContainer
+    acc = ComponentAccumulator()
+    acc.merge(hltCaloCellMakerCfg(flags, "HLTCaloCellMaker"+algSuffix, roisKey=roisKey, CellsName=CellsName, monitorCells=True))
+    acc.merge(hltCaloCellCorrectorCfg(flags,name='HLTRoICaloCellCorrector', inputEDM='CaloCells', outputEDM='CorrectedRoICaloCells', eventShape=eventShape))
+    acc.merge(hltTopoClusterMakerCfg(flags, "TrigCaloClusterMaker_topo"+algSuffix, clustersKey=clustersKey,cellsKey="CorrectedRoICaloCells"))
+    return acc
 
 def hltHICaloTowerMakerCfg(flags, name, towersKey, cellsKey="CaloCellsFS", RoIs=""):
     acc = ComponentAccumulator()
@@ -321,6 +398,23 @@ def hltHICaloTowerMakerCfg(flags, name, towersKey, cellsKey="CaloCellsFS", RoIs=
     from CaloTools.CaloNoiseCondAlgConfig import CaloNoiseCondAlgCfg
     acc.merge(CaloNoiseCondAlgCfg(flags))
     acc.addEventAlgo(alg, primary=True)
+    return acc
+
+def HICaloTowerCfg(flags):
+    """ Create the towers for heavy ion """
+    acc = ComponentAccumulator()
+    acc.merge(
+              hltCaloCellMakerCfg(flags, "HLTCaloCellMakerFS", roisKey='')
+             )
+    # Then build the clusters
+    acc.merge(
+              hltHICaloTowerMakerCfg(
+              flags,
+              "HLTHICaloTowerMakerFS",
+              towersKey=fs_towers,
+              cellsKey=fs_cells,
+              )
+    )
     return acc
 
 

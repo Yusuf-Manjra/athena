@@ -10,15 +10,18 @@
 
 threshold_mapping = {
     'eEM': { # TODO: Update when eFEX EM calibrations are applied
-        5:4,
-        7:6,
-        9:8,
-        10:9,
-        12:11,
-        15:14,
-        18:17,
-        22:21,
-        24:23,
+        # TODO: 3 is assigined to eEM1 and eEM2 to avoid checkPtMinToTopo error, to be updated when ptMinToTopo can be changed for HI menu
+        1:3,
+        2:3,
+        5:3.5,
+        7:5.5,
+        9:7,
+        10:8,
+        12:10,
+        15:13,
+        18:16,
+        22:20,
+        24:22,
         26:25,
         28:27,
     },
@@ -46,6 +49,7 @@ threshold_mapping = {
         35:25,
     },
     'jJ': {
+        15:15,
         20:20,
         30:30,
         40:40,

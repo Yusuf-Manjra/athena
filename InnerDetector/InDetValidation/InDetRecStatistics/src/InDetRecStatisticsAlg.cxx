@@ -62,13 +62,13 @@
 #include "InDetRecStatistics/InDetRecStatisticsAlg.h"
 #include "InDetRecStatistics/TrackStatHelper.h"
 #include "AtlasHepMC/GenParticle.h"
-#include "TruthHelper/PileUpType.h"
+#include "InDetRecStatistics//PileUpType.h"
 
 
 
 
-static const char * const s_linestr ATLAS_THREAD_SAFE = "----------------------------------------------------------------------------------------------------------------------------------------------";
-static const char * const s_linestr2 ATLAS_THREAD_SAFE= "..............................................................................................................................................";
+static const char * const s_linestr = "----------------------------------------------------------------------------------------------------------------------------------------------";
+static const char * const s_linestr2 = "..............................................................................................................................................";
 
 InDet::InDetRecStatisticsAlg::InDetRecStatisticsAlg(const std::string& name, ISvcLocator* pSvcLocator) :
   AthReentrantAlgorithm(name, pSvcLocator),
@@ -565,7 +565,7 @@ selectGenSignal  (const McEventCollection* SimTracks,
 #else
       counter.m_counter[kN_gen_tracks_processed] += genEvent->particles_size();
 #endif
-      for (auto particle: *genEvent){
+      for (const auto& particle: *genEvent){
 	  // require stable particle from generation or simulation
 	  if ((particle->status()%1000) != 1 ) continue;
 	  int   pdgCode = particle->pdg_id();

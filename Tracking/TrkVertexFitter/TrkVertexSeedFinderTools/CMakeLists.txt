@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 # Declare the package name:
 atlas_subdir( TrkVertexSeedFinderTools )
@@ -10,7 +10,7 @@ atlas_add_library( TrkVertexSeedFinderToolsLib
                    TrkVertexSeedFinderTools/*.h
                    INTERFACE
                    PUBLIC_HEADERS TrkVertexSeedFinderTools
-                   LINK_LIBRARIES AthenaKernel GaudiKernel AthenaBaseComps TrkVertexFitterInterfaces
+                   LINK_LIBRARIES TruthUtils AthenaKernel GaudiKernel AthenaBaseComps TrkVertexFitterInterfaces
                    TrkVertexSeedFinderUtilsLib xAODEventInfo GeneratorObjects AtlasHepMCLib CxxUtils )
 
 # Component(s) in the package:
@@ -20,7 +20,7 @@ atlas_add_component( TrkVertexSeedFinderTools
                      INCLUDE_DIRS ${HEPPDT_INCLUDE_DIRS}
                      LINK_LIBRARIES ${HEPPDT_LIBRARIES} AtlasHepMCLib EventPrimitives GaudiKernel GeneratorObjects
                      GeoPrimitives StoreGateLib TestTools TrkEventPrimitives TrkParameters TrkTrack
-                     TrkVertexFitterInterfaces TrkVertexSeedFinderToolsLib TrkVertexSeedFinderUtilsLib TruthHelper )
+                     TrkVertexFitterInterfaces TrkVertexSeedFinderToolsLib TrkVertexSeedFinderUtilsLib )
 
 # Install files from the package:
 atlas_install_joboptions( share/*.py )
@@ -30,7 +30,7 @@ function( run_seed_test testName )
   atlas_add_test( ${testName}
                   SCRIPT athena.py TrkVertexSeedFinderTools/${testName}_test.py
                   PROPERTIES TIMEOUT 300
-                  LOG_IGNORE_PATTERN " INFO |WARNING |^\\|-|found service|Adding private|^ +[+]|HepPDT Version|class DataHeader|class PoolToken" )
+                  LOG_SELECT_PATTERN "^testalg1 " )
 endfunction (run_seed_test)
 
 run_seed_test( DummySeedFinder )

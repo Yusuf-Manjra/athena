@@ -3,6 +3,10 @@
 */
 
 #include "TruthConverters/xAODtoHepMCTool.h"
+#ifndef XAOD_STANDALONE
+#include "AthAnalysisBaseComps/AthAnalysisHelper.h"
+#endif
+#include "AtlasHepMC/MagicNumbers.h"
 
 xAODtoHepMCTool::xAODtoHepMCTool(const std::string &name)
     : asg::AsgTool(name),
@@ -79,9 +83,15 @@ std::vector<HepMC::GenEvent> xAODtoHepMCTool ::getHepMCEvents(const xAOD::TruthE
       printxAODEvent(xAODEvent, eventInfo);
     // Create GenEvent for each xAOD truth event
     ATH_MSG_DEBUG("Create new GenEvent");
-    HepMC::GenEvent hepmcEvent = createHepMCEvent(xAODEvent, eventInfo);
+    HepMC::GenEvent&& hepmcEvent = createHepMCEvent(xAODEvent, eventInfo);
+    #ifdef HEPMC3
+    std::shared_ptr<HepMC3::GenRunInfo> runinfo = std::make_shared<HepMC3::GenRunInfo>(*(hepmcEvent.run_info().get()));
+    #endif
     // Insert into McEventCollection
     mcEventCollection.push_back(std::move(hepmcEvent));
+    #ifdef HEPMC3
+    mcEventCollection[mcEventCollection.size()-1].set_run_info(runinfo);
+    #endif
     if (doPrint)
       ATH_MSG_DEBUG("XXX Printing HepMC Event");
     if (doPrint)
@@ -98,10 +108,58 @@ HepMC::GenEvent xAODtoHepMCTool::createHepMCEvent(const xAOD::TruthEvent *xEvt, 
 
   /// EVENT LEVEL
   HepMC::GenEvent genEvt;
+  #ifdef HEPMC3
+  genEvt.set_units(HepMC3::Units::MEV, HepMC3::Units::MM);
+  #endif
 
   long long int evtNum = eventInfo->eventNumber();
   genEvt.set_event_number(evtNum);
   ATH_MSG_DEBUG("Start createHepMCEvent for event " << evtNum);
+
+  //Weights
+  #ifndef XAOD_STANDALONE
+  const std::vector<float> weights = xEvt->weights();
+  std::map<std::string, int> weightNameMap;
+  if (AthAnalysisHelper::retrieveMetadata("/Generation/Parameters","HepMCWeightNames", weightNameMap).isFailure()) {
+    ATH_MSG_DEBUG("Couldn't find meta-data for weight names.");
+  }
+  #ifdef HEPMC3
+  std::shared_ptr<HepMC3::GenRunInfo> runinfo = std::make_shared<HepMC3::GenRunInfo>();
+  genEvt.set_run_info(runinfo);
+  std::vector<std::string> wnames;
+  wnames.reserve(weights.size());
+  for (int idx = 0; idx < int(weights.size()); ++idx) {
+    for (const auto& it : weightNameMap) {
+      if (it.second == idx) {
+        wnames.push_back(it.first);
+        break;
+      }
+    }
+  }
+  genEvt.run_info()->set_weight_names(wnames);
+  for ( std::vector<float>::const_iterator wgt = weights.begin(); wgt != weights.end(); ++wgt ) {
+    genEvt.weights().push_back(*wgt);
+  }
+  #else
+  if (weightNameMap.size()) {
+    HepMC::WeightContainer& wc = genEvt.weights();
+    wc.clear();
+    for (int idx = 0; idx < int(weights.size()); ++idx) {
+      for (const auto& it : weightNameMap) {
+        if (it.second == idx) {
+          wc[ it.first ] = weights[idx];
+          break;
+        }
+      }
+    }
+  }
+  else {
+    for ( std::vector<float>::const_iterator wgt = weights.begin(); wgt != weights.end(); ++wgt ) {
+      genEvt.weights().push_back(*wgt);
+    }
+  }
+  #endif
+  #endif
 
   // PARTICLES AND VERTICES
   // Map of existing vertices - needed for the tree linking
@@ -129,7 +187,7 @@ HepMC::GenEvent xAODtoHepMCTool::createHepMCEvent(const xAOD::TruthEvent *xEvt, 
     }
 
     // skip particles with barcode which are Geant4 secondaries
-    if (HepMC::is_simulation_particle(xPart->barcode()))
+    if (HepMC::is_simulation_particle(xPart))
       continue;
 
       // Create GenParticle
@@ -141,8 +199,8 @@ HepMC::GenEvent xAODtoHepMCTool::createHepMCEvent(const xAOD::TruthEvent *xEvt, 
 #endif
     int bcpart = xPart->barcode();
 
-    // status 10902 should be treated just as status 2
-    if (hepmcParticle->status() == 10902)
+    // status HepMC::SPECIALSTATUS should be treated just as status 2
+    if (hepmcParticle->status() == HepMC::SPECIALSTATUS)
       hepmcParticle->set_status(2);
 
     // Get the production and decay vertices
@@ -150,7 +208,7 @@ HepMC::GenEvent xAODtoHepMCTool::createHepMCEvent(const xAOD::TruthEvent *xEvt, 
     {
       const xAOD::TruthVertex *xAODProdVtx = xPart->prodVtx();
       // skip production vertices which are Geant4 secondaries
-      if (HepMC::is_simulation_vertex(xAODProdVtx->barcode()))
+      if (HepMC::is_simulation_vertex(xAODProdVtx))
         continue;
       bool prodVtxSeenBefore(false); // is this new?
       auto hepmcProdVtx = vertexHelper(xAODProdVtx, vertexMap, prodVtxSeenBefore);
@@ -183,10 +241,10 @@ HepMC::GenEvent xAODtoHepMCTool::createHepMCEvent(const xAOD::TruthEvent *xEvt, 
     }
 
     if (xPart->hasDecayVtx())
-    {
+    {   
       const xAOD::TruthVertex *xAODDecayVtx = xPart->decayVtx();
       // skip decay vertices which are Geant4 secondaries
-      if (HepMC::is_simulation_vertex(xAODDecayVtx->barcode()))
+      if (HepMC::is_simulation_vertex(xAODDecayVtx))
       {
 /// Avoid double deletion
 #ifndef HEPMC3
@@ -281,9 +339,8 @@ HepMC::GenVertexPtr xAODtoHepMCTool::createHepMCVertex(const xAOD::TruthVertex *
   return genVertex;
 }
 
-// Print xAODTruth Event. The printout is particle oriented, unlike the
-// HepMC particle/vertex printout. Geant and pileup particles with
-// barcode>100000 are omitted.
+// Print xAODTruth Event. The printout is particle oriented, unlike the HepMC particle/vertex printout. Regenerated Geant (i.e. ones surving an interaction) and pileup particles (e.g. suppressed pileup barcodes), with barcode > 1000000 are omitted. Thus we output only the original particles created in Geant4. 
+
 void xAODtoHepMCTool::printxAODEvent(const xAOD::TruthEvent *event, const xAOD::EventInfo *eventInfo) const
 {
 
@@ -304,7 +361,7 @@ void xAODtoHepMCTool::printxAODEvent(const xAOD::TruthEvent *event, const xAOD::
     if (part == nullptr)
       continue;
     int bc = part->barcode();
-    if (bc > 100000)
+    if (HepMC::generations(bc) > 0)
       continue;
     int id = part->pdgId();
     if (id != 25)

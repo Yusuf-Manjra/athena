@@ -78,7 +78,7 @@ def remapToOffline( name ):
    else:
        return name
 
-def makeInDetPatternRecognition( flags, config, verifier = 'IDTrigViewDataVerifier' ):
+def makeInDetPatternRecognition( inflags, config, verifier = 'IDTrigViewDataVerifier' ):
       viewAlgs = [] #list of all algs running in this module
 
       dataVerifier = None
@@ -96,10 +96,14 @@ def makeInDetPatternRecognition( flags, config, verifier = 'IDTrigViewDataVerifi
          from InDetRecExample.ConfiguredNewTrackingCuts import ConfiguredNewTrackingCuts
          trackingCuts = ConfiguredNewTrackingCuts( mode_name ) 
       #trackingCuts.printInfo() 
+      
 
+      from TrigInDetConfig.utils import getFlagsForActiveConfig
+      flags = getFlagsForActiveConfig(inflags, config.input_name, log)
+      
       from InDetTrigRecExample import InDetTrigCA
-
-      InDetTrigCA.InDetTrigConfigFlags = flags.cloneAndReplace("InDet.Tracking.ActiveConfig", "Trigger.InDetTracking."+config.name)
+      InDetTrigCA.InDetTrigConfigFlags = flags
+      
 
       from TrkConfig.TrkTrackSummaryToolConfig import InDetTrigTrackSummaryToolCfg
       summaryTool = CAtoLegacyPublicToolWrapper(InDetTrigTrackSummaryToolCfg)
@@ -138,13 +142,6 @@ def makeInDetPatternRecognition( flags, config, verifier = 'IDTrigViewDataVerifi
                                                                      ReadKey  = "PixelDetectorElementCollection",
                                                                      WriteKey = "PixelDetElementBoundaryLinks_xk",)
 
-
-         if True: #FIXME trackingCuts.useSCT()? ATR-22756
-            from AthenaCommon.AlgSequence import AthSequencer
-            condSeq = AthSequencer("AthCondSeq")
-            if not hasattr(condSeq, "InDet__SiDetElementsRoadCondAlg_xk"):
-               from SiDetElementsRoadTool_xk.SiDetElementsRoadTool_xkConf import InDet__SiDetElementsRoadCondAlg_xk
-               condSeq += InDet__SiDetElementsRoadCondAlg_xk(name = "InDet__SiDetElementsRoadCondAlg_xk")
 
             if not hasattr(condSeq, "InDetSiDetElementBoundaryLinksSCTCondAlg"):
                from SiCombinatorialTrackFinderTool_xk.SiCombinatorialTrackFinderTool_xkConf import InDet__SiDetElementBoundaryLinksCondAlg_xk
@@ -243,8 +240,8 @@ def ambiguitySolverForIDPatternRecognition( flags, config, summaryTool, inputTra
    #-----------------------------------------------------------------------------
    #                      Track particle conversion algorithm
    from .InDetTrigCommon import trackParticleCnv_builder
-   from InDetTrigRecExample.InDetTrigConfigRecLoadToolsPost import InDetTrigParticleCreatorToolWithSummary
-   creatorTool = InDetTrigParticleCreatorToolWithSummary
+   from InDetTrigRecExample.InDetTrigConfigRecLoadToolsPost import InDetTrigParticleCreatorTool
+   creatorTool = InDetTrigParticleCreatorTool
    
    trackParticleCnvAlg = trackParticleCnv_builder(flags,
                                                   name                 = add_prefix( 'xAODParticleCreatorAlg', config.name + '_IDTrig' ),

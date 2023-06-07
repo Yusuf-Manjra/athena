@@ -1,5 +1,5 @@
 /*
-   Copyright (C) 2019-2022 CERN for the benefit of the ATLAS collaboration
+   Copyright (C) 2019-2023 CERN for the benefit of the ATLAS collaboration
  */
 
 
@@ -83,7 +83,7 @@ namespace Crest {
     bool m_isRewrite {};
     std::string m_currentTag {};
 
-    inline static const std::string s_PATH = "/api-v4.0";
+    std::string m_PATH = "/api-v4.0";
     inline static const std::string s_TAG_PATH = "/tags";
     inline static const std::string s_ADMIN_PATH = "/admin";
     inline static const std::string s_IOV_PATH = "/iovs";
@@ -861,7 +861,7 @@ namespace Crest {
  *    json tag_info28 = myCrestClientF.findRunLumiInfo(params28);
  * </pre>
  */
-    nlohmann::json findRunLumiInfo(urlParameters params);
+    nlohmann::json findRunLumiInfo(const urlParameters& params);
 
 
 /**

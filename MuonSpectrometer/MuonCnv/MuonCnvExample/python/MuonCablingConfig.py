@@ -9,12 +9,21 @@ from MuonByteStream.MuonByteStreamFlags import muonByteStreamFlags
 from AthenaCommon.AppMgr import theApp,ToolSvc,ServiceMgr
 from AthenaCommon.DetFlags import DetFlags
 from MuonCnvExample.MuonCnvFlags import muonCnvFlags
+from MuonRecExample.MuonRecFlags import muonRecFlags
 
 from AthenaCommon.AlgSequence import AthSequencer
 from MuonMDT_Cabling.MuonMDT_CablingConf import MuonMDT_CablingAlg
+from MuonNRPC_Cabling.MuonNRPC_CablingConf import MuonNRPC_CablingAlg
+
 condSequence = AthSequencer("AthCondSeq")
 if DetFlags.MDT_on():
     condSequence += MuonMDT_CablingAlg("MuonMDT_CablingAlg")
+    from AtlasGeoModel.CommonGMJobProperties import CommonGeometryFlags
+    condSequence.MuonMDT_CablingAlg.isRun3 = CommonGeometryFlags.Run not in ["RUN1","RUN2"]
+
+if DetFlags.MM_on():
+    from MuonMM_Cabling.MuonMM_CablingConf import MuonMM_CablingAlg
+    condSequence += MuonMM_CablingAlg("MuonMM_CablingAlg")
 
 # defaults have to be re-set now since the jobproperties and trigger flags are now available # SS
 muonCnvFlags.setDefaults()
@@ -48,6 +57,7 @@ if DetFlags.readRDOBS.RPC_on() or DetFlags.readRDOPool.RPC_on() or DetFlags.read
     rpcTrigEta="/RPC/TRIGGER/CM_THR_ETA"
     rpcTrigPhi="/RPC/TRIGGER/CM_THR_PHI"
 
+    from AtlasGeoModel.MuonGMJobProperties import MuonGeometryFlags
     # This block with conditions override is only used in Trigger and Reco, and only needed until mid-May 2022.
     # See ATR-25059 for discussion. To avoid this ConfigFlags based block being executed in Digitization,
     # skip this if the DetFlags digitization flag for Muons is set.
@@ -58,7 +68,6 @@ if DetFlags.readRDOBS.RPC_on() or DetFlags.readRDOPool.RPC_on() or DetFlags.read
             # Relevant folder tags are set for now, until new global tag (RUN3-02) becomes avaialble
             rpcTrigEta="/RPC/TRIGGER/CM_THR_ETA <tag>RPCTriggerCMThrEta_RUN12_MC16_04</tag> <forceRunNumber>330000</forceRunNumber>"
             rpcTrigPhi="/RPC/TRIGGER/CM_THR_PHI <tag>RPCTriggerCMThrPhi_RUN12_MC16_04</tag> <forceRunNumber>330000</forceRunNumber>"
-            from AtlasGeoModel.MuonGMJobProperties import MuonGeometryFlags
             if isMC and MuonGeometryFlags.hasSTGC(): # Run3-geometry
                 rpcCabMap="/RPC/CABLING/MAP_SCHEMA <tag>RPCCablingMapSchema_2015-2018Run3-4</tag> <forceRunNumber>330000</forceRunNumber>"
                 rpcCabMapCorr="/RPC/CABLING/MAP_SCHEMA_CORR <tag>RPCCablingMapSchemaCorr_2015-2018Run3-4</tag> <forceRunNumber>330000</forceRunNumber>"
@@ -87,6 +96,9 @@ if DetFlags.readRDOBS.RPC_on() or DetFlags.readRDOPool.RPC_on() or DetFlags.read
 
     from RPC_CondCabling.RPC_CondCablingConf import RpcCablingCondAlg
     condSequence += RpcCablingCondAlg("RpcCablingCondAlg",DatabaseRepository=dbRepo)
+    
+    if muonRecFlags.doNRPCs():
+        condSequence += MuonNRPC_CablingAlg("MuonNRPC_CablingAlg")
 
 if DetFlags.readRDOBS.TGC_on() or DetFlags.readRDOPool.TGC_on() or DetFlags.readRIOPool.TGC_on() or DetFlags.digitize.TGC_on():
     log.info("TGC cabling is using mode: %s",muonCnvFlags.TgcCablingMode())
@@ -133,3 +145,12 @@ if DetFlags.readRDOBS.MDT_on() or DetFlags.readRDOPool.MDT_on()  or DetFlags.rea
           condSequence.MuonMDT_CablingAlg.MapFolders = "/MDT/Ofl/CABLING/MAP_SCHEMA" 
           condSequence.MuonMDT_CablingAlg.MezzanineFolders    = "/MDT/Ofl/CABLING/MEZZANINE_SCHEMA"
        
+if DetFlags.readRDOBS.MM_on() or DetFlags.readRDOPool.MM_on()  or DetFlags.readRIOPool.MM_on() or DetFlags.digitize.MM_on():
+      log.info("Adding Micromegas cabling folders to conddb")
+      from IOVDbSvc.CondDB import conddb 
+      IOVDbSvc = ServiceMgr.IOVDbSvc
+      if globalflags.DataSource()=='data':
+          # here we should add the cool folders containing the cabling map of the NSW
+          pass
+
+    

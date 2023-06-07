@@ -274,7 +274,7 @@ StatusCode InDetV0FinderTool::initialize()
     }
   }
 
-
+  ATH_CHECK(m_RelinkContainers.initialize());
 
   ATH_MSG_DEBUG( "Initialization successful" );
 
@@ -292,6 +292,11 @@ StatusCode InDetV0FinderTool::performSearch(xAOD::VertexContainer* v0Container,
 {
 
   ATH_MSG_DEBUG( "InDetV0FinderTool::performSearch" );
+  std::vector<const xAOD::TrackParticleContainer*> trackCols;
+  for(const auto &str : m_RelinkContainers){
+    SG::ReadHandle<xAOD::TrackParticleContainer> handle(str,ctx);
+    trackCols.push_back(handle.cptr());
+  }
 
   m_events_processed ++;
 
@@ -356,6 +361,17 @@ StatusCode InDetV0FinderTool::performSearch(xAOD::VertexContainer* v0Container,
     return StatusCode::SUCCESS;
   }
 
+  SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0LinksDecorks(m_v0LinksDecorkeyks, ctx);
+  SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0LinksDecorlb(m_v0LinksDecorkeylb, ctx);
+  SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0LinksDecorlbb(m_v0LinksDecorkeylbb, ctx);
+  SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0_ksLinksDecor(m_v0_ksLinksDecorkey, ctx);
+  SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0_laLinksDecor(m_v0_laLinksDecorkey, ctx);
+  SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0_lbLinksDecor(m_v0_lbLinksDecorkey, ctx);
+  SG::WriteDecorHandle<xAOD::VertexContainer, int> mDecor_gfit(m_mDecor_gfit, ctx);
+  SG::WriteDecorHandle<xAOD::VertexContainer, float> mDecor_gmass(m_mDecor_gmass, ctx);
+  SG::WriteDecorHandle<xAOD::VertexContainer, float> mDecor_gmasserr(m_mDecor_gmasserr, ctx);
+  SG::WriteDecorHandle<xAOD::VertexContainer, float> mDecor_gprob(m_mDecor_gprob, ctx);
+
   std::vector<const xAOD::TrackParticle*>::const_iterator tpIt1;
   std::vector<const xAOD::TrackParticle*>::const_iterator tpIt2;
   unsigned int i1 = 0;
@@ -384,17 +400,6 @@ StatusCode InDetV0FinderTool::performSearch(xAOD::VertexContainer* v0Container,
 	if (foundVertex1) break;
       }
     }
-
-    SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0LinksDecorks(m_v0LinksDecorkeyks, ctx);
-    SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0LinksDecorlb(m_v0LinksDecorkeylb, ctx);
-    SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0LinksDecorlbb(m_v0LinksDecorkeylbb, ctx);
-    SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0_ksLinksDecor(m_v0_ksLinksDecorkey, ctx);
-    SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0_laLinksDecor(m_v0_laLinksDecorkey, ctx);
-    SG::WriteDecorHandle<xAOD::VertexContainer, ElementLink<xAOD::VertexContainer>> v0_lbLinksDecor(m_v0_lbLinksDecorkey, ctx);
-    SG::WriteDecorHandle<xAOD::VertexContainer, int> mDecor_gfit(m_mDecor_gfit, ctx);
-    SG::WriteDecorHandle<xAOD::VertexContainer, float> mDecor_gmass(m_mDecor_gmass, ctx);
-    SG::WriteDecorHandle<xAOD::VertexContainer, float> mDecor_gmasserr(m_mDecor_gmasserr, ctx);
-    SG::WriteDecorHandle<xAOD::VertexContainer, float> mDecor_gprob(m_mDecor_gprob, ctx); 
     unsigned int i2 = 0;
     for (tpIt2 = negTracks.begin(); tpIt2 != negTracks.end(); ++tpIt2)
     {
@@ -429,6 +434,10 @@ StatusCode InDetV0FinderTool::performSearch(xAOD::VertexContainer* v0Container,
 	  if (foundVertex2) break;
 	}
       }
+      bool usepair = false;
+      if (!m_useorigin) usepair = true;
+      if (m_useorigin && foundVertex1 == nullptr && foundVertex2 == nullptr) usepair = true;
+      if (!usepair) continue;
 
       bool trk_cut1 = false;
       bool trk_cut2 = false;
@@ -438,6 +447,17 @@ StatusCode InDetV0FinderTool::performSearch(xAOD::VertexContainer* v0Container,
       if (nclus2 != 0) trk_cut2 = true;
       if (nclus2 == 0 && pt2 >= m_ptTRT) trk_cut2 = true;
       if (!trk_cut2) continue;      
+
+// find a starting point
+      const Trk::Perigee& aPerigee1 = TP1->perigeeParameters();
+      const Trk::Perigee& aPerigee2 = TP2->perigeeParameters();
+      int sflag = 0;
+      int errorcode = 0;
+      Amg::Vector3D startingPoint = m_vertexEstimator->getCirclesIntersectionPoint(&aPerigee1,&aPerigee2,sflag,errorcode);
+      if (errorcode != 0) {startingPoint(0) = 0.0; startingPoint(1) = 0.0; startingPoint(2) = 0.0;}
+      bool errorCode = false;
+      if (errorcode == 0 || errorcode == 5 || errorcode == 6 || errorcode == 8) errorCode = true;
+      if (!errorCode) continue;
 
       bool d0wrtVertex = true;
       if (m_use_vertColl) {
@@ -452,22 +472,6 @@ StatusCode InDetV0FinderTool::performSearch(xAOD::VertexContainer* v0Container,
       }
       if (!d0wrtVertex) continue;
 
-      bool usepair = false;
-      if (!m_useorigin) usepair = true;
-      if (m_useorigin && foundVertex1 == nullptr && foundVertex2 == nullptr) usepair = true;
-      if (!usepair) continue;      
-
-// find a starting point
-        const Trk::Perigee& aPerigee1 = TP1->perigeeParameters();
-        const Trk::Perigee& aPerigee2 = TP2->perigeeParameters();
-        int sflag = 0;
-        int errorcode = 0;
-        Amg::Vector3D startingPoint = m_vertexEstimator->getCirclesIntersectionPoint(&aPerigee1,&aPerigee2,sflag,errorcode);
-        if (errorcode != 0) {startingPoint(0) = 0.0; startingPoint(1) = 0.0; startingPoint(2) = 0.0;}
-        bool errorCode = false;
-        if (errorcode == 0 || errorcode == 5 || errorcode == 6 || errorcode == 8) errorCode = true;
-        if (errorCode)
-        {
 
 // pair pre-selection cuts
           if ( doFit(TP1,TP2,startingPoint, ctx) )
@@ -564,12 +568,8 @@ StatusCode InDetV0FinderTool::performSearch(xAOD::VertexContainer* v0Container,
                       if (m_doSimpleV0 || (!m_doSimpleV0 && doGamma)) {
                         m_V0s_stored++;
                         myVxCandidate->clearTracks();
-                        ElementLink<xAOD::TrackParticleContainer> newLink1;
-                        newLink1.setElement(*tpIt1);
-                        newLink1.setStorableObject( *( dynamic_cast<const xAOD::TrackParticleContainer*>( (*tpIt1)->container() ) ) );
-                        ElementLink<xAOD::TrackParticleContainer> newLink2;
-                        newLink2.setElement(*tpIt2);
-                        newLink2.setStorableObject( *( dynamic_cast<const xAOD::TrackParticleContainer*>( (*tpIt2)->container() ) ) );
+                        ElementLink<xAOD::TrackParticleContainer> newLink1 = makeLink(*tpIt1, trackCols);
+                        ElementLink<xAOD::TrackParticleContainer> newLink2 = makeLink(*tpIt2, trackCols);
                         myVxCandidate->addTrackAtVertex(newLink1);
                         myVxCandidate->addTrackAtVertex(newLink2);
                         v0Container->push_back(myVxCandidate.release());
@@ -577,12 +577,8 @@ StatusCode InDetV0FinderTool::performSearch(xAOD::VertexContainer* v0Container,
                         if (foundKshort && !m_doSimpleV0) {
                           m_Kshort_stored++;
                           myKshort->clearTracks();
-                          ElementLink<xAOD::TrackParticleContainer> ksLink1;
-                          ksLink1.setElement(*tpIt1);
-                          ksLink1.setStorableObject( *( dynamic_cast<const xAOD::TrackParticleContainer*>( (*tpIt1)->container() ) ) );
-                          ElementLink<xAOD::TrackParticleContainer> ksLink2;
-                          ksLink2.setElement(*tpIt2);
-                          ksLink2.setStorableObject( *( dynamic_cast<const xAOD::TrackParticleContainer*>( (*tpIt2)->container() ) ) );
+                          ElementLink<xAOD::TrackParticleContainer> ksLink1 = makeLink(*tpIt1, trackCols);
+                          ElementLink<xAOD::TrackParticleContainer> ksLink2 = makeLink(*tpIt2, trackCols);
                           myKshort->addTrackAtVertex(ksLink1);
                           myKshort->addTrackAtVertex(ksLink2);
                           ksContainer->push_back(myKshort.release());
@@ -600,12 +596,8 @@ StatusCode InDetV0FinderTool::performSearch(xAOD::VertexContainer* v0Container,
                         if (foundLambda && !m_doSimpleV0) {
                           m_Lambda_stored++;
                           myLambda->clearTracks();
-                          ElementLink<xAOD::TrackParticleContainer> laLink1;
-                          laLink1.setElement(*tpIt1);
-                          laLink1.setStorableObject( *( dynamic_cast<const xAOD::TrackParticleContainer*>( (*tpIt1)->container() ) ) );
-                          ElementLink<xAOD::TrackParticleContainer> laLink2;
-                          laLink2.setElement(*tpIt2);
-                          laLink2.setStorableObject( *( dynamic_cast<const xAOD::TrackParticleContainer*>( (*tpIt2)->container() ) ) );
+                          ElementLink<xAOD::TrackParticleContainer> laLink1 = makeLink(*tpIt1, trackCols);
+                          ElementLink<xAOD::TrackParticleContainer> laLink2 = makeLink(*tpIt2, trackCols);
                           myLambda->addTrackAtVertex(laLink1);
                           myLambda->addTrackAtVertex(laLink2);
                           laContainer->push_back(myLambda.release());
@@ -623,12 +615,8 @@ StatusCode InDetV0FinderTool::performSearch(xAOD::VertexContainer* v0Container,
                         if (foundLambdabar && !m_doSimpleV0) {
                           m_Lambdabar_stored++;
                           myLambdabar->clearTracks();
-                          ElementLink<xAOD::TrackParticleContainer> lbLink1;
-                          lbLink1.setElement(*tpIt1);
-                          lbLink1.setStorableObject( *( dynamic_cast<const xAOD::TrackParticleContainer*>( (*tpIt1)->container() ) ) );
-                          ElementLink<xAOD::TrackParticleContainer> lbLink2;
-                          lbLink2.setElement(*tpIt2);
-                          lbLink2.setStorableObject( *( dynamic_cast<const xAOD::TrackParticleContainer*>( (*tpIt2)->container() ) ) );
+                          ElementLink<xAOD::TrackParticleContainer> lbLink1 = makeLink(*tpIt1, trackCols);
+                          ElementLink<xAOD::TrackParticleContainer> lbLink2 = makeLink(*tpIt2, trackCols);
                           myLambdabar->addTrackAtVertex(lbLink1);
                           myLambdabar->addTrackAtVertex(lbLink2);
                           lbContainer->push_back(myLambdabar.release());
@@ -666,11 +654,9 @@ StatusCode InDetV0FinderTool::performSearch(xAOD::VertexContainer* v0Container,
                 } // chi2 cut failed
               } else { // unconstrained fit failed
                 ATH_MSG_DEBUG("Fitter failed!");
-                //delete myVxCandidate;
               }
 
           }  // doFit
-        }  // no suitable starting point found
 
       i2++;
     }  // loop over negative tracks
@@ -745,21 +731,20 @@ bool InDetV0FinderTool::doFit(const xAOD::TrackParticle* track1, const xAOD::Tra
 bool InDetV0FinderTool::d0Pass(const xAOD::TrackParticle* track1, const xAOD::TrackParticle* track2, const xAOD::VertexContainer * vertColl, const EventContext& ctx) const
 {
   bool pass = false;
-  xAOD::VertexContainer::const_iterator vItr = vertColl->begin();
-  for ( vItr=vertColl->begin(); vItr!=vertColl->end(); ++vItr )
+  int count = 0;
+  for (auto vItr=vertColl->begin(); vItr!=vertColl->end(); ++vItr )
   {
     const xAOD::Vertex* PV = (*vItr);
     auto per1 = m_trackToVertexTool->perigeeAtVertex(ctx, *track1, PV->position() );
-    if (per1 == nullptr) return pass;
+    if (per1 == nullptr) continue;
     auto per2 = m_trackToVertexTool->perigeeAtVertex(ctx, *track2, PV->position() );
-    if (per2 == nullptr) {
-      return pass;
-    }
+    if (per2 == nullptr) continue;
     double d0_1 = per1->parameters()[Trk::d0];
     double sig_d0_1 = sqrt((*per1->covariance())(0,0));
     double d0_2 = per2->parameters()[Trk::d0];
     double sig_d0_2 = sqrt((*per2->covariance())(0,0));
-    if (fabs(d0_1/sig_d0_1) > m_d0_cut && fabs(d0_2/sig_d0_2) > m_d0_cut) pass = true; 
+    if (fabs(d0_1/sig_d0_1) > m_d0_cut && fabs(d0_2/sig_d0_2) > m_d0_cut) return true;
+    if (++count >= m_maxPV) break;
   }
   return pass;
 }
@@ -822,7 +807,7 @@ bool InDetV0FinderTool::pointAtVertexColl(xAOD::Vertex* v0, const xAOD::VertexCo
 {
   bool pass = false;
   xAOD::VertexContainer::const_iterator vItr = vertColl->begin();
-  for ( vItr=vertColl->begin(); vItr!=vertColl->end(); ++vItr ) { if (pointAtVertex(v0,(*vItr))) pass = true; }
+  for ( vItr=vertColl->begin(); vItr!=vertColl->end(); ++vItr ) { if (pointAtVertex(v0,(*vItr))) return true; }
   return pass;
 }
 
@@ -914,6 +899,30 @@ xAOD::Vertex* InDetV0FinderTool::massFit(int pdgID, const std::vector<const xAOD
 
   return vxCandidate;
 }
+
+ElementLink<xAOD::TrackParticleContainer> InDetV0FinderTool::makeLink(const xAOD::TrackParticle* tp,
+          const std::vector<const xAOD::TrackParticleContainer*>& trackcols) const 
+{
+    ElementLink<xAOD::TrackParticleContainer> Link;
+    Link.setElement(tp);
+    bool elementSet = false;
+    if(trackcols.empty()){
+       Link.setStorableObject( *dynamic_cast<const xAOD::TrackParticleContainer*>( tp->container()  ) );
+       elementSet = true;
+    } else {
+      for(const xAOD::TrackParticleContainer* trkcol : trackcols){
+          auto itr = std::find(trkcol->begin(), trkcol->end(), tp);
+          if(itr != trkcol->end()){
+            Link.setStorableObject(*trkcol, true);
+            elementSet = true;
+            break;
+          }
+      }
+    }
+    if(!elementSet) ATH_MSG_ERROR("Track was not found when linking");
+    return Link;
+}
+
 
 }//end of namespace InDet
 

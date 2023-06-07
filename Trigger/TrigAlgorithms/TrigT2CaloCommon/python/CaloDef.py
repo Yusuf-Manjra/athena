@@ -1,9 +1,12 @@
 # Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
-from AthenaCommon.CFElements import seqAND, parOR
+from AthenaCommon.CFElements import parOR
 from AthenaConfiguration.ComponentFactory import CompFactory
 from TriggerMenuMT.HLT.Config.MenuComponents import algorithmCAToGlobalWrapper
 from TriggerMenuMT.HLT.CommonSequences.FullScanDefs import caloFSRoI
+from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
+from AthenaConfiguration.AccumulatorCache import AccumulatorCache
+from TrigT2CaloCommon.TrigCaloDataAccessConfig import trigCaloDataAccessSvcCfg, CaloDataAccessSvcDependencies
 
 ########################
 ## ALGORITHMS
@@ -17,7 +20,7 @@ def _algoHLTCaloCell(flags, name="HLTCaloCellMaker", inputEDM='', outputEDM='Cel
 
    from AthenaCommon.AppMgr import ServiceMgr as svcMgr
    from TrigCaloRec.TrigCaloRecConfig import HLTCaloCellMaker
-   algo=HLTCaloCellMaker(flags, name)
+   algo=HLTCaloCellMaker(flags, name, roisKey=inputEDM)
    #"HLTCaloCellMaker"
    algo.RoIs=inputEDM
    algo.TrigDataAccessMT=svcMgr.TrigCaloDataAccessSvc
@@ -25,17 +28,13 @@ def _algoHLTCaloCell(flags, name="HLTCaloCellMaker", inputEDM='', outputEDM='Cel
    algo.ExtraInputs+=[  ( 'LArBadChannelCont', 'ConditionStore+LArBadChannel'), ( 'LArMCSym', 'ConditionStore+LArMCSym'), ('LArOnOffIdMapping' , 'ConditionStore+LArOnOffIdMap' ), ('LArFebRodMapping'  , 'ConditionStore+LArFebRodMap' ), ('CaloDetDescrManager', 'ConditionStore+CaloDetDescrManager') ]
    return algo
 
-def _algoHLTHIEventShape(name='HLTEventShapeMaker', inputEDM='CellsClusters', outputEDM='HIEventShape'):
-    from HIGlobal.HIGlobalConf import HIEventShapeMaker
-    from HIGlobal.HIGlobalConf import HIEventShapeFillerTool
-
-    algo = HIEventShapeMaker(name)
-    algo.InputCellKey = inputEDM
-    algo.InputTowerKey=""
-    algo.NaviTowerKey=""
-    algo.OutputContainerKey = outputEDM
-    algo.HIEventShapeFillerTool = HIEventShapeFillerTool()
-
+def _algoHLTHIEventShape(flags,name='HLTEventShapeMaker', inputEDM='CellsClusters', outputEDM='HIEventShape'):
+    algo = CompFactory.HIEventShapeMaker(name = name,
+                                         InputCellKey = inputEDM,
+                                         InputTowerKey="",
+                                         NaviTowerKey="",
+                                         OutputContainerKey = outputEDM,
+                                         HIEventShapeFillerTool = CompFactory.HIEventShapeFillerTool())
     return algo
 
 def _algoHLTCaloCellCorrector(name='HLTCaloCellCorrector', inputEDM='CellsClusters', outputEDM='CorrectedCellsClusters', eventShape='HIEventShape'):
@@ -70,121 +69,44 @@ def _algoHLTTopoClusterLC(flags, inputEDM="CellsClusters", algSuffix="") :
 #
 # fast calo algorithm (central or forward regions)
 #
-def _algoL2Egamma(flags, inputEDM="", ClustersName="HLT_FastCaloEMClusters", RingerKey="HLT_FastCaloRinger", doForward=False, doAllEm=False, doAll=False):
+@AccumulatorCache
+def fastCaloRecoSequenceCfg(flags, inputEDM="", ClustersName="HLT_FastCaloEMClusters", RingerKey="HLT_FastCaloRinger", doForward=False, doAllEm=False, doAll=False):
 
+    acc = ComponentAccumulator()
+    acc.merge(trigCaloDataAccessSvcCfg(flags))
     if not inputEDM:
         from HLTSeeding.HLTSeedingConfig import mapThresholdToL1RoICollection
         # using jet seeds for testing. we should use EM as soon as we have EM seeds into the L1
         inputEDM = mapThresholdToL1RoICollection("EM")
 
-    extraInputs=[ ( 'LArMCSym', 'ConditionStore+LArMCSym'), ('LArOnOffIdMapping' , 'ConditionStore+LArOnOffIdMap' ), ('LArFebRodMapping'  , 'ConditionStore+LArFebRodMap' ), ('CaloDetDescrManager', 'ConditionStore+CaloDetDescrManager') ]
     from TrigT2CaloEgamma.TrigT2CaloEgammaConfig import t2CaloEgamma_ReFastAlgoCfg
     if (not doForward) and (not doAll) and (not doAllEm ) :
-       algo=algorithmCAToGlobalWrapper(t2CaloEgamma_ReFastAlgoCfg,flags, "FastCaloL2EgammaAlg", doRinger=True, RingerKey=RingerKey,RoIs=inputEDM,ExtraInputs=extraInputs, ClustersName = ClustersName)
+       acc.merge(t2CaloEgamma_ReFastAlgoCfg(flags, "FastCaloL2EgammaAlg", doRinger=True, RingerKey=RingerKey,RoIs=inputEDM,ExtraInputs=CaloDataAccessSvcDependencies, ClustersName = ClustersName))
     if doForward:
         from TrigT2CaloEgamma.TrigT2CaloEgammaConfig import t2CaloEgamma_ReFastFWDAlgoCfg
-        algo=algorithmCAToGlobalWrapper(t2CaloEgamma_ReFastFWDAlgoCfg,flags, "FastCaloL2EgammaAlg_FWD", doRinger=True, RingerKey=RingerKey,RoIs=inputEDM,ExtraInputs=extraInputs, ClustersName = ClustersName)
+        acc.merge(t2CaloEgamma_ReFastFWDAlgoCfg(flags, "FastCaloL2EgammaAlg_FWD", doRinger=True, RingerKey=RingerKey,RoIs=inputEDM,ExtraInputs=CaloDataAccessSvcDependencies, ClustersName = ClustersName))
     else:
         if ( doAllEm or doAll ) :
-          if ( doAllEm ):
-            from TrigT2CaloEgamma.TrigT2CaloEgammaConfig import t2CaloEgamma_AllEmCfg
-            algo=algorithmCAToGlobalWrapper(t2CaloEgamma_AllEmCfg,flags, "L2CaloLayersEmFex",RoIs=inputEDM,ExtraInputs=extraInputs, ClustersName = ClustersName)
-          else : # can only be doAll
-            from TrigT2CaloEgamma.TrigT2CaloEgammaConfig import t2CaloEgamma_AllCfg
-            algo=algorithmCAToGlobalWrapper(t2CaloEgamma_AllCfg,flags, "L2CaloLayersFex",RoIs=inputEDM,ExtraInputs=extraInputs, ClustersName = ClustersName)
-    return algo
+            if ( doAllEm ):
+                from TrigT2CaloEgamma.TrigT2CaloEgammaConfig import t2CaloEgamma_AllEmCfg
+                acc.merge(t2CaloEgamma_AllEmCfg(flags, "L2CaloLayersEmFex",RoIs=inputEDM,ExtraInputs= CaloDataAccessSvcDependencies, ClustersName = ClustersName))
+            else : # can only be doAll
+                from TrigT2CaloEgamma.TrigT2CaloEgammaConfig import t2CaloEgamma_AllCfg
+                acc.merge(t2CaloEgamma_AllCfg(flags, "L2CaloLayersFex",RoIs=inputEDM,ExtraInputs=CaloDataAccessSvcDependencies, ClustersName = ClustersName))
+    return acc
+
+def fastCaloVDVCfg(name="fastCaloVDV",InViewRoIs="EMCaloRoIs") :
+    from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
+    reco = ComponentAccumulator()
+    fastCaloVDV = CompFactory.AthViews.ViewDataVerifier(name)
+    fastCaloVDV.DataObjects = [( 'CaloBCIDAverage' , 'StoreGateSvc+CaloBCIDAverage' ),
+                           ( 'TrigRoiDescriptorCollection' , 'StoreGateSvc+%s'%InViewRoIs  )]
+    reco.addEventAlgo(fastCaloVDV)
+    return reco
 
 ####################################
 ##### SEQUENCES
 ####################################
-
-
-def fastCaloRecoSequence(flags, InViewRoIs, ClustersName="HLT_FastCaloEMClusters", RingerKey="HLT_FastCaloRinger",doAllEm=False,doAll=False):
-    
-    fastCaloAlg = _algoL2Egamma(flags, inputEDM=InViewRoIs, ClustersName=ClustersName, RingerKey=RingerKey, doAllEm=doAllEm, doAll=doAll)
-
-    name = 'fastCaloInViewSequence'
-    import AthenaCommon.CfgMgr as CfgMgr
-
-    fastCaloVDV = CfgMgr.AthViews__ViewDataVerifier("fastCaloVDV")
-    fastCaloVDV.DataObjects = [( 'CaloBCIDAverage' , 'StoreGateSvc+CaloBCIDAverage' ),
-                               ( 'TrigRoiDescriptorCollection' , 'StoreGateSvc+%s'%InViewRoIs  )]
-
-    if doAllEm:
-        name = 'fastCaloInViewSequenceAllEM'
-          
-    elif doAll:
-        name = 'fastCaloInViewSequenceAll'    
-
-    fastCaloInViewSequence = seqAND( name, [fastCaloVDV, fastCaloAlg] )
-    sequenceOut = fastCaloAlg[0].ClustersName
-    return (fastCaloInViewSequence, sequenceOut)
-
-
-
-def fastCaloRecoFWDSequence(flags, InViewRoIs, ClustersName="HLT_FastCaloEMClusters_FWD", RingerKey="HLT_FastCaloRinger_FWD"):
-    # create alg
-    fastCaloAlg = _algoL2Egamma(flags, inputEDM=InViewRoIs, ClustersName=ClustersName, RingerKey=RingerKey,
-                                doForward=True)
-    import AthenaCommon.CfgMgr as CfgMgr
-    fastCaloVDV = CfgMgr.AthViews__ViewDataVerifier("fastCaloVDV_FWD")
-    fastCaloVDV.DataObjects = [( 'CaloBCIDAverage' , 'StoreGateSvc+CaloBCIDAverage' ),
-                               ( 'TrigRoiDescriptorCollection' , 'StoreGateSvc+FSJETMETCaloRoI' )]
-    fastCaloInViewSequence = seqAND('fastCaloInViewSequence_FWD' , [fastCaloVDV, fastCaloAlg] )
-    sequenceOut = fastCaloAlg[0].ClustersName
-    return (fastCaloInViewSequence, sequenceOut)
-
-
-
-def fastCaloEVCreator():
-    InViewRoIs="EMCaloRoIs"
-    fastCaloViewsMaker = CompFactory.EventViewCreatorAlgorithm( "IMfastCalo" )
-    fastCaloViewsMaker.ViewFallThrough = True
-    fastCaloViewsMaker.RoIsLink = "initialRoI"
-    fastCaloViewsMaker.RoITool = CompFactory.ViewCreatorInitialROITool()
-    fastCaloViewsMaker.InViewRoIs = InViewRoIs
-    fastCaloViewsMaker.Views = "EMCaloViews"
-    fastCaloViewsMaker.ViewNodeName = "fastCaloInViewSequence"
-    return (fastCaloViewsMaker, InViewRoIs)
-
-
-
-def fastCaloEVFWDCreator():
-    #InViewRoIs="EMCaloRoIs"
-    InViewRoIs = "FSJETMETCaloRoI"
-    fastCaloViewsMaker = CompFactory.EventViewCreatorAlgorithm( "IMfastCalo_FWD" )
-    fastCaloViewsMaker.ViewFallThrough = True
-    fastCaloViewsMaker.RoIsLink = "initialRoI"
-    fastCaloViewsMaker.RoITool = CompFactory.ViewCreatorInitialROITool()
-    fastCaloViewsMaker.InViewRoIs = InViewRoIs
-    fastCaloViewsMaker.Views = "EMCaloViews_FWD"
-    fastCaloViewsMaker.ViewNodeName = "fastCaloInViewSequence_FWD"
-
-    return (fastCaloViewsMaker, InViewRoIs)
-
-
-def fastCalo_All_EVCreator():
-    InViewRoIs = "EMCaloRoIs"
-    fastCaloViewsMaker = CompFactory.EventViewCreatorAlgorithm( "IM_LArPS_All" )
-    fastCaloViewsMaker.ViewFallThrough = True
-    fastCaloViewsMaker.RoIsLink = "initialRoI"
-    fastCaloViewsMaker.RoITool = CompFactory.ViewCreatorInitialROITool()
-    fastCaloViewsMaker.InViewRoIs = InViewRoIs
-    fastCaloViewsMaker.Views = "LArPS_All_Views"
-
-    return (fastCaloViewsMaker, InViewRoIs)
-
-def fastCalo_AllEM_EVCreator():
-    InViewRoIs = "EMCaloRoIs"
-    fastCaloViewsMaker = CompFactory.EventViewCreatorAlgorithm( "IM_LArPS_AllEM" )
-    fastCaloViewsMaker.ViewFallThrough = True
-    fastCaloViewsMaker.RoIsLink = "initialRoI"
-    fastCaloViewsMaker.RoITool = CompFactory.ViewCreatorInitialROITool()
-    fastCaloViewsMaker.InViewRoIs = InViewRoIs
-    fastCaloViewsMaker.Views = "LArPS_AllEM_Views"
-
-    return (fastCaloViewsMaker, InViewRoIs)
-
 
 ##################################
 # cluster maker functions

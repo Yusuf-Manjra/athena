@@ -59,6 +59,8 @@
 #include <stdexcept>
 #include <fstream>
 
+#include "CrestApi/CrestApi.h"
+
 using namespace IOVDbNamespace;
 
 namespace{
@@ -71,7 +73,7 @@ IOVDbFolder::IOVDbFolder(IOVDbConn* conn,
                          const IOVDbParser& folderprop, MsgStream& msg,
                          IClassIDSvc* clidsvc, IIOVDbMetaDataTool* metadatatool,
                          const bool checklock, const bool outputToFile,
-                         const std::string & source):
+                         const std::string & source, const bool crestToFile):
   AthMessaging("IOVDbFolder"),
   p_clidSvc(clidsvc),
   p_metaDataTool(metadatatool),
@@ -80,6 +82,7 @@ IOVDbFolder::IOVDbFolder(IOVDbConn* conn,
   m_foldertype(AttrList),
   m_chansel(cool::ChannelSelection::all()),
   m_outputToFile{outputToFile},
+  m_crestToFile{crestToFile},
   m_source{source}
 {
   // set message same message level as our parent (IOVDbSvc)
@@ -145,6 +148,9 @@ IOVDbFolder::IOVDbFolder(IOVDbConn* conn,
   if (m_extensible) {
     ATH_MSG_INFO( "Extensible folder " << m_foldername );
   }
+
+
+  
 }
 
 IOVDbFolder::~IOVDbFolder() {
@@ -226,7 +232,13 @@ IOVDbFolder::loadCache(const cool::ValidityKey vkey,
   BasicFolder basicFolder;
   if (m_source == "CREST"){
     //const std::string  jsonFolderName=sanitiseCrestTag(m_foldername);
-    const std::string  completeTag=jsonTagName(globalTag, m_foldername);
+
+    if (m_globaltag != globalTag){
+      m_globaltag = globalTag;
+      m_cresttagmap.clear();
+      m_cresttagmap = getGlobalTagMap(globalTag);
+    }
+    const std::string completeTag = m_cresttagmap[m_foldername];
     ATH_MSG_INFO("Download tag would be: "<<completeTag);
 
     // *** *** *** *** *** ***
@@ -296,13 +308,52 @@ IOVDbFolder::loadCache(const cool::ValidityKey vkey,
 		  << " " << iovHashVect[indIOV].first);
 
     std::string reply=getPayloadForHash(iovHashVect[indIOV].second);
+
+    if (m_crestToFile){
+     
+      unsigned long long sinceT =  iovHashVect[indIOV].first.first;
+
+      std::string crest_work_dir=std::filesystem::current_path();
+      crest_work_dir += "/crest_data";
+      bool crest_rewrite = true;
+      Crest::CrestClient crestFSClient = Crest::CrestClient(crest_rewrite, crest_work_dir);
+
+      nlohmann::json js =
+      {
+        {"name", completeTag}
+      };
+
+      try{
+        crestFSClient.createTag(js);
+        ATH_MSG_INFO("Tag " << completeTag << " saved to disk.");
+        ATH_MSG_INFO("CREST Dump dir = " << crest_work_dir);
+      }
+      catch (const std::exception& e) {
+        ATH_MSG_WARNING("Data saving for tag " << completeTag << " failed: " << e.what());
+      }
+
+      try{
+        crestFSClient.storePayloadDump(completeTag, sinceT, reply);
+        ATH_MSG_INFO("Data (payload and IOV) saved for tag " << completeTag << ".");
+      }
+      catch (const std::exception& e) {
+        ATH_MSG_WARNING("Data (payload and IOV) saving for tag " << completeTag<<" failed; " << e.what());
+      }
+    }
+
     if (reply.empty()){
       ATH_MSG_FATAL("Reading channel data from "<<m_foldername<<" failed.");
       return false;
     }
     //
     std::istringstream ss(reply);
-    const auto & specString =  payloadSpecificationForTag(completeTag);
+ 
+    if (m_crest_tag != completeTag){
+      m_crest_tag = completeTag;
+      m_tag_info = getTagInfo(completeTag);
+    }
+    const auto & specString =  getTagInfoElement(m_tag_info,"payload_spec");
+
     if (specString.empty()){
       ATH_MSG_FATAL("Reading payload spec from "<<m_foldername<<" failed.");
       return false;
@@ -970,8 +1021,18 @@ IOVDbFolder::preLoadFolder(ITagInfoMgr *tagInfoMgr , const unsigned int cacheRun
   p_tagInfoMgr = tagInfoMgr;
   if( not m_useFileMetaData ) {
     if(m_source=="CREST"){
-      const std::string  & tagName=resolveCrestTag(globalTag,m_foldername );
-      m_folderDescription = folderDescriptionForTag(tagName);
+      if (m_globaltag != globalTag){
+        m_globaltag = globalTag;
+        m_cresttagmap.clear();
+        m_cresttagmap = getGlobalTagMap(globalTag);
+      }
+      const std::string  & tagName=m_cresttagmap[m_foldername];
+
+      if (m_crest_tag != tagName){
+        m_crest_tag = tagName;
+        m_tag_info = getTagInfo(tagName);
+      }
+      m_folderDescription = getTagInfoElement(m_tag_info,"node_description");
     } else {
       //folder desc from db
       std::tie(m_multiversion, m_folderDescription) = IOVDbNamespace::folderMetadata(m_conn, m_foldername);
@@ -994,11 +1055,67 @@ IOVDbFolder::preLoadFolder(ITagInfoMgr *tagInfoMgr , const unsigned int cacheRun
   // setup channel list and folder type
   if( not m_useFileMetaData ) {
     if(m_source=="CREST"){
-        const std::string  & crestTag=resolveCrestTag(globalTag,m_foldername );
-        std::tie(m_channums, m_channames) =channelListForTag(crestTag);
-        const std::string & payloadSpec = payloadSpecificationForTag(crestTag);
+        if (m_globaltag != globalTag){
+          m_globaltag = globalTag;
+          m_cresttagmap.clear();
+          m_cresttagmap = getGlobalTagMap(globalTag); // test
+        }       
+        const std::string  & crestTag=m_cresttagmap[m_foldername];
+
+        if (m_crest_tag != crestTag){
+          m_crest_tag = crestTag;
+          m_tag_info = getTagInfo(crestTag);
+        }
+ 
+        const std::string & payloadSpec = getTagInfoElement(m_tag_info,"payload_spec");  
+        std::string chanList = getTagInfoElement(m_tag_info,"channel_list");
+        std::tie(m_channums, m_channames) = extractChannelListFromString(chanList);
+
         //determine foldertype from the description, the spec and the number of channels
         m_foldertype = IOVDbNamespace::determineFolderType(m_folderDescription, payloadSpec, m_channums);
+ 
+        if (m_crestToFile){
+          int n_size = m_channums.size();
+	  nlohmann::json chan_list = nlohmann::json::array();
+          for (int i = 0; i < n_size; i++) {
+
+            nlohmann::json elem;
+	    std::string key = std::to_string(m_channums[i]);
+            elem[key] = m_channames[i];
+            chan_list.push_back(elem);
+          }
+
+          char ch = ':';
+          int colsize = std::count(payloadSpec.begin(), payloadSpec.end(), ch);
+
+	  nlohmann::json tag_meta;
+          tag_meta["tagName"] = crestTag;
+          tag_meta["description"] = "";
+          tag_meta["chansize"] = n_size;
+          tag_meta["colsize"] = colsize;
+
+	  nlohmann::json tagInfo;
+          tagInfo["channel_list"] = chan_list;
+          tagInfo["node_description"] = m_folderDescription;
+          tagInfo["payload_spec"] = payloadSpec;
+
+          tag_meta["tagInfo"] = tagInfo;
+
+          std::string crest_work_dir=std::filesystem::current_path();
+          crest_work_dir += "/crest_data";
+          bool crest_rewrite = true;
+          Crest::CrestClient crestFSClient = Crest::CrestClient(crest_rewrite, crest_work_dir);
+
+          try{
+            crestFSClient.createTagMetaInfo(tag_meta);;
+            ATH_MSG_INFO("Tag meta info for " << crestTag << " saved to disk.");
+            ATH_MSG_INFO("CREST Dump dir = " << crest_work_dir);
+          }
+          catch (const std::exception& e) {
+            ATH_MSG_WARNING("Tag meta info saving for tag " << crestTag << " failed: " << e.what());
+          }
+	} // m_crestToFile
+
     } else {
       // data being read from COOL
       auto fldPtr=m_conn->getFolderPtr<cool::IFolderPtr>(m_foldername);
@@ -1078,7 +1195,12 @@ IOVDbFolder::resolveTag(cool::IFolderPtr fptr,const std::string& globalTag) {
     return false;
   }
   if(m_source=="CREST"){
-    m_tag=IOVDbNamespace::resolveCrestTag(globalTag,m_foldername);
+    if (m_globaltag != globalTag){
+      m_globaltag = globalTag;
+      m_cresttagmap.clear();
+      m_cresttagmap = getGlobalTagMap(globalTag); // test
+    }
+    m_tag = m_cresttagmap[m_foldername];
     ATH_MSG_DEBUG( "resolveTag returns " << m_tag );
     return true;
   }

@@ -1,19 +1,14 @@
-# Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 
 
-def DL2ToolCfg(ConfigFlags, NNFile = '', FlipConfig='STANDARD' , **options):
+def DL2ToolCfg(ConfigFlags, NNFile, **options):
     acc = ComponentAccumulator()
-
-    options['nnFile'] = NNFile
-    options['name'] = "decorator"
 
     # default is "STANDARD" in case of a setup of the standard b-taggers. "NEGATIVE_IP_ONLY" [and "FLIP_SIGN"] if want to set up the flip taggers
     # naming convention, see here: https://gitlab.cern.ch/atlas/athena/-/blob/master/PhysicsAnalysis/JetTagging/FlavorTagDiscriminants/Root/FlipTagEnums.cxx
-
-    options['flipTagConfig'] = FlipConfig
 
     # this map lets us change the names of EDM inputs with respect to
     # the values we store in the saved NN
@@ -25,21 +20,48 @@ def DL2ToolCfg(ConfigFlags, NNFile = '', FlipConfig='STANDARD' , **options):
         for aggragate in ['minimum','maximum','average']:
             remap[f'{aggragate}TrackRelativeEta'] = (
                 f'JetFitterSecondaryVertex_{aggragate}AllJetTrackRelativeEta')
-    options['variableRemapping'] = remap
 
-    dl2 = CompFactory.FlavorTagDiscriminants.DL2Tool(**options)
+    # Similar hack for 21.9-based upgrade training
+    if '20221008' in NNFile and 'dips' in NNFile:
+        for aggragate in ['InnermostPixelLayer', 'NextToInnermostPixelLayer',
+                          'InnermostPixelLayerShared',
+                          'InnermostPixelLayerSplit']:
+            remap[f'numberOf{aggragate}Hits'] = (
+                f'numberOf{aggragate}Hits21p9')
+
+    mkey = 'variableRemapping'
+    options[mkey] = remap | options.get(mkey,{})
+
+    dl2 = CompFactory.FlavorTagDiscriminants.DL2Tool(
+        name='decorator',
+        nnFile=NNFile,
+        **options)
 
     acc.setPrivateTools(dl2)
 
     return acc
 
-def GNNToolCfg(ConfigFlags, NNFile = '', **options):
+def GNNToolCfg(ConfigFlags, NNFile, **options):
     acc = ComponentAccumulator()
 
-    options['nnFile'] = NNFile
-    options['name'] = "decorator"
+    # this map lets us change the names of EDM inputs with respect to
+    # the values we store in the saved NN
+    remap = {}
 
-    gnntool = CompFactory.FlavorTagDiscriminants.GNNTool(**options)
+    if '20221010' in NNFile and 'GN1' in NNFile:
+        for aggragate in ['InnermostPixelLayer', 'NextToInnermostPixelLayer',
+                          'InnermostPixelLayerShared',
+                          'InnermostPixelLayerSplit']:
+            remap[f'numberOf{aggragate}Hits'] = (
+                f'numberOf{aggragate}Hits21p9')
+
+    mkey = 'variableRemapping'
+    options[mkey] = remap | options.get(mkey,{})
+
+    gnntool = CompFactory.FlavorTagDiscriminants.GNNTool(
+        name='decorator',
+        nnFile=NNFile,
+        **options)
 
     acc.setPrivateTools(gnntool)
 
@@ -102,17 +124,27 @@ def getUndeclaredBtagVars(BTaggingCollection):
     ]
     return [f'{BTaggingCollection}.{x}' for x in undeclared_btag]
 
-def FlavorTagNNCfg(ConfigFlags, BTaggingCollection, TrackCollection, NNFile = "", FlipConfig="STANDARD" , **options):
+def FlavorTagNNCfg(
+        ConfigFlags,
+        BTaggingCollection,
+        TrackCollection,
+        NNFile,
+        FlipConfig="STANDARD",
+        variableRemapping={}):
 
     acc = ComponentAccumulator()
 
     NNFile_extension = NNFile.split(".")[-1]
+    nn_opts = dict(
+        NNFile=NNFile,
+        flipTagConfig=FlipConfig,
+        variableRemapping=variableRemapping)
     if NNFile_extension == "json":
         nn_name = NNFile.replace("/", "_").replace("_network.json", "")
-        decorator = acc.popToolsAndMerge(DL2ToolCfg(ConfigFlags, NNFile,FlipConfig=FlipConfig ,**options))
+        decorator = acc.popToolsAndMerge(DL2ToolCfg(ConfigFlags, **nn_opts))
     elif NNFile_extension == "onnx":
         nn_name = NNFile.replace("/", "_").replace(".onnx", "")
-        decorator = acc.popToolsAndMerge(GNNToolCfg(ConfigFlags, NNFile, **options))
+        decorator = acc.popToolsAndMerge(GNNToolCfg(ConfigFlags, **nn_opts))
     else:
         raise ValueError("FlavorTagNNCfg: Wrong NNFile extension. Please check the NNFile argument")
 

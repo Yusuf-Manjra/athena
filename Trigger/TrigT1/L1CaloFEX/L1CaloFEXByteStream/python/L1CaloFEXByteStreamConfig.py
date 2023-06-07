@@ -1,11 +1,13 @@
 #
 # Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 #
+from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 from libpyeformat_helper import SourceIdentifier, SubDetector
 
+def eFexByteStreamToolCfg(flags, name, *, writeBS=False, TOBs=True, xTOBs=False, multiSlice=False, decodeInputs=False):
+  acc = ComponentAccumulator()  
 
-def eFexByteStreamToolCfg(name, flags, *, writeBS=False, TOBs=True, xTOBs=False, multiSlice=False, decodeInputs=False):
   tool = CompFactory.eFexByteStreamTool(name)
 
   if writeBS:
@@ -51,6 +53,7 @@ def eFexByteStreamToolCfg(name, flags, *, writeBS=False, TOBs=True, xTOBs=False,
       helper = AthMonitorCfgHelper(flags, 'HLTFramework')
       monTool = helper.addGroup(None, f'{name}MonTool', f'/HLT/HLTFramework/L1BSConverters/{name}')
       topDir = None
+      acc.merge(helper.result())
     monTool.defineHistogram('efexDecoderErrorTitle,efexDecoderErrorLocation;errors', path=topDir, type='TH2I',
                             title='Decoder Errors;Title;Location',
                             xbins=1, xmin=0, xmax=1, xlabels=["UNKNOWN"],
@@ -58,10 +61,12 @@ def eFexByteStreamToolCfg(name, flags, *, writeBS=False, TOBs=True, xTOBs=False,
                             opt=['kCanRebin'])
     tool.MonTool = monTool
 
-  return tool
+  acc.setPrivateTools(tool)
+  return acc
 
 
-def jFexRoiByteStreamToolCfg(name, flags, *, writeBS=False, xTOBs=False):
+def jFexRoiByteStreamToolCfg(flags, name, *, writeBS=False, xTOBs=False):
+  acc = ComponentAccumulator()
   tool = CompFactory.jFexRoiByteStreamTool(name)
   tool.ConvertExtendedTOBs = xTOBs
   jfex_roi_moduleids = [0x2000]
@@ -96,11 +101,33 @@ def jFexRoiByteStreamToolCfg(name, flags, *, writeBS=False, xTOBs=False):
     tool.jEMRoIContainerWriteKey = "L1_jFexFwdElxRoI" if xTOBs else "L1_jFexFwdElRoI"
     tool.jTERoIContainerWriteKey = "L1_jFexSumETxRoI" if xTOBs else "L1_jFexSumETRoI"
     tool.jXERoIContainerWriteKey = "L1_jFexMETxRoI"   if xTOBs else "L1_jFexMETRoI"
+    
+  if flags.Output.HISTFileName != '' or flags.Trigger.doHLT:
+    if flags.Trigger.doHLT:
+      from AthenaMonitoringKernel.GenericMonitoringTool import GenericMonitoringTool
+      monTool = GenericMonitoringTool(flags,'MonTool',HistPath = f'HLTFramework/L1BSConverters/{name}')
+      topDir = "EXPERT"
+    else:
+      # if used in offline reconstruction respect DQ convention (ATR-26371)
+      from AthenaMonitoring import AthMonitorCfgHelper
+      helper = AthMonitorCfgHelper(flags, 'HLTFramework')
+      monTool = helper.addGroup(None, f'{name}MonTool', f'/HLT/HLTFramework/L1BSConverters/{name}')
+      topDir = None
+      acc.merge(helper.result())
 
-  return tool
+    monTool.defineHistogram('jfexDecoderErrorTitle,jfexDecoderErrorLocation;errors', path=topDir, type='TH2I',
+                            title='jFEX TOB Decoder Errors;Type;Location',
+                            xbins=1, xmin=0, xmax=1, xlabels=["UNKNOWN"],
+                            ybins=1, ymin=0, ymax=1, ylabels=["UNKNOWN"],
+                            opt=['kCanRebin'])
+    tool.MonTool = monTool
+
+  acc.setPrivateTools(tool)
+  return acc
 
  
-def gFexByteStreamToolCfg(name, flags, *, writeBS=False):
+def gFexByteStreamToolCfg(flags, name, *, writeBS=False):
+  acc = ComponentAccumulator()
   tool = CompFactory.gFexByteStreamTool(name)
   gfex_roi_moduleids = [0x3000]
   tool.ROBIDs = [int(SourceIdentifier(SubDetector.TDAQ_CALO_FEAT_EXTRACT_ROI, moduleid)) for moduleid in gfex_roi_moduleids]
@@ -157,10 +184,34 @@ def gFexByteStreamToolCfg(name, flags, *, writeBS=False):
     tool.gScalarENoiseCutOutputContainerWriteKey        ="L1_gScalarENoiseCut"
     tool.gScalarERmsOutputContainerWriteKey             ="L1_gScalarERms"
 
-  return tool
+
+  if flags.Output.HISTFileName != '' or flags.Trigger.doHLT:
+    if flags.Trigger.doHLT:
+      from AthenaMonitoringKernel.GenericMonitoringTool import GenericMonitoringTool
+      monTool = GenericMonitoringTool(flags,'MonTool',HistPath = f'HLTFramework/L1BSConverters/{name}')
+      topDir = "EXPERT"
+    else:
+      # if used in offline reconstruction respect DQ convention (ATR-26371)
+      from AthenaMonitoring import AthMonitorCfgHelper
+      helper = AthMonitorCfgHelper(flags, 'HLTFramework')
+      monTool = helper.addGroup(None, f'{name}MonTool', f'/HLT/HLTFramework/L1BSConverters/{name}')
+      topDir = None
+      acc.merge(helper.result())
+
+    monTool.defineHistogram('gfexDecoderErrorTitle,gfexDecoderErrorLocation;errors', path=topDir, type='TH2I',
+                            title='gFEX TOB Decoder Errors;Type;Location',
+                            xbins=1, xmin=0, xmax=1, xlabels=["UNKNOWN"],
+                            ybins=1, ymin=0, ymax=1, ylabels=["UNKNOWN"],
+                            opt=['kCanRebin'])
+    tool.MonTool = monTool    
 
 
-def jFexInputByteStreamToolCfg(name, flags, *, writeBS=False):
+  acc.setPrivateTools(tool)
+  return acc
+
+
+def jFexInputByteStreamToolCfg(flags, name, *, writeBS=False):
+  acc = ComponentAccumulator()
   tool = CompFactory.jFexInputByteStreamTool(name)
   jfex_roi_moduleids = [0x2000,0x2010,0x2020,0x2030,0x2040,0x2050]
   tool.ROBIDs = [int(SourceIdentifier(SubDetector.TDAQ_CALO_FEAT_EXTRACT_DAQ, moduleid)) for moduleid in jfex_roi_moduleids]  
@@ -176,11 +227,34 @@ def jFexInputByteStreamToolCfg(name, flags, *, writeBS=False):
     tool.jTowersReadKey   =""
 
     tool.jTowersWriteKey  = "L1_jFexDataTowers"
-    
-  return tool
+
+  if flags.Output.HISTFileName != '' or flags.Trigger.doHLT:
+    if flags.Trigger.doHLT:
+      from AthenaMonitoringKernel.GenericMonitoringTool import GenericMonitoringTool
+      monTool = GenericMonitoringTool(flags,'MonTool',HistPath = f'HLTFramework/L1BSConverters/{name}')
+      topDir = "EXPERT"
+    else:
+      # if used in offline reconstruction respect DQ convention (ATR-26371)
+      from AthenaMonitoring import AthMonitorCfgHelper
+      helper = AthMonitorCfgHelper(flags, 'HLTFramework')
+      monTool = helper.addGroup(None, f'{name}MonTool', f'/HLT/HLTFramework/L1BSConverters/{name}')
+      topDir = None
+      acc.merge(helper.result())
+
+    monTool.defineHistogram('jfexDecoderErrorTitle,jfexDecoderErrorLocation;errors', path=topDir, type='TH2I',
+                            title='jFEX InputData Decoder Errors;Type;Location',
+                            xbins=1, xmin=0, xmax=1, xlabels=["UNKNOWN"],
+                            ybins=1, ymin=0, ymax=1, ylabels=["UNKNOWN"],
+                            opt=['kCanRebin'])
+    tool.MonTool = monTool    
 
 
-def gFexInputByteStreamToolCfg(name, flags, *, writeBS=False):
+  acc.setPrivateTools(tool)
+  return acc
+
+
+def gFexInputByteStreamToolCfg(flags, name, *, writeBS=False):
+  acc = ComponentAccumulator()
   tool = CompFactory.gFexInputByteStreamTool(name)
   gfex_roi_moduleids = [0x3000]
   tool.ROBIDs = [int(SourceIdentifier(SubDetector.TDAQ_CALO_FEAT_EXTRACT_DAQ, moduleid)) for moduleid in gfex_roi_moduleids]  
@@ -197,4 +271,25 @@ def gFexInputByteStreamToolCfg(name, flags, *, writeBS=False):
   
     tool.gTowersWriteKey  = "L1_gFexDataTowers"
     
-  return tool
+  if flags.Output.HISTFileName != '' or flags.Trigger.doHLT:
+    if flags.Trigger.doHLT:
+      from AthenaMonitoringKernel.GenericMonitoringTool import GenericMonitoringTool
+      monTool = GenericMonitoringTool(flags,'MonTool',HistPath = f'HLTFramework/L1BSConverters/{name}')
+      topDir = "EXPERT"
+    else:
+      # if used in offline reconstruction respect DQ convention (ATR-26371)
+      from AthenaMonitoring import AthMonitorCfgHelper
+      helper = AthMonitorCfgHelper(flags, 'HLTFramework')
+      monTool = helper.addGroup(None, f'{name}MonTool', f'/HLT/HLTFramework/L1BSConverters/{name}')
+      topDir = None
+      acc.merge(helper.result())
+
+    monTool.defineHistogram('gfexDecoderErrorTitle,gfexDecoderErrorLocation;errors', path=topDir, type='TH2I',
+                            title='gFEX InputData Decoder Errors;Type;Location',
+                            xbins=1, xmin=0, xmax=1, xlabels=["UNKNOWN"],
+                            ybins=1, ymin=0, ymax=1, ylabels=["UNKNOWN"],
+                            opt=['kCanRebin'])
+    tool.MonTool = monTool   
+
+  acc.setPrivateTools(tool)
+  return acc

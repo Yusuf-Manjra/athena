@@ -7,6 +7,7 @@
 # art-output: dcube*
 # art-html: dcube_last
 
+lastref_dir=last_results
 dcubeXml=dcube_ART_ACTS_SEEDS_R22.xml
 input_rdo=/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/InDetPhysValMonitoring/inputs/ATLAS-P2-RUN4-01-01-00_ttbar_mu200.RDO.root
 
@@ -45,8 +46,8 @@ run "Reconstruction" \
     --outputAODFile AOD.pool.root \
     --steering doRAWtoALL \
     --preInclude "InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude" \
-    --postInclude "SiSpacePointFormation.SiSpacePointFormationConfig.TrkToXAODSpacePointConversionCfg,ActsTrkSeeding.ActsTrkSeedingConfig.ActsTrkSeedingCfg" \
-    --preExec "flags.Tracking.doTruth=False;flags.Acts.doAnalysis=True;flags.Output.HISTFileName=\"ActsMonitoringOutput.root\"" \
+    --postInclude "InDetConfig.SiSpacePointFormationConfig.InDetToXAODSpacePointConversionCfg,ActsConfig.ActsTrkSeedingConfig.ActsTrkSeedingCfg" \
+    --preExec "flags.Tracking.doTruth=False;flags.DQ.useTrigger=False;flags.Acts.doAnalysis=True;flags.Output.HISTFileName=\"ActsMonitoringOutput.root\"" \
     --maxEvents 5
 
 reco_rc=$?

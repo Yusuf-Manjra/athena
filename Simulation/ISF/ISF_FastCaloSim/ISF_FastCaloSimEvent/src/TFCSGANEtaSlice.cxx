@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -25,11 +25,12 @@
 TFCSGANEtaSlice::TFCSGANEtaSlice() {}
 
 TFCSGANEtaSlice::TFCSGANEtaSlice(int pid, int etaMin, int etaMax,
-                                 const TFCSGANXMLParameters &param) {
-  m_pid = pid;
-  m_etaMin = etaMin;
-  m_etaMax = etaMax;
-  m_param = param;
+                                 const TFCSGANXMLParameters &param)
+  : m_pid (pid),
+    m_etaMin (etaMin),
+    m_etaMax (etaMax),
+    m_param (param)
+{
 }
 
 TFCSGANEtaSlice::~TFCSGANEtaSlice() {
@@ -67,14 +68,14 @@ bool TFCSGANEtaSlice::LoadGAN() {
     inputFileName = m_param.GetInputFolder() + "/neural_net_" +
                     std::to_string(m_pid) + "_eta_" + std::to_string(m_etaMin) +
                     "_" + std::to_string(m_etaMax) + "_All.json";
-    // std::cout<<"Gan input file name "<<inputFileName<<std::endl;
+    ATH_MSG_DEBUG("Gan input file name " << inputFileName);
     m_gan_all = new TFCSGANLWTNNHandler();
     return m_gan_all->LoadGAN(inputFileName);
   } else if (m_pid == 2212) {
     inputFileName = m_param.GetInputFolder() + "/neural_net_" +
                     std::to_string(m_pid) + "_eta_" + std::to_string(m_etaMin) +
                     "_" + std::to_string(m_etaMax) + "_High10.json";
-    // std::cout<<"Gan input file name "<<inputFileName<<std::endl;
+    ATH_MSG_DEBUG("Gan input file name " << inputFileName);
     m_gan_all = new TFCSGANLWTNNHandler();
     return m_gan_all->LoadGAN(inputFileName);
   } else {
@@ -102,10 +103,10 @@ void TFCSGANEtaSlice::CalculateMeanPointFromDistributionOfR() {
                              std::to_string(m_pid) + "_E1048576_eta_" +
                              std::to_string(m_etaMin) + "_" +
                              std::to_string(m_etaMin + 5) + ".root";
-  // std::cout<<"Opening file "<<rootFileName<<std::endl;
+  ATH_MSG_DEBUG("Opening file " << rootFileName);
   TFile *file = TFile::Open(rootFileName.c_str(), "read");
   for (int layer : m_param.GetRelevantLayers()) {
-    // std::cout<<"Layer "<<layer<<std::endl;
+    ATH_MSG_DEBUG("Layer " << layer);
     TFCSGANXMLParameters::Binning binsInLayers = m_param.GetBinning();
     TH2D *h2 = &binsInLayers[layer];
 
@@ -118,7 +119,7 @@ void TFCSGANEtaSlice::CalculateMeanPointFromDistributionOfR() {
 
     TAxis *x = (TAxis *)h2->GetXaxis();
     for (int ix = 1; ix <= h2->GetNbinsX(); ++ix) {
-      // std::cout<<ix<<std::endl;
+      ATH_MSG_DEBUG(ix);
       h1->GetXaxis()->SetRangeUser(x->GetBinLowEdge(ix), x->GetBinUpEdge(ix));
 
       double result = 0;
@@ -133,7 +134,7 @@ void TFCSGANEtaSlice::CalculateMeanPointFromDistributionOfR() {
       m_allFitResults[layer].push_back(result);
     }
   }
-  // std::cout<<"Done initialisaing fits"<<std::endl;
+  ATH_MSG_DEBUG("Done initialisaing fits");
 }
 
 void TFCSGANEtaSlice::ExtractExtrapolatorMeansFromInputs() {
@@ -141,7 +142,7 @@ void TFCSGANEtaSlice::ExtractExtrapolatorMeansFromInputs() {
                              std::to_string(m_pid) + "_E65536_eta_" +
                              std::to_string(m_etaMin) + "_" +
                              std::to_string(m_etaMin + 5) + "_validation.root";
-  // std::cout<<"Opening file "<<rootFileName<<std::endl;
+  ATH_MSG_DEBUG("Opening file " << rootFileName);
   TFile *file = TFile::Open(rootFileName.c_str(), "read");
   for (int layer : m_param.GetRelevantLayers()) {
     std::string branchName = "extrapWeight_" + std::to_string(layer);
@@ -150,8 +151,8 @@ void TFCSGANEtaSlice::ExtractExtrapolatorMeansFromInputs() {
     std::string command = branchName + ">>h";
     tree->Draw(command.c_str());
     m_extrapolatorWeights[layer] = h->GetMean();
-    // std::cout<<"Extrapolation: layer "<<layer<<" mean
-    // "<<m_extrapolatorWeights[layer]<< std::endl;
+    ATH_MSG_DEBUG("Extrapolation: layer " << layer << " mean "
+                                          << m_extrapolatorWeights[layer]);
   }
 }
 
@@ -195,11 +196,12 @@ TFCSGANEtaSlice::GetNetworkOutputs(const TFCSTruthState *truth,
         "variable_" + std::to_string(i), randUniformZ));
   }
 
-  // double e =log(truth->Ekin()/Ekin_min)/log(Ekin_max/Ekin_min) ;
-
-  // std::cout << "Check label: " << e <<" Ekin:" << truth->Ekin() <<" p:" <<
-  // truth->P() <<" mass:" << truth->M() <<" Ekin_off:" << truth->Ekin_off() <<
-  // " Ekin_min:"<<Ekin_min<<" Ekin_max:"<<Ekin_max<< std::endl;
+  // double e = log(truth->Ekin()/Ekin_min)/log(Ekin_max/Ekin_min) ;
+  // Could be uncommented , but would need the line above too
+  // ATH_MSG_DEBUG( "Check label: " << e <<" Ekin:" << truth->Ekin() <<" p:" <<
+  //                truth->P() <<" mass:" << truth->M() <<" Ekin_off:" <<
+  //                truth->Ekin_off() << " Ekin_min:"<<Ekin_min<<"
+  //                Ekin_max:"<<Ekin_max);
   // inputs["node_1"].insert ( std::pair<std::string,double>("variable_0",
   // truth->Ekin()/(std::pow(2,maxExp))) ); //Old conditioning using linear
   // interpolation, now use logaritminc interpolation
@@ -223,7 +225,7 @@ TFCSGANEtaSlice::GetNetworkOutputs(const TFCSTruthState *truth,
     if (truth->P() >
         4096) { // This is the momentum, not the energy, because the split is
                 // based on the samples which are produced with the momentum
-      // std::cout<<"Computing outputs given inputs for high"<<std::endl;
+      ATH_MSG_DEBUG("Computing outputs given inputs for high");
       return m_gan_high->GetGraph()->compute(inputs);
     } else {
       return m_gan_low->GetGraph()->compute(inputs);
@@ -232,9 +234,9 @@ TFCSGANEtaSlice::GetNetworkOutputs(const TFCSTruthState *truth,
 }
 
 void TFCSGANEtaSlice::Print() const {
-  std::cout << "LWTNN Handler parameters" << std::endl;
-  std::cout << "  pid: " << m_pid << std::endl;
-  std::cout << "  etaMin:" << m_etaMin << std::endl;
-  std::cout << "  etaMax: " << m_etaMax << std::endl;
+  ATH_MSG_INFO("LWTNN Handler parameters");
+  ATH_MSG_INFO("  pid: " << m_pid);
+  ATH_MSG_INFO("  etaMin:" << m_etaMin);
+  ATH_MSG_INFO("  etaMax: " << m_etaMax);
   m_param.Print();
 }

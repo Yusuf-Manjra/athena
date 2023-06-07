@@ -2,9 +2,12 @@
 #  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 #
 
-from TriggerMenuMT.HLT.Config.MenuComponents import RecoFragmentsPool, MenuSequence, algorithmCAToGlobalWrapper
-from AthenaCommon.CFElements import seqAND, parOR
+from TriggerMenuMT.HLT.Config.MenuComponents import RecoFragmentsPool, algorithmCAToGlobalWrapper
+from TriggerMenuMT.HLT.Config.MenuComponents import MenuSequenceCA, SelectionCA, InViewRecoCA, menuSequenceCAToGlobalWrapper
+from AthenaCommon.CFElements import parOR
+from AthenaConfiguration.ComponentFactory import isComponentAccumulatorCfg
 from .FullScanDefs import caloFSRoI
+from AthenaConfiguration.AccumulatorCache import AccumulatorCache
 
 class CaloMenuDefs(object):
       """Static Class to collect all string manipulations in Calo sequences """
@@ -15,70 +18,57 @@ class CaloMenuDefs(object):
 #
 # central or forward fast calo sequence 
 #
-def fastCaloSequence(flags, name="fastCaloSequence"):
-    """ Creates Fast Calo reco sequence"""
-    
-    from TrigT2CaloCommon.CaloDef import fastCaloEVCreator
-    from TrigT2CaloCommon.CaloDef import fastCaloRecoSequence
-    (fastCaloViewsMaker, InViewRoIs) = fastCaloEVCreator()
-    # reco sequence always build the rings
-    (fastCaloInViewSequence, sequenceOut) = fastCaloRecoSequence(flags, InViewRoIs)
 
-    from TrigGenericAlgs.TrigGenericAlgsConfig import ROBPrefetchingAlgCfg_Calo
-    robPrefetchAlg = algorithmCAToGlobalWrapper(ROBPrefetchingAlgCfg_Calo, flags, nameSuffix=fastCaloViewsMaker.name())[0]
-
-     # connect EVC and reco
-    fastCaloSequence = seqAND(name, [fastCaloViewsMaker, robPrefetchAlg, fastCaloInViewSequence ])
-    return (fastCaloSequence, fastCaloViewsMaker, sequenceOut)
-
-
-
-def fastCaloMenuSequence(flags, name, doRinger=True, is_probe_leg=False):
+@AccumulatorCache
+def fastCaloMenuSequenceCfg(flags, name, doRinger=True, is_probe_leg=False):
     """ Creates Egamma Fast Calo  MENU sequence
     The Hypo name changes depending on name, so for different implementations (Electron, Gamma,....)
     """
-    (sequence, fastCaloViewsMaker, sequenceOut) = RecoFragmentsPool.retrieve(fastCaloSequence, flags=flags)
-    # check if use Ringer and are electron because there aren't ringer for photons yet:
 
-    # hypo
-    if doRinger:
-      from TrigEgammaHypo.TrigEgammaFastCaloHypoTool import createTrigEgammaFastCaloHypoAlg
-    else:
-      from TrigEgammaHypo.TrigEgammaFastCaloHypoTool import createTrigEgammaFastCaloHypoAlg_noringer as createTrigEgammaFastCaloHypoAlg
+    from TrigT2CaloCommon.CaloDef import fastCaloVDVCfg
+    from TrigGenericAlgs.TrigGenericAlgsConfig import ROBPrefetchingAlgCfg_Calo
+    from TrigT2CaloCommon.CaloDef import fastCaloRecoSequenceCfg
+    nameselAcc = "fastCaloSequence"+name
+    output = "HLT_FastCaloEMClusters"
+    selAcc = SelectionCA(nameselAcc,isProbe=is_probe_leg)
+    InViewRoIs="EMCaloRoIs"
+    reco = InViewRecoCA("EMCalo",InViewRoIs=InViewRoIs,isProbe=is_probe_leg)
+    reco.mergeReco(fastCaloVDVCfg(InViewRoIs=InViewRoIs))
+    robPrefetchAlg = ROBPrefetchingAlgCfg_Calo( flags, nameSuffix=InViewRoIs+'_probe' if is_probe_leg else InViewRoIs)
+    reco.mergeReco(fastCaloRecoSequenceCfg(flags, inputEDM=InViewRoIs,ClustersName=output))
+    selAcc.mergeReco(reco, robPrefetchCA=robPrefetchAlg)
 
-    theFastCaloHypo = createTrigEgammaFastCaloHypoAlg(flags, name+"EgammaFastCaloHypo", sequenceOut)
-    CaloMenuDefs.L2CaloClusters = sequenceOut
+    # hypo # The Alg will ALWAYS configure photons and electrons for ringer
+    # The tool is what will use that or not
+    from TrigEgammaHypo.TrigEgammaFastCaloHypoTool import createTrigEgammaFastCaloHypoAlg
+
+    theFastCaloHypo = createTrigEgammaFastCaloHypoAlg(flags, name, sequenceOut=output)
+    selAcc.addHypoAlgo(theFastCaloHypo)
 
     from TrigEgammaHypo.TrigEgammaFastCaloHypoTool import TrigEgammaFastCaloHypoToolFromDict
-    return MenuSequence( flags,
-                         Sequence    = sequence,
-                         Maker       = fastCaloViewsMaker,
-                         Hypo        = theFastCaloHypo,
-                         HypoToolGen = TrigEgammaFastCaloHypoToolFromDict,
-                         IsProbe     = is_probe_leg )
+    return MenuSequenceCA(flags,selAcc,HypoToolGen=TrigEgammaFastCaloHypoToolFromDict,isProbe=is_probe_leg)
+    
+def fastCaloMenuSequence(flags, name, doRinger=True, is_probe_leg=False):
+     if isComponentAccumulatorCfg():
+        return fastCaloMenuSequenceCfg(flags,name=name,doRinger=doRinger,is_probe_leg=is_probe_leg)
+     else: 
+        return menuSequenceCAToGlobalWrapper(fastCaloMenuSequenceCfg,flags,name=name,doRinger=doRinger,is_probe_leg=is_probe_leg)
 
-
-
-def cellRecoSequence(flags, name="HLTCaloCellMakerFS", RoIs=caloFSRoI, outputName="CaloCellsFS"):
-    """ Produce the full scan cell collection """
-    if not RoIs:
-        from HLTSeeding.HLTSeedingConfig import mapThresholdToL1RoICollection
-        RoIs = mapThresholdToL1RoICollection("FSNOSEED")
-    from TrigCaloRec.TrigCaloRecConfig import HLTCaloCellMaker
-    alg = HLTCaloCellMaker(flags, name, roisKey = RoIs, CellsName=outputName, monitorCells=False)
-    return parOR(name+"RecoSequence", [alg]), str(alg.CellsName)
+def cellRecoSequence(flags, name="HLTCaloCellMakerFS", RoIs=caloFSRoI, outputName="CaloCellsFS", monitorCells = False):
+    from TrigCaloRec.TrigCaloRecConfig import hltCaloCellMakerCfg
+    alg = algorithmCAToGlobalWrapper(hltCaloCellMakerCfg, flags=flags, name=name, roisKey=RoIs, CellsName=outputName, monitorCells=monitorCells)
+    return alg,outputName
 
 def caloClusterRecoSequence(
         flags, name="HLTCaloClusterMakerFS", RoIs=caloFSRoI,
         outputName="HLT_TopoCaloClustersFS"):
-    """ Create the EM-level fullscan clusters """
-    cell_sequence, cells_name = RecoFragmentsPool.retrieve(cellRecoSequence, flags=flags, RoIs=RoIs)
-    from TrigCaloRec.TrigCaloRecConfig import hltTopoClusterMakerCfg
-    alg = algorithmCAToGlobalWrapper(hltTopoClusterMakerCfg, flags, name,
-                                     doLC=False,
-                                     clustersKey=outputName,
-                                     cellsKey=cells_name)[0]
-    return parOR(name+"RecoSequence", [cell_sequence, alg]), str(alg.CaloClusters)
+        from TrigCaloRec.TrigCaloRecConfig import jetmetTopoClusteringCfg
+    
+        alg=algorithmCAToGlobalWrapper(jetmetTopoClusteringCfg,
+                                       flags	   =flags,
+                                       RoIs        =RoIs
+                                       )        
+        return alg, outputName
 
 def LCCaloClusterRecoSequence(
         flags, name="HLTCaloClusterCalibratorLCFS", RoIs=caloFSRoI,

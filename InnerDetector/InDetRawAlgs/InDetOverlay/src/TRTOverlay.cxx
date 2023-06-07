@@ -1,12 +1,12 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "AthenaKernel/RNGWrapper.h"
 #include "CLHEP/Random/RandomEngine.h"
 #include "CLHEP/Random/RandFlat.h"
 #include "AtlasHepMC/GenParticle.h"
-
+//
 #include "InDetIdentifier/TRT_ID.h"
 #include "InDetOverlay/TRTOverlay.h"
 #include "InDetRawData/InDetRawData.h"
@@ -14,55 +14,57 @@
 #include "InDetRawData/TRT_RDORawData.h"
 #include "InDetSimData/InDetSimDataCollection.h"
 #include "TRT_ConditionsData/StrawStatus.h"
-
-#include "IDC_OverlayBase/IDC_OverlayCommon.h"
-#include "IDC_OverlayBase/IDC_OverlayHelpers.h"
-
+//
+#include "IDC_OverlayBase/IDC_OverlayHelpers.h" //debugPrint
+//
 #include "StoreGate/ReadHandle.h"
 #include "StoreGate/WriteHandle.h"
 
 
-namespace Overlay
+namespace
 {
-  struct TRTRDOSorter {
-    bool operator() (TRT_RDORawData *digit1, TRT_RDORawData *digit2)
-    {
-      return digit1->identify() < digit2->identify();
-    }
-  } TRTRDOSorterObject;
+struct TRTRDOSorter {
+  bool operator()(TRT_RDORawData *digit1, TRT_RDORawData *digit2) {
+    return digit1->identify() < digit2->identify();
+  }
+} TRTRDOSorterObject;
 
-  // Specialize copyCollection() for the TRT
-  template<>
-  std::unique_ptr<TRT_RDO_Collection> copyCollection(const IdentifierHash &hashId,
-                                                     const TRT_RDO_Collection *collection)
-  {
-    auto outputCollection = std::make_unique<TRT_RDO_Collection>(hashId);
-    outputCollection->setIdentifier(collection->identify());
+std::unique_ptr<TRT_RDO_Collection> copyCollection(
+    const IdentifierHash &hashId,
+    const TRT_RDO_Collection *collection,
+    DataPool<TRT_LoLumRawData>& dataItemsPool) {
 
-    for (const TRT_RDORawData *existingDatum : *collection) {
-      // Owned by the collection
-      auto *datumCopy = new TRT_LoLumRawData(existingDatum->identify(), existingDatum->getWord());
-      outputCollection->push_back(datumCopy);
-    }
+  auto outputCollection = std::make_unique<TRT_RDO_Collection>(hashId);
+  outputCollection->setIdentifier(collection->identify());
 
-    return outputCollection;
+  //Elements created here are owned by the DataPool
+  outputCollection->clear(SG::VIEW_ELEMENTS);
+  outputCollection->reserve(collection->size());
+  for (const TRT_RDORawData *existingDatum : *collection) {
+    TRT_LoLumRawData* datumCopy = dataItemsPool.nextElementPtr();
+    (*datumCopy) = TRT_LoLumRawData(existingDatum->identify(), existingDatum->getWord());
+    outputCollection->push_back(datumCopy);
   }
 
-  std::unique_ptr<TRT_RDO_Collection> copyCollectionAndSort(const IdentifierHash &hashId,
-                                                            const TRT_RDO_Collection *collection)
-  {
-    std::unique_ptr<TRT_RDO_Collection> outputCollection = copyCollection(hashId, collection);
-    std::stable_sort(outputCollection->begin(), outputCollection->end(), TRTRDOSorterObject);
-    return outputCollection;
-  }
-} // namespace Overlay
+  return outputCollection;
+}
+
+std::unique_ptr<TRT_RDO_Collection> copyCollectionAndSort(
+    const IdentifierHash &hashId,
+    const TRT_RDO_Collection *collection,
+    DataPool<TRT_LoLumRawData>& dataItemsPool) {
+
+  std::unique_ptr<TRT_RDO_Collection> outputCollection = copyCollection(hashId, collection,dataItemsPool);
+  std::stable_sort(outputCollection->begin(), outputCollection->end(), TRTRDOSorterObject);
+  return outputCollection;
+}
+} // anonymous namespace
 
 
 TRTOverlay::TRTOverlay(const std::string &name, ISvcLocator *pSvcLocator)
   : AthReentrantAlgorithm(name, pSvcLocator)
 {
 }
-
 
 StatusCode TRTOverlay::initialize()
 {
@@ -129,6 +131,13 @@ StatusCode TRTOverlay::execute(const EventContext& ctx) const
   }
   ATH_MSG_DEBUG("Found signal TRT SDO map container " << signalSDOContainer.name() << " in store " << signalSDOContainer.store());
 
+  // The DataPool, this is what will actually own the elements
+  // we create during this algorithm. The containers are
+  // views.
+  DataPool<TRT_LoLumRawData> dataItemsPool(ctx);
+  //It resizes but lets reserve already quite a few
+  dataItemsPool.reserve(300000);
+
   // Creating output RDO container
   SG::WriteHandle<TRT_RDO_Container> outputContainer(m_outputKey, ctx);
   ATH_CHECK(outputContainer.record(std::make_unique<TRT_RDO_Container>(signalContainer->size())));
@@ -138,8 +147,11 @@ StatusCode TRTOverlay::execute(const EventContext& ctx) const
   }
   ATH_MSG_DEBUG("Recorded output TRT RDO container " << outputContainer.name() << " in store " << outputContainer.store());
 
-  ATH_CHECK(overlayContainer(ctx, bkgContainerPtr, signalContainer.cptr(), outputContainer.ptr(), signalSDOContainer.cptr()));
-  ATH_MSG_DEBUG("TRT Result   = " << Overlay::debugPrint(outputContainer.ptr()));
+  ATH_CHECK(overlayContainer(ctx, bkgContainerPtr, signalContainer.cptr(),
+                             outputContainer.ptr(), signalSDOContainer.cptr(),
+                             dataItemsPool));
+  ATH_MSG_DEBUG(
+      "TRT Result   = " << Overlay::debugPrint(outputContainer.ptr()));
 
   ATH_MSG_DEBUG("execute() end");
   return StatusCode::SUCCESS;
@@ -150,7 +162,8 @@ StatusCode TRTOverlay::overlayContainer(const EventContext &ctx,
                                         const TRT_RDO_Container *bkgContainer,
                                         const TRT_RDO_Container *signalContainer,
                                         TRT_RDO_Container *outputContainer,
-                                        const InDetSimDataCollection *signalSDOCollection) const
+                                        const InDetSimDataCollection *signalSDOCollection,
+                                        DataPool<TRT_LoLumRawData>& dataItemsPool) const
 {
 
   // There are some use cases where background is empty
@@ -158,7 +171,8 @@ StatusCode TRTOverlay::overlayContainer(const EventContext &ctx,
     // Only loop through the signal collections and copy them over
     for (const auto &[hashId, ptr] : signalContainer->GetAllHashPtrPair()) {
       // Copy the signal collection
-      std::unique_ptr<TRT_RDO_Collection> signalCollection = Overlay::copyCollection(hashId, ptr);
+      // pools own the individual elements
+      std::unique_ptr<TRT_RDO_Collection> signalCollection = copyCollection(hashId, ptr, dataItemsPool);
 
       if (outputContainer->addCollection(signalCollection.get(), hashId).isFailure()) {
         ATH_MSG_ERROR("Adding signal Collection with hashId " << hashId << " failed");
@@ -200,9 +214,10 @@ StatusCode TRTOverlay::overlayContainer(const EventContext &ctx,
       // Copy the background collection
       std::unique_ptr<TRT_RDO_Collection> bkgCollection{};
       if (m_sortBkgInput) {
-        bkgCollection = Overlay::copyCollectionAndSort(hashId, bkgContainer->indexFindPtr(hashId));
+        // copy the bkg again Pool owns the individual elements
+        bkgCollection = copyCollectionAndSort(hashId, bkgContainer->indexFindPtr(hashId),dataItemsPool);
       } else {
-        bkgCollection = Overlay::copyCollection(hashId, bkgContainer->indexFindPtr(hashId));
+        bkgCollection = copyCollection(hashId, bkgContainer->indexFindPtr(hashId),dataItemsPool);
       }
 
       if (outputContainer->addCollection(bkgCollection.get(), hashId).isFailure()) {
@@ -220,24 +235,35 @@ StatusCode TRTOverlay::overlayContainer(const EventContext &ctx,
   // Finally loop through the map and process the signal and overlay if
   // necessary
   for (const auto &[hashId, overlap] : overlapMap) {
-    // Copy the signal collection
-    std::unique_ptr<TRT_RDO_Collection> signalCollection = Overlay::copyCollection(hashId, signalContainer->indexFindPtr(hashId));
+    // Copy the signal collection the pool owns the individual elements
+    std::unique_ptr<TRT_RDO_Collection> signalCollection =
+        copyCollection(hashId, signalContainer->indexFindPtr(hashId),dataItemsPool);
 
     if (overlap) { // Do overlay
       // Create the output collection, only works for Inner Detector
       auto outputCollection = std::make_unique<TRT_RDO_Collection>(hashId);
       outputCollection->setIdentifier(signalCollection->identify());
-      // Copy the background collection
+      // This will receive merged elements from the other containers.
+      // There elements are owned actually by the DataPool
+      outputCollection->clear(SG::VIEW_ELEMENTS);
+
+      // Copy the background collection the pool owns the individual elements
       std::unique_ptr<TRT_RDO_Collection> bkgCollection{};
       if (m_sortBkgInput) {
-        bkgCollection = Overlay::copyCollectionAndSort(hashId, bkgContainer->indexFindPtr(hashId));
+        bkgCollection = copyCollectionAndSort(hashId, bkgContainer->indexFindPtr(hashId),dataItemsPool);
       } else {
-        bkgCollection = Overlay::copyCollection(hashId, bkgContainer->indexFindPtr(hashId));
+        bkgCollection = copyCollection(hashId, bkgContainer->indexFindPtr(hashId),dataItemsPool);
       }
 
       // Merge collections
       int det = m_trtId->barrel_ec(signalCollection->identify());
-      mergeCollections(bkgCollection.get(), signalCollection.get(), outputCollection.get(), occupancyMap[det], signalSDOCollection, strawStatusHT, rndmEngine);
+      mergeCollections(bkgCollection.get(),
+                       signalCollection.get(),
+                       outputCollection.get(),
+                       occupancyMap[det],
+                       signalSDOCollection,
+                       strawStatusHT,
+                       rndmEngine);
 
       if (outputContainer->addCollection(outputCollection.get(), hashId).isFailure()) {
         ATH_MSG_ERROR("Adding overlaid Collection with hashId " << hashId << " failed");
@@ -258,7 +284,8 @@ StatusCode TRTOverlay::overlayContainer(const EventContext &ctx,
   return StatusCode::SUCCESS;
 }
 
-
+/// Here we take 2 view containers with elements owned by the DataPool
+/// we modify some of them and push them to a 3rd view container.
 void TRTOverlay::mergeCollections(TRT_RDO_Collection *bkgCollection,
                                   TRT_RDO_Collection *signalCollection,
                                   TRT_RDO_Collection *outputCollection,
@@ -273,6 +300,20 @@ void TRTOverlay::mergeCollections(TRT_RDO_Collection *bkgCollection,
 
   // Merge by copying ptrs from background and signal to output collection
   TRT_RDO_Collection::size_type ibkg = 0, isig = 0;
+
+  outputCollection->reserve(
+      std::max(bkgCollection->size(), signalCollection->size()));
+  // Below we have swapElements.
+  // Remember the elements of the signalCollection and bkgCollection
+  // containers are owned by the DataPool.
+  // tmpBkg and tmp are whaterver elements we take out of the containers.
+  //
+  // So
+  // A) We can not delete them. dataPool will do that at the end of the event.
+  // B) We can push them back only to a View so outputCollection is a view
+  // collection
+  // C) We pass nullptr so no need to get another item from the pool
+
   while ((ibkg < bkgCollection->size()) || (isig < signalCollection->size())) {
     // The RDO that goes to the output at the end of this step.
     TRT_RDORawData *tmp{};
@@ -293,6 +334,7 @@ void TRTOverlay::mergeCollections(TRT_RDO_Collection *bkgCollection,
       } else {
         // The hits are on the same channel.
         TRT_RDORawData *tmpBkg{};
+
         bkgCollection->swapElement(ibkg++, nullptr, tmpBkg);
         signalCollection->swapElement(isig++, nullptr, tmp);
 
@@ -351,15 +393,13 @@ void TRTOverlay::mergeCollections(TRT_RDO_Collection *bkgCollection,
             if (HTOccupancyCorrection != 0. && occupancy * HTOccupancyCorrection > CLHEP::RandFlat::shoot(rndmEngine, 0, 1)) {
               newWord += 1 << (26-9);
             }
-  
+
             TRT_LoLumRawData newRdo(rdoId, newWord);
             sigRdo->merge(newRdo);
           }
         } else {
           ATH_MSG_WARNING("TRT RDO is the wrong format");
         }
-
-        delete tmpBkg;
       }
     }
 

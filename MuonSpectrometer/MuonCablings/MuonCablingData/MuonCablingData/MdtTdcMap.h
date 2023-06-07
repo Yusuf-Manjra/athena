@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef MUONMDT_CABLING_MDTAMTMAP_H
@@ -10,8 +10,8 @@
  *  @brief Atlas MDT Tdc Mapping class
  *
  *  This class implements the channel mapping of a single MDT TDC.
- *  The mapping is between the TDC channel and the tube multilayer, layer, number in
- *  the offline convention
+ *  The mapping is between the TDC channel and the tube multilayer, layer,
+ *number in the offline convention
  *
  *
  **/
@@ -22,24 +22,21 @@
 
 #include "GaudiKernel/MsgStream.h"
 #include "MuonCablingData/MdtCablingData.h"
-class MdtMezzanineType;
+#include "MuonCablingData/MdtMezzanineCard.h"
+
 class MdtIdHelper;
-
 class MdtTdcMap {
-public:
-    static constexpr uint8_t CHANMAX = 24;
-    static constexpr uint8_t NOTSET = 250;
-
+   public:
+    static constexpr uint8_t NOTSET = MdtMezzanineCard::NOTSET;
+    using MezzCardPtr = MdtMezzanineCard::MezzCardPtr;
     /** constructor */
-    /** arguments are the mezzanine type, one channel (usually chan 0) and the */
+    /** arguments are the mezzanine type, one channel (usually chan 0) and the
+     */
     /** corresponding offline informations */
-    MdtTdcMap(const MdtMezzanineType* mezType, const MdtCablingData& cabling_data, const MdtIdHelper* helper, MsgStream& ext_log);
+    MdtTdcMap(const MezzCardPtr mezType, const MdtCablingData& cabling_data);
 
     /** destructor */
     ~MdtTdcMap() = default;
-
-    /** add a channel */
-    bool setChannel(uint8_t channel, int layer, int tube, MsgStream& log);
 
     /** retrieve the full information */
     bool offlineId(MdtCablingData& cabling_data, MsgStream& log) const;
@@ -47,7 +44,7 @@ public:
     bool onlineId(MdtCablingData& cabling_data, MsgStream& log) const;
 
     /** get the mezzanine type */
-    uint8_t mezzanineType() const { return m_mezType; }
+    uint8_t mezzanineType() const { return m_mezzCard->id(); }
 
     /** return the tdc id */
     uint8_t moduleId() const { return m_statId.tdcId; }
@@ -56,14 +53,10 @@ public:
     /** return the csm of the associated tdc */
     uint8_t csm() const { return m_statId.csm; }
 
-    /** get the layer number */
-    int layer(uint8_t channel) const { return m_chanToLayer.at(channel).first; }
-
-    /** get the tube number */
-    int tube(uint8_t channel) const { return m_chanToLayer[channel].second; }
-
     /** get the offline identifier */
     const MdtCablingOffData& offId() const { return m_statId; }
+    /** get the online identiifer */
+    const MdtCablingOnData& onlineId() const { return m_statId; }
     /** get the multilayer (independent of the channel) */
     int multiLayer() const { return m_statId.multilayer; }
     /* get the station Name */
@@ -76,37 +69,18 @@ public:
     /* get the zero channels */
     uint8_t tdcZero() const { return m_statId.channelId; }
     /* tube zero */
-    int tubeZero() const { return m_statId.tube; }
-    /* layer zero */
-    int layerZero() const { return m_statId.layer; }
+    uint8_t tubeZero() const { return m_statId.tube; }
 
-    /// Minimum tube number & maximum tube number found
-    int minTube() const { return m_minTube; }
-    int maxTube() const { return m_maxTube; }
-    /// Minimum & maximum layer number
-    int minLayer() const { return m_minLayer; }
-    int maxLayer() const { return m_maxLayer; }
+    uint8_t maxTube() const { return m_maxTube; }
+    uint8_t minTube() const { return m_minTube; }
 
-private:
-    /** Private functions */
-
-    /** initialize the channel-to-tube map */
-    bool initMap(const MdtMezzanineType* mezType, uint8_t channel, int layerZero, int tubeZero, MsgStream& log);
-
+   private:
     /** tube corresponding to each tdc channel */
     MdtCablingData m_statId{};
-    /// std::pair
-    std::array<std::pair<int, int>, CHANMAX> m_chanToLayer{};
-    std::map<std::pair<int, int>, uint8_t> m_LayTubeToChan{};
+    MezzCardPtr m_mezzCard{nullptr};
 
-    int m_minTube{NOTSET};
-    int m_maxTube{0};
-    int m_minLayer{NOTSET};
-    int m_maxLayer{0};
-
-    /** mezzanine type */
-    uint8_t m_mezType{0};
-    const MdtIdHelper* m_mdtIdHelper{nullptr};
+    int8_t m_minTube{24};
+    int8_t m_maxTube{-24};
 };
 
 /// Helper struct to search through the std::set if a conversion from
@@ -118,7 +92,7 @@ struct MdtTdcOffSorter {
     bool operator!() const { return !m_ptr; }
     operator bool() const { return m_ptr; }
 
-private:
+   private:
     const MdtTdcMap* m_ptr{nullptr};
 };
 /// Helper struct to search through the std::set if a conversion from
@@ -130,7 +104,7 @@ struct MdtTdcOnlSorter {
     bool operator!() const { return !m_ptr; }
     operator bool() const { return m_ptr; }
 
-private:
+   private:
     const MdtTdcMap* m_ptr{nullptr};
 };
 /// Operators used for navigation later
@@ -138,13 +112,25 @@ private:
 /// The minimum and maximum tube of a tdc define its range of covered channels
 /// The MdtHit belongs exactly to the corresponding readout channel if its
 /// tube number is within that range
-inline bool operator<(const MdtTdcOffSorter& a, const MdtCablingData& b) { return a->maxTube() < b.tube; }
-inline bool operator<(const MdtCablingData& a, const MdtTdcOffSorter& b) { return a.tube < b->minTube(); }
+inline bool operator<(const MdtTdcOffSorter& a, const MdtCablingData& b) {
+    return a->maxTube() < b.tube;
+}
+inline bool operator<(const MdtCablingData& a, const MdtTdcOffSorter& b) {
+    return a.tube < b->minTube();
+}
 /// Order the tdc identifiers according to their minimum tube
-inline bool operator<(const MdtTdcOffSorter& a, const MdtTdcOffSorter& b) { return a->minTube() < b->minTube(); }
+inline bool operator<(const MdtTdcOffSorter& a, const MdtTdcOffSorter& b) {
+    return a->minTube() < b->minTube();
+}
 
-inline bool operator<(const MdtTdcOnlSorter& a, const MdtTdcOnlSorter& b) { return a->moduleId() < b->moduleId(); }
-inline bool operator<(const MdtTdcOnlSorter& a, const MdtCablingData& b) { return a->moduleId() < b.tdcId; }
-inline bool operator<(const MdtCablingData& a, const MdtTdcOnlSorter& b) { return a.tdcId < b->moduleId(); }
+inline bool operator<(const MdtTdcOnlSorter& a, const MdtTdcOnlSorter& b) {
+    return a->moduleId() < b->moduleId();
+}
+inline bool operator<(const MdtTdcOnlSorter& a, const MdtCablingData& b) {
+    return a->moduleId() < b.tdcId;
+}
+inline bool operator<(const MdtCablingData& a, const MdtTdcOnlSorter& b) {
+    return a.tdcId < b->moduleId();
+}
 
 #endif  // MUONMDT_CABLING_MDTAMTMAP_H

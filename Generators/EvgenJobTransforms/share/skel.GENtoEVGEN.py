@@ -1,4 +1,4 @@
-#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 #
 """Functionality core of the Gen_tf transform"""
 
@@ -143,6 +143,10 @@ from EvgenProdTools.EvgenProdToolsConf import CopyEventWeight
 if not hasattr(postSeq, "CopyEventWeight"):
     postSeq += CopyEventWeight(mcEventWeightsKey="TMPEvtInfo.mcEventWeights")
 
+from EvgenProdTools.EvgenProdToolsConf import FillFilterValues
+if not hasattr(postSeq, "FillFilterValues"):
+    postSeq += FillFilterValues(mcFilterHTKey="TMPEvtInfo.mcFilterHT")
+
 ## Configure the event counting (AFTER all filters)
 # TODO: Rewrite in Python?
 from EvgenProdTools.EvgenProdToolsConf import CountHepMC
@@ -187,6 +191,13 @@ if hasattr(runArgs, "rivetAnas"):
     anaSeq.Rivet_i.AnalysisPath = os.environ['PWD']
     if hasattr(runArgs, "outputYODAFile"):
       anaSeq.Rivet_i.HistoFile = runArgs.outputYODAFile
+
+# in case of mc23 protect against changing run number in McEventSelector 
+rel = os.popen("echo $AtlasVersion").read()
+rel = rel.strip()
+if (int(rel[:2]) > 22 ): 
+  from AthenaCommon.AppMgr import ServiceMgr
+  ServiceMgr.EventSelector.EventsPerRun = int(2**63 - 1) #sys.maxint on a 64-bit machine
 
 ##==============================================================
 ## Pre- and main config parsing
@@ -581,8 +592,6 @@ def checkPurpleList(relFlavour,cache,generatorName) :
 
 ## Announce start of JO checkingrelease number checking
 evgenLog.debug("****************** CHECKING RELEASE IS NOT BLACKLISTED *****************")
-rel = os.popen("echo $AtlasVersion").read()
-rel = rel.strip()
 errorBL = checkBlackList("AthGeneration",rel,gennames)
 if (errorBL):
   if (hasattr( runArgs, "ignoreBlackList") and runArgs.ignoreBlackList): 

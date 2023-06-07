@@ -251,8 +251,8 @@ bool TFCSEnergyAndHitGAN::fillFastCaloGanNetworkInputs(
         std::pair<std::string, double>(std::to_string(i), randUniformZ));
   }
 
-  // std::cout << "Check label: " <<trueEnergy <<" "<<std::pow(2,22)<<"
-  // "<<trueEnergy/std::pow(2,22)<<std::endl;
+  // ATH_MSG_INFO( "Check label: " <<trueEnergy <<" "<<std::pow(2,22)<<"
+  // "<<trueEnergy/std::pow(2,22));
   inputs["node_1"].insert(
       std::pair<std::string, double>("0", trueEnergy / (std::pow(2, 22))));
 
@@ -289,10 +289,10 @@ bool TFCSEnergyAndHitGAN::fillEnergy(TFCSSimulationState &simulstate,
   simulstate.set_E(0);
 
   int vox = 0;
-  for (auto element : binsInLayers) {
+  for (const auto& element : binsInLayers) {
     int layer = element.first;
 
-    TH2D *h = &element.second;
+    const TH2D *h = &element.second;
     int xBinNum = h->GetNbinsX();
     // If only one bin in r means layer is empty, no value should be added
     if (xBinNum == 1) {
@@ -336,12 +336,12 @@ bool TFCSEnergyAndHitGAN::fillEnergy(TFCSSimulationState &simulstate,
   }
 
   vox = 0;
-  for (auto element : binsInLayers) {
+  for (const auto& element : binsInLayers) {
     int layer = element.first;
     simulstate.setAuxInfo<int>("GANlayer"_FCShash, layer);
     TFCSLateralShapeParametrizationHitBase::Hit hit;
 
-    TH2D *h = &element.second;
+    const TH2D *h = &element.second;
     int xBinNum = h->GetNbinsX();
     // If only one bin in r means layer is empty, no value should be added
     if (xBinNum == 1) {
@@ -429,7 +429,7 @@ bool TFCSEnergyAndHitGAN::fillEnergy(TFCSSimulationState &simulstate,
           continue;
         }
 
-        TAxis *x = (TAxis *)h->GetXaxis();
+        const TAxis *x = h->GetXaxis();
         nHitsR = x->GetBinUpEdge(ix) - x->GetBinLowEdge(ix);
         if (yBinNum == 1) {
           // nbins in alpha depend on circumference lenght
@@ -438,7 +438,7 @@ bool TFCSEnergyAndHitGAN::fillEnergy(TFCSSimulationState &simulstate,
         } else {
           // d = 2*r*sin (a/2r) this distance at the upper r must be 1mm for
           // layer 1 or 5, 5mm otherwise.
-          TAxis *y = (TAxis *)h->GetYaxis();
+          const TAxis *y = h->GetYaxis();
           double angle = y->GetBinUpEdge(iy) - y->GetBinLowEdge(iy);
           double r = x->GetBinUpEdge(ix);
           double d = 2 * r * sin(angle / 2 * r);
@@ -449,7 +449,7 @@ bool TFCSEnergyAndHitGAN::fillEnergy(TFCSSimulationState &simulstate,
         nHitsR = std::min(10, std::max(1, nHitsR));
 
         for (int ir = 0; ir < nHitsR; ++ir) {
-          TAxis *x = (TAxis *)h->GetXaxis();
+          const TAxis *x = h->GetXaxis();
           double r =
               x->GetBinLowEdge(ix) + x->GetBinWidth(ix) / (nHitsR + 1) * ir;
 
@@ -459,7 +459,7 @@ bool TFCSEnergyAndHitGAN::fillEnergy(TFCSSimulationState &simulstate,
               alpha = CLHEP::RandFlat::shoot(simulstate.randomEngine(), -M_PI,
                                              M_PI);
             } else {
-              TAxis *y = (TAxis *)h->GetYaxis();
+              const TAxis *y = h->GetYaxis();
               alpha = y->GetBinLowEdge(iy) +
                       y->GetBinWidth(iy) / (nHitsAlpha + 1) * ialpha;
             }
@@ -480,10 +480,10 @@ bool TFCSEnergyAndHitGAN::fillEnergy(TFCSSimulationState &simulstate,
               // -delta_eta
               if (center_eta < 0.)
                 delta_eta_mm = -delta_eta_mm;
-              // Particle with negative charge are expected to have the same
-              // shape as positively charged particles after transformation:
-              // delta_phi --> -delta_phi
-              if (charge < 0.)
+              // We derive the shower shapes for electrons and positively charged hadrons.
+              // Particle with the opposite charge are expected to have the same shower shape
+              // after the transformation: delta_phi --> -delta_phi
+              if ((charge < 0. && pdgId!=11) || pdgId==-11)
                 delta_phi_mm = -delta_phi_mm;
 
               const float delta_eta = delta_eta_mm / eta_jakobi / dist000;
@@ -498,10 +498,10 @@ bool TFCSEnergyAndHitGAN::fillEnergy(TFCSSimulationState &simulstate,
               const float hit_r = r * cos(alpha) + center_r;
               float delta_phi = r * sin(alpha) / center_r;
 
-              // Particle with negative charge are expected to have the same
-              // shape as positively charged particles after transformation:
-              // delta_phi --> -delta_phi
-              if (charge < 0.)
+              // We derive the shower shapes for electrons and positively charged hadrons.
+              // Particle with the opposite charge are expected to have the same shower shape
+              // after the transformation: delta_phi --> -delta_phi
+              if ((charge < 0. && pdgId!=11) || pdgId==-11)
                 delta_phi = -delta_phi;
               const float hit_phi = delta_phi + center_phi;
               hit.x() = hit_r * cos(hit_phi);

@@ -368,17 +368,20 @@ def decisionTreeFromChains(flags, HLTNode, chains, allDicts, newJO):
     from TriggerMenuMT.HLT.Config.GenerateMenuMT_newJO import isCAMenu 
     log.info("[decisionTreeFromChains] Run decisionTreeFromChains on %s", HLTNode.getName())
     HLTNodeName = HLTNode.getName()
+    with ConfigurableCABehavior():
+        acc = ComponentAccumulator()
+
     if len(chains) == 0:
         log.info("[decisionTreeFromChains] Configuring empty decisionTree")
-        acc = ComponentAccumulator()
         if isCAMenu():
             acc.addSequence(HLTNode)
         return ([], acc)
     
 
-    (finalDecisions, CFseq_list) = createDataFlow(flags, chains, allDicts)
-    acc = createControlFlow(flags, HLTNode, CFseq_list)
-    
+    (dfAcc, finalDecisions, CFseq_list) = createDataFlow(flags, chains, allDicts)
+    acc.merge(dfAcc)
+    cfAcc = createControlFlow(flags, HLTNode, CFseq_list)
+    acc.merge(cfAcc)
 
     # create dot graphs
     log.debug("finalDecisions: %s", finalDecisions)
@@ -386,9 +389,6 @@ def decisionTreeFromChains(flags, HLTNode, chains, allDicts, newJO):
     if flags.Trigger.generateMenuDiagnostics:
         all_DataFlow_to_dot(HLTNodeName, CFseq_list)
     
-    if isCAMenu():
-        acc.printConfig(withDetails = True, summariseProps = True) 
-
     # matrix display
     # uncomment for serious debugging
     # matrixDisplay( CFseq_list )
@@ -398,11 +398,13 @@ def decisionTreeFromChains(flags, HLTNode, chains, allDicts, newJO):
 
 def createDataFlow(flags, chains, allDicts):
     """ Creates the filters and connect them to the menu sequences"""
+    with ConfigurableCABehavior():
+        acc = ComponentAccumulator()
+
     from TriggerMenuMT.HLT.Config.GenerateMenuMT_newJO import isCAMenu 
     # find tot nsteps
     chainWithMaxSteps = max(chains, key = lambda chain: len(chain.steps))
     NSTEPS = len(chainWithMaxSteps.steps)
-
     log.info("[createDataFlow] creating DF for %d chains and total %d steps", len(chains), NSTEPS)
 
     # initialize arrays for monitor
@@ -443,7 +445,7 @@ def createDataFlow(flags, chains, allDicts):
             if not foundCFSeq:
                 sequenceFilter = buildFilter(filterName, filterInput, chainStep.isEmpty)
                 if isCAMenu():
-                    CFseq = CFSequenceCA( ChainStep = chainStep, FilterAlg = sequenceFilter)
+                    CFseq = CFSequenceCA( chainStep = chainStep, filterAlg = sequenceFilter)
                 else:
                     CFseq = CFSequence( ChainStep = chainStep, FilterAlg = sequenceFilter)
                 CFseq.connect(filterOutput)
@@ -455,6 +457,16 @@ def createDataFlow(flags, chains, allDicts):
                    log.error("Found more than one sequence containing filter %s", filterName)
                 
                 lastCFseq = foundCFSeq[0]
+                if isCAMenu():
+                    # skip re-merging
+                    if flags.Trigger.fastMenuGeneration:
+                        for menuseq in chainStep.sequences:
+                            menuseq.ca.wasMerged()
+                            if menuseq.globalRecoCA:
+                                menuseq.globalRecoCA.wasMerged()
+                    else:
+                        lastCFseq.mergeStepSequences(chainStep)
+
                 sequenceFilter = lastCFseq.filter
                 if len(list(set(sequenceFilter.getInputList()).intersection(filterInput))) != len(list(set(filterInput))):
                     [ sequenceFilter.addInput(inputName) for inputName in filterInput ]
@@ -482,7 +494,10 @@ def createDataFlow(flags, chains, allDicts):
                 log.debug("Combo not implemented if it's empty step")
 
             # add HypoTools to this step (cumulating all same steps)
-            lastCFseq.createHypoTools(flags,chain.name,chainStep)
+            hyposAcc = lastCFseq.createHypoTools(flags,chain.name,chainStep)
+            if hyposAcc:
+                assert len(hyposAcc.getEventAlgos()) == 0, 'Hypo CA contains algorithms'
+                acc.merge(hyposAcc)
 
             if len(chain.steps) == nstep+1:
                 log.debug("Adding finalDecisions for chain %s at step %d:", chain.name, nstep+1)
@@ -495,15 +510,15 @@ def createDataFlow(flags, chains, allDicts):
     #end of loop over chains
 
     log.debug("End of createDataFlow for %d chains and total %d steps", len(chains), NSTEPS)
-    return (finalDecisions, CFseqList)
-
+    return (acc, finalDecisions, CFseqList)
 
 def createControlFlow(flags, HLTNode, CFseqList):
     """ Creates Control Flow Tree starting from the CFSequences"""
     from TriggerMenuMT.HLT.Config.GenerateMenuMT_newJO import isCAMenu 
     HLTNodeName = HLTNode.getName()    
     log.debug("[createControlFlow] on node %s",HLTNodeName)
-    acc = ComponentAccumulator()
+    with ConfigurableCABehavior():
+        acc = ComponentAccumulator()
     if isCAMenu():
         acc.addSequence(HLTNode)
     
@@ -545,7 +560,7 @@ def createControlFlow(flags, HLTNode, CFseqList):
         for cseq in sequences:             
             log.debug(" *** Create CF Tree for CFSequence %s", cseq.step.name)
             if isCAMenu():
-                acc.merge( cseq.ca, sequenceName = stepCFReco.getName())
+                acc.merge(cseq.ca, sequenceName=stepCFReco.getName())
             else:
                 filterAlg = cseq.filter.Alg  
                 if len(cseq.step.sequences) == 0:  

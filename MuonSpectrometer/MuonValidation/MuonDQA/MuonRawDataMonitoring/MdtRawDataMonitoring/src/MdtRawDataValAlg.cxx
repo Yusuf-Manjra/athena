@@ -148,7 +148,7 @@ StatusCode MdtRawDataValAlg::initialize()
         m_mdthitsperchamber_InnerMiddleOuter_HighOcc[i] = nullptr;
         m_mdthitsperchamber_onSegm_InnerMiddleOuterLumi[i] = nullptr;
     }
-    for (auto & i : m_mdtchamberstatphislice) { i = nullptr; }
+    for (auto& i : m_mdtchamberstatphislice) { i = nullptr; }
 
     // init message stream
     ATH_MSG_INFO("initialize MdtRawDataValAlg");
@@ -381,7 +381,7 @@ StatusCode MdtRawDataValAlg::fillHistograms()
             m_environment == AthenaMonManager::online) {
             SG::ReadHandle<xAOD::MuonContainer> muons(m_muonKey);
 
-            for (const auto *const mu : *muons) {
+            for (const auto* const mu : *muons) {
                 if (!(mu->muonType() == xAOD::Muon::Combined)) continue;
                 xAOD::Muon::Quality quality = m_muonSelectionTool->getQuality(*mu);
                 if (!(quality <= xAOD::Muon::Medium)) continue;
@@ -419,7 +419,7 @@ StatusCode MdtRawDataValAlg::fillHistograms()
 
                 bool isHit_above_ADCCut = false;
                 // loop over hits
-                for (const auto *mdtCollection : **containerIt) {
+                for (const auto* mdtCollection : **containerIt) {
                     nPrd++;
                     hardware_name = getChamberName(mdtCollection);
                     float adc = mdtCollection->adc();
@@ -489,55 +489,41 @@ StatusCode MdtRawDataValAlg::fillHistograms()
             }
             if (m_nummdtchamberswithHighOcc)
                 m_nummdtchamberswithHighOcc->Fill(nHighOccChambers);
-            else {
-                ATH_MSG_DEBUG("m_nummdtchamberswithHighOcc not in hist list!");
-            }
+            else { ATH_MSG_DEBUG("m_nummdtchamberswithHighOcc not in hist list!"); }
 
             m_MdtNHitsvsRpcNHits->Fill(nPrd, Nhitsrpc);
 
             // TotalNumber_of_MDT_hits_per_event with cut on ADC
             if (m_mdteventscutLumi)
                 m_mdteventscutLumi->Fill(nPrdcut);
-            else {
-                ATH_MSG_DEBUG("m_mdteventscutLumi not in hist list!");
-            }
+            else { ATH_MSG_DEBUG("m_mdteventscutLumi not in hist list!"); }
 
             // TotalNumber_of_MDT_hits_per_event with cut on ADC (for high mult. evt)
             if (m_mdteventscutLumi_big)
                 m_mdteventscutLumi_big->Fill(nPrdcut);
-            else {
-                ATH_MSG_DEBUG("m_mdteventscutLumi_big not in hist list!");
-            }
+            else { ATH_MSG_DEBUG("m_mdteventscutLumi_big not in hist list!"); }
 
             // TotalNumber_of_MDT_hits_per_event without cut on ADC
             if (m_mdteventsLumi)
                 m_mdteventsLumi->Fill(nPrd);
-            else {
-                ATH_MSG_DEBUG("m_mdteventsLumi not in hist list!");
-            }
+            else { ATH_MSG_DEBUG("m_mdteventsLumi not in hist list!"); }
 
             // TotalNumber_of_MDT_hits_per_event without cut on ADC (for high mult. evt)
             if (m_mdteventsLumi_big)
                 m_mdteventsLumi_big->Fill(nPrd);
-            else {
-                ATH_MSG_DEBUG("m_mdteventsLumi_big not in hist list!");
-            }
+            else { ATH_MSG_DEBUG("m_mdteventsLumi_big not in hist list!"); }
 
             if (m_mdtglobalhitstime) m_mdtglobalhitstime->Fill(m_time - m_firstTime);
 
             // Number_of_Chambers_with_hits_per_event
             if (m_nummdtchamberswithhits)
                 m_nummdtchamberswithhits->Fill(nColl);
-            else {
-                ATH_MSG_DEBUG("m_nummdtchamberswithhits not in hist list!");
-            }
+            else { ATH_MSG_DEBUG("m_nummdtchamberswithhits not in hist list!"); }
 
             // Number_of_Chambers_with_hits_per_event_ADCCut
             if (m_nummdtchamberswithhits_ADCCut)
                 m_nummdtchamberswithhits_ADCCut->Fill(nColl_ADCCut);
-            else {
-                ATH_MSG_DEBUG("m_nummdtchamberswithhits_ADCCut not in hist list!");
-            }
+            else { ATH_MSG_DEBUG("m_nummdtchamberswithhits_ADCCut not in hist list!"); }
 
         }  // m_environment == AthenaMonManager::tier0 || m_environment == AthenaMonManager::tier0ESD
     }      // m_doMdtESD==true
@@ -1740,7 +1726,7 @@ StatusCode MdtRawDataValAlg::handleEvent_effCalc(
     }
 
     // LOOP OVER SEGMENTS
-    for (const auto *segm : *segms) {
+    for (const auto* segm : *segms) {
         const Muon::MuonSegment* segment = dynamic_cast<const Muon::MuonSegment*>(segm);
         if (segment == nullptr) {
             ATH_MSG_DEBUG("no pointer to segment!!!");
@@ -1879,12 +1865,10 @@ StatusCode MdtRawDataValAlg::handleEvent_effCalc(
                     for (int i_tube = m_idHelperSvc->mdtIdHelper().tubeMin(newId); i_tube <= tubeMax; i_tube++) {
                         for (int i_layer = m_idHelperSvc->mdtIdHelper().tubeLayerMin(newId); i_layer <= tubeLayerMax; i_layer++) {
                             const MuonGM::MdtReadoutElement* MdtRoEl = MuonDetMgr->getMdtReadoutElement(newId);
+                            Identifier tubeId = m_idHelperSvc->mdtIdHelper().channelID(newId, ML, i_layer, i_tube);
                             if (m_BMGpresent && m_idHelperSvc->mdtIdHelper().stationName(newId) == m_BMGid) {
                                 std::map<Identifier, std::vector<Identifier> >::iterator myIt = m_DeadChannels.find(MdtRoEl->identify());
                                 if (myIt != m_DeadChannels.end()) {
-                                    Identifier tubeId = m_idHelperSvc->mdtIdHelper().channelID(
-                                        hardware_name.substr(0, 3), m_idHelperSvc->mdtIdHelper().stationEta(station_id),
-                                        m_idHelperSvc->mdtIdHelper().stationPhi(station_id), ML, i_layer, i_tube);
                                     if (std::find((myIt->second).begin(), (myIt->second).end(), tubeId) != (myIt->second).end()) {
                                         ATH_MSG_DEBUG("Skipping tube with identifier "
                                                       << m_idHelperSvc->mdtIdHelper().show_to_string(tubeId));
@@ -1892,11 +1876,9 @@ StatusCode MdtRawDataValAlg::handleEvent_effCalc(
                                     }
                                 }
                             }
-                            Amg::Vector3D TubePos = MdtRoEl->GlobalToAmdbLRSCoords(MdtRoEl->tubePos(ML, i_layer, i_tube));
-                            Amg::Vector3D tube_position = Amg::Vector3D(TubePos.x(), TubePos.y(), TubePos.z());
-                            Amg::Vector3D tube_direction = Amg::Vector3D(1, 0, 0);
+                            Amg::Vector3D TubePos = MdtRoEl->GlobalToAmdbLRSCoords(MdtRoEl->tubePos(tubeId));
                             MuonCalib::MTStraightLine tube_track =
-                                MuonCalib::MTStraightLine(tube_position, tube_direction, Amg::Vector3D(0, 0, 0), Amg::Vector3D(0, 0, 0));
+                                MuonCalib::MTStraightLine(TubePos, Amg::Vector3D::UnitX(), Amg::Vector3D(0, 0, 0), Amg::Vector3D(0, 0, 0));
                             double distance = std::abs(segment_track.signDistFrom(tube_track));
                             if (distance < (MdtRoEl->innerTubeRadius())) {
                                 traversed_station_id.push_back(station_id);
@@ -1971,7 +1953,7 @@ StatusCode MdtRawDataValAlg::handleEvent_effCalc(
 
     // Fill effentries/effcounts hists for efficiency calculation
     if (m_doChamberHists) {  // Don't perform this block if not doing chamber by chamber hists
-        for (const auto & store_effTube : store_effTubes) {
+        for (const auto& store_effTube : store_effTubes) {
             // GET HISTS
             MDTChamber* chamber;
             sc = getChamber(store_effTube.idHash, chamber);

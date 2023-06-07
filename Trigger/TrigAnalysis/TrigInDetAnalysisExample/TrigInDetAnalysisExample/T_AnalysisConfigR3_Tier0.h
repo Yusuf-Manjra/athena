@@ -328,7 +328,7 @@ protected:
 
     /// (obviously) get the event info
 
-    const xAOD::EventInfo* pEventInfo;
+    const xAOD::EventInfo* pEventInfo = 0;
 
     unsigned           run_number        = 0;
     unsigned long long event_number      = 0;
@@ -340,7 +340,7 @@ protected:
     /// for debugging ...
     //    std::cout << "\tloop() get EventInfo" << std::endl;
 
-    if ( m_provider->evtStore()->retrieve(pEventInfo).isFailure() ) {
+    if ( this->template retrieve( pEventInfo, "EventInfo" ).isFailure() ) {
       m_provider->msg(MSG::WARNING) << "Failed to get EventInfo " << endmsg;
     } else {
 
@@ -547,7 +547,7 @@ protected:
 	if ( m_provider->msg().level() <= MSG::VERBOSE )
 	  m_provider->msg(MSG::VERBOSE) << "evtStore()->retrieve( mcevent, " << keys[ik] << " )" << endmsg;
 
-	if ( m_provider->evtStore()->template retrieve( mcevent, keys[ik] ).isFailure() ) {
+	if ( this->template retrieve( mcevent, keys[ik] ).isFailure() ) {
 	  if ( m_provider->msg().level() <= MSG::VERBOSE )
 	    m_provider->msg(MSG::VERBOSE) << "Failed to get McEventCollection: " << keys[ik] << endmsg;
 	}
@@ -806,25 +806,40 @@ protected:
 	    leg = std::atoi(chainConfig.element().c_str());
 	  }
 	  
+	  std::string rgex = roi_key;
+
 	  std::vector< TrigCompositeUtils::LinkInfo<TrigRoiDescriptorCollection> > rois = 
 	    (*m_tdt)->template features<TrigRoiDescriptorCollection>( Trig::FeatureRequestDescriptor( chainName,  
 												      decisiontype,
-												      roi_key, 
+												      rgex, 
 												      feature_type,
 												      "roi", 
 												      leg ) );
 	  
-	  //	const unsigned int featureCollectionMode = const std::string& navElementLinkKey = "roi") const;
-	  
+	  /// a hack to fetch back the Rois with "_probe" in the name if the standard named
+	  /// RoiDescriptors are not actually present for this chain ...
+
+	  if ( rois.empty() ) {
+	    if ( !rgex.empty() ) {
+	      rgex += "_probe";
+	      rois = (*m_tdt)->template features<TrigRoiDescriptorCollection>( Trig::FeatureRequestDescriptor( chainName,
+													       decisiontype,
+													       rgex,
+													       feature_type,
+													       "roi",
+													       leg ) );
+	    }
+	  }
+
 	  int iroi = 0; /// count of how many rois processed so far
 	  
 	  for ( const TrigCompositeUtils::LinkInfo<TrigRoiDescriptorCollection>& roi_info : rois ) {
-	  
+
 	    iroi++;
 
 	    /// don't extract any additional rois if a superRoi is requested: 
 	    /// In this case, the superRoi would be shared between the different 
-	    /// chains 
+	    /// chains - this shouldn't be needed now ...
 
 	    if ( roi_key=="SuperRoi" && iroi>1 ) continue; 
 	
@@ -833,7 +848,7 @@ protected:
 	    const ElementLink<TrigRoiDescriptorCollection> roi_link = roi_info.link;
 
 	    /// check this is not a spurious TDT match
-	    if ( roi_key!="" && roi_link.dataID()!=roi_key ) continue;
+	    if ( roi_key!="" && roi_link.dataID()!=rgex ) continue;
 
 	    const TrigRoiDescriptor* const* roiptr = roi_link.cptr();
 

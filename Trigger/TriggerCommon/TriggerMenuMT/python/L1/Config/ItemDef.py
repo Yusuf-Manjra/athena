@@ -173,6 +173,8 @@ class ItemDef:
         MenuItem('L1_EM22'    ).setLogic( d.EM22     & physcond).setTriggerType( TT.calo )
 
         # Phase-I
+        MenuItem('L1_eEM1'      ).setLogic( d.eEM1       & physcond).setTriggerType( TT.calo )
+        MenuItem('L1_eEM2'      ).setLogic( d.eEM2       & physcond).setTriggerType( TT.calo )
         MenuItem('L1_eEM5'      ).setLogic( d.eEM5       & physcond).setTriggerType( TT.calo )
         MenuItem('L1_eEM7'      ).setLogic( d.eEM7       & physcond).setTriggerType( TT.calo )
         MenuItem('L1_eEM9'      ).setLogic( d.eEM9       & physcond).setTriggerType( TT.calo )
@@ -214,6 +216,7 @@ class ItemDef:
         MenuItem('L1_EM20VH_2EM10VH_3EM8VH' ).setLogic( d.EM20VH & d.EM10VH.x(2) & d.EM8VH.x(3)    & physcond).setTriggerType( TT.calo )
 
         # PhaseI 2xEM and 3xEM
+        MenuItem('L1_2eEM12L').setLogic(d.eEM12L.x(2) & physcond).setTriggerType(TT.calo) #heavy ions, ATR-26333
         MenuItem('L1_2eEM18L').setLogic(d.eEM18L.x(2) & physcond).setTriggerType(TT.calo)
         MenuItem('L1_2eEM18M').setLogic(d.eEM18M.x(2) & physcond).setTriggerType(TT.calo)
         MenuItem('L1_2eEM24L').setLogic(d.eEM24L.x(2) & physcond).setTriggerType(TT.calo)
@@ -282,6 +285,7 @@ class ItemDef:
         MenuItem('L1_EM7_UNPAIRED_ISO'   ).setLogic(d.EM7 & unpaired_isocond).setTriggerType( TT.calo )
         MenuItem('L1_EM7_UNPAIRED_NONISO').setLogic(d.EM7 & unpaired_nonisocond).setTriggerType( TT.calo )
         MenuItem('L1_EM7_FIRSTEMPTY'     ).setLogic(d.EM7 & firstempty).setTriggerType( TT.calo )
+        #MenuItem('L1_eEM9_FIRSTEMPTY'     ).setLogic(d.eEM9 & firstempty).setTriggerType( TT.calo )
 
         MenuItem('L1_EM20VH_FIRSTEMPTY'  ).setLogic( d.EM20VH  & firstempty).setTriggerType( TT.calo )
         MenuItem('L1_EM22VHI_FIRSTEMPTY' ).setLogic( d.EM22VHI & firstempty).setTriggerType( TT.calo )
@@ -316,6 +320,30 @@ class ItemDef:
 
         MenuItem('L1_TE4_VTE200_EMPTY'   ).setLogic( d.TE4  & Not(d.TE200) & cosmiccond).setTriggerType( TT.calo )
         MenuItem('L1_TE5_VTE200_EMPTY'   ).setLogic( d.TE5  & Not(d.TE200) & cosmiccond).setTriggerType( TT.calo )
+
+        #HI phase-1
+        # additional L1_GAP items defined using jTEFWDA or JTEFWDC
+
+        GAPA = Not(d.jTEFWDA5)
+        GAPC = Not(d.jTEFWDC5)
+        GAPAC = Not(d.jTEFWDA5) & Not(d.jTEFWDC5)
+
+        MenuItem('L1_GAP_A').setLogic( GAPA & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_GAP_C').setLogic( GAPC & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_GAP_AANDC').setLogic( GAPAC  & physcond).setTriggerType(TT.calo)
+
+        MenuItem('L1_eEM1_VjTE200').setLogic( d.eEM1      & Not(d.jTE200) & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_2eEM1_VjTE200').setLogic( d.eEM1.x(2)      & Not(d.jTE200) & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_2eEM2_VjTE200').setLogic( d.eEM2.x(2)      & Not(d.jTE200) & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_2eEM1_VjTE200_GAP_AANDC').setLogic( d.eEM1.x(2)      & Not(d.jTE200) & GAPAC  & physcond).setTriggerType(TT.calo)
+
+        MenuItem('L1_VjTE200_GAP_A'         ).setLogic(  Not(d.jTE200) & GAPA  & physcond).setTriggerType( TT.calo )
+        MenuItem('L1_VjTE200_GAP_C'         ).setLogic(  Not(d.jTE200) & GAPC  & physcond).setTriggerType( TT.calo )
+        MenuItem('L1_jTE3_VjTE200_GAP_A'         ).setLogic( d.jTE3  & Not(d.jTE200) & GAPA  & physcond).setTriggerType( TT.calo )
+        MenuItem('L1_jTE3_VjTE200_GAP_C'         ).setLogic( d.jTE3  & Not(d.jTE200) & GAPC  & physcond).setTriggerType( TT.calo )
+        MenuItem('L1_jTE5_VjTE200'         ).setLogic( d.jTE5  & Not(d.jTE200) & physcond).setTriggerType( TT.calo )
+        MenuItem('L1_jTE5_VjTE200_GAP_A'         ).setLogic( d.jTE5  & Not(d.jTE200) & GAPA  & physcond).setTriggerType( TT.calo )
+        MenuItem('L1_jTE5_VjTE200_GAP_C'         ).setLogic( d.jTE5  & Not(d.jTE200) & GAPC  & physcond).setTriggerType( TT.calo )
 
         # NSW Monitoring
         MenuItem('L1_NSW_MONITOR').setLogic(d.NSWMon & physcond ).setTriggerType(TT.nsw)
@@ -415,6 +443,13 @@ class ItemDef:
         MenuItem('L1_2MU5VF_UNPAIRED_NONISO').setLogic(d.MU5VF.x(2) & unpaired_nonisocond).setTriggerType( TT.muon )
         MenuItem('L1_2MU5VF_EMPTY'          ).setLogic(d.MU5VF.x(2) & cosmiccond).setTriggerType( TT.muon )
         MenuItem('L1_2MU5VF_FIRSTEMPTY'     ).setLogic(d.MU5VF.x(2) & firstempty).setTriggerType( TT.muon )
+
+        # HI - phase-1
+        MenuItem('L1_MU3V_VjTE50'  ).setLogic( d.MU3V      & Not(d.jTE50) & physcond).setTriggerType(TT.muon)
+        MenuItem('L1_MU5VF_VjTE50').setLogic( d.MU5VF    & Not(d.jTE50) & physcond).setTriggerType(TT.muon)
+        MenuItem('L1_2MU3V_VjTE50').setLogic( d.MU3V.x(2) & Not(d.jTE50) & physcond).setTriggerType(TT.muon)
+        MenuItem('L1_MU3V_VjTE50_GAP_AANDC'  ).setLogic( d.MU3V      &  Not(d.jTE50) & GAPAC  & physcond).setTriggerType(TT.muon)
+        
 
         # EM and MU
         MenuItem('L1_EM7_MU8F'       ).setLogic( d.EM7        & d.MU8F     & physcond).setTriggerType(TT.muon)
@@ -637,7 +672,9 @@ class ItemDef:
         MenuItem('L1_J400' ).setLogic( d.J400 & physcond).setTriggerType(TT.calo)
         MenuItem('L1_J400_LAR' ).setLogic( d.J400 & physcond).setTriggerType(TT.lardigital) # ATR-22344
 
+        MenuItem('L1_jJ15p31ETA49'  ).setLogic( d.jJ1531ETA49  & physcond).setTriggerType(TT.calo)
         MenuItem('L1_jJ20'          ).setLogic( d.jJ20         & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_jJ20p31ETA49'  ).setLogic( d.jJ2031ETA49  & physcond).setTriggerType(TT.calo)
         MenuItem('L1_jJ30'          ).setLogic( d.jJ30         & physcond).setTriggerType(TT.calo)
         MenuItem('L1_jJ30p0ETA25'   ).setLogic( d.jJ300ETA25   & physcond).setTriggerType(TT.calo)
         MenuItem('L1_jJ40'          ).setLogic( d.jJ40         & physcond).setTriggerType(TT.calo)
@@ -677,6 +714,7 @@ class ItemDef:
         MenuItem('L1_jJ60_EMPTY'     ).setLogic( d.jJ60 & cosmiccond ).setTriggerType(TT.calo)
         MenuItem('L1_jJ60_FIRSTEMPTY').setLogic( d.jJ60 & firstempty ).setTriggerType(TT.calo)
 
+        MenuItem('L1_MU3V_jJ20'      ).setLogic( d.MU3V & d.jJ20    & physcond).setTriggerType(TT.calo) # added temporarily 
         MenuItem('L1_MU3V_jJ30'      ).setLogic( d.MU3V & d.jJ30    & physcond).setTriggerType(TT.calo) # added temporarily 
         MenuItem('L1_MU3V_jJ40'      ).setLogic( d.MU3V & d.jJ40    & physcond).setTriggerType(TT.calo)
         MenuItem('L1_MU5VF_jJ90'      ).setLogic( d.MU5VF & d.jJ90  & physcond).setTriggerType(TT.calo)
@@ -802,6 +840,10 @@ class ItemDef:
         MenuItem('L1_J40_XE60' ).setLogic( d.J40 & d.XE60 & physcond).setTriggerType(TT.calo)
         MenuItem('L1_J30p0ETA49_XE50').setLogic( d.J300ETA49 & d.XE50 & physcond).setTriggerType(TT.calo)
         MenuItem('L1_3J15p0ETA25_XE40').setLogic( d.J150ETA25.x(3) & d.XE40 & physcond).setTriggerType(TT.calo)
+        # ATR-27250 Duplicate multijet-seeded triggers to jFEX
+        #MenuItem('L1_3jJ40p0ETA25_jXE80').setLogic( d.jJ400ETA25.x(3) & d.jXE80 & physcond).setTriggerType(TT.calo)
+        #MenuItem('L1_2jJ90_jXE80').setLogic( d.jJ90.x(2) & d.jXE80 & physcond).setTriggerType(TT.calo)
+        #MenuItem('L1_2jJ40_jXE110').setLogic( d.jJ40.x(2) & d.jXE110 & physcond).setTriggerType(TT.calo)
 
         # combined em - jet
         MenuItem('L1_EM18VHI_3J20' ).setLogic( d.EM18VHI  & d.J20.x(3)  & physcond).setTriggerType(TT.calo)
@@ -880,6 +922,16 @@ class ItemDef:
         MenuItem('L1_jTEFWD100'  ).setLogic( d.jTEFWD100 & physcond).setTriggerType(TT.calo)
         MenuItem('L1_jTEFWDA100' ).setLogic( d.jTEFWDA100 & physcond).setTriggerType(TT.calo)
         MenuItem('L1_jTEFWDC100' ).setLogic( d.jTEFWDC100 & physcond).setTriggerType(TT.calo)
+        # additional jTE items for 2023 heavy ion runs
+        MenuItem('L1_jTE20'     ).setLogic( d.jTE20  & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_jTE50'     ).setLogic( d.jTE50  & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_jTE600'     ).setLogic( d.jTE600  & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_jTE1500'    ).setLogic( d.jTE1500 & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_jTE3000'    ).setLogic( d.jTE3000 & physcond).setTriggerType(TT.calo)
+        # additional VjTE items for 2023 heavy ion runs
+        MenuItem('L1_VjTE50'    ).setLogic( Not(d.jTE50)  & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_VjTE200'    ).setLogic( Not(d.jTE200)  & physcond).setTriggerType(TT.calo)
+        MenuItem('L1_VjTE600'    ).setLogic( Not(d.jTE600)  & physcond).setTriggerType(TT.calo)
 
         MenuItem('L1_XE10').setLogic( d.XE10 & physcond).setTriggerType(TT.calo)
         MenuItem('L1_XE20').setLogic( d.XE20 & physcond).setTriggerType(TT.calo)
@@ -1070,6 +1122,10 @@ class ItemDef:
         MenuItem('L1_MBTS_1_VTE70'    ).setLogic( MBTS_1  & Not(d.TE70) & physcond)
         MenuItem('L1_MBTS_1_VTE50'    ).setLogic( MBTS_1  & Not(d.TE50) & physcond)
         MenuItem('L1_MBTS_1_VTE200'   ).setLogic( MBTS_1  & Not(d.TE200) & physcond)
+        # phase-1
+        MenuItem('L1_MBTS_1_VjTE200'   ).setLogic( MBTS_1  & Not(d.jTE200) & physcond)
+        MenuItem('L1_MBTS_1_VjTE200_GAP_A'   ).setLogic( MBTS_1  & Not(d.jTE200) & GAPA & physcond)
+        MenuItem('L1_MBTS_1_VjTE200_GAP_C'   ).setLogic( MBTS_1  & Not(d.jTE200) & GAPC & physcond)
 
         MenuItem('L1_MBTS_2_VTE2'     ).setLogic( MBTS_2  & Not(d.TE2) & physcond)
         MenuItem('L1_MBTS_2_VTE3'     ).setLogic( MBTS_2  & Not(d.TE3) & physcond)
@@ -1420,6 +1476,10 @@ class ItemDef:
         MenuItem('L1_TRT_VTE200').setLogic(d.NIMTRT & Not(d.TE200) & physcond)
         MenuItem('L1_TRT_VTE50' ).setLogic(d.NIMTRT & Not(d.TE50)  & physcond)
         MenuItem('L1_TRT_VTE20' ).setLogic(d.NIMTRT & Not(d.TE20)  & physcond)
+
+        #TRT + Phase-1 Calo
+        MenuItem('L1_TRT_VjTE50' ).setLogic(d.NIMTRT & Not(d.jTE50)  & physcond)
+        MenuItem('L1_TRT_VjTE50_GAP_AANDC' ).setLogic(d.NIMTRT & Not(d.jTE50) & GAPAC  & physcond)
 
         # TGC
         MenuItem('L1_TGC_BURST').setLogic(d.NIMTGC & bgrp12cond ).setTriggerType(TT.nim)
@@ -1848,6 +1908,8 @@ class ItemDef:
             MenuItem('L1_4jJ30p0ETA24_0DETA24_4DPHI99-eTAU30MeTAU12M').setLogic ( d.jJ300ETA25.x(4) & d.TOPO_0DETA24_4DPHI99_eTAU30abm_eTAU12abm  & physcond)
             MenuItem('L1_4jJ30p0ETA24_0DETA24_10DPHI99-eTAU30MeTAU12M').setLogic( d.jJ300ETA25.x(4) & d.TOPO_0DETA24_10DPHI99_eTAU30abm_eTAU12abm & physcond)
             MenuItem('L1_jJ85p0ETA21_3jJ40p0ETA25_cTAU20M_2cTAU12M').setLogic   ( d.jJ850ETA21 & d.jJ400ETA25.x(3) & d.cTAU20M & d.cTAU12M.x(2)   & physcond)
+            # ATR-27252
+            MenuItem('L1_eTAU60_2cTAU20M_jXE80').setLogic( d.eTAU60 & d.cTAU20M.x(2) & d.jXE80 & physcond)
 
             MenuItem('L1_jMJJ-400-NFF-0DPHI20').setLogic( d.TOPO_400INVM_0DPHI20_jJ60s6_AjJ50s6 & physcond)
             MenuItem('L1_jMJJ-400-NFF-0DPHI22').setLogic( d.TOPO_400INVM_0DPHI22_jJ60s6_AjJ50s6 & physcond)
@@ -1861,7 +1923,7 @@ class ItemDef:
             MenuItem('L1_MU5VF_jMJJ-300-NFF').setLogic( d.MU5VF & d.TOPO_300INVM_jJ60s6_AjJ50s6 & physcond)
             MenuItem('L1_eEM22M_jMJJ-300').setLogic( d.eEM22M & d.TOPO_300INVM_AjJ60s6_AjJ50s6 & physcond)
             MenuItem('L1_eEM22M_jMJJ-300-NFF').setLogic( d.eEM22M & d.TOPO_300INVM_jJ60s6_AjJ50s6 & physcond)
-            MenuItem('L1_jHT150-jJ50s5pETA31_jMJJ-400-CF').setLogic( d.TOPO_HT150_jJ50s5pETA31   & d.TOPO_400INVM_AjJ60s6pETA31_AjJ50s6p31ETA49 & physcond)
+            MenuItem('L1_HT150-jJ50s5pETA31_jMJJ-400-CF').setLogic( d.TOPO_HT150_jJ50s5pETA31   & d.TOPO_400INVM_AjJ60s6pETA31_AjJ50s6p31ETA49 & physcond)
             MenuItem('L1_jMJJ-400-CF').setLogic( d.TOPO_400INVM_AjJ60s6pETA31_AjJ50s6p31ETA49 & physcond)
             MenuItem('L1_jJ90_DETA20-jJ90J').setLogic( d.jJ50 & d.TOPO_0DETA20_jJ90s1_jJs2 & physcond)
             MenuItem('L1_HT190-jJ40s5pETA21').setLogic( d.TOPO_HT190_jJ40s5pETA21   & physcond)

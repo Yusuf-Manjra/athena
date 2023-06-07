@@ -5,10 +5,11 @@ logging.getLogger().info("Importing %s",__name__)
 log = logging.getLogger(__name__)
 
 from TriggerMenuMT.HLT.Config.ChainConfigurationBase import ChainConfigurationBase
-from AthenaConfiguration.ComponentFactory import CompFactory
+from TriggerMenuMT.HLT.Config.MenuComponents import MenuSequenceCA, SelectionCA, InViewRecoCA, menuSequenceCAToGlobalWrapper
+from AthenaConfiguration.ComponentFactory import CompFactory, isComponentAccumulatorCfg
 from AthenaConfiguration.ComponentAccumulator import conf2toConfigurable
 from TriggerMenuMT.HLT.Config.MenuComponents import MenuSequence, RecoFragmentsPool, algorithmCAToGlobalWrapper
-from TrigT2CaloCommon.CaloDef import fastCaloRecoSequence
+from TrigT2CaloCommon.CaloDef import fastCaloRecoSequenceCfg
 from TrigGenericAlgs.TrigGenericAlgsConfig import TimeBurnerCfg, TimeBurnerHypoToolGen
 from DecisionHandling.DecisionHandlingConf import InputMakerForRoI, ViewCreatorInitialROITool
 from AthenaCommon.CFElements import seqAND
@@ -51,62 +52,47 @@ def getLArNoiseBurst(flags):
 # --------------------
 # LArPS Noise Detection EM configuration
 # --------------------
-def LArPSAllEMSequence(flags, name="LArPSSequence_AllEM"):
 
-    from TrigT2CaloCommon.CaloDef import fastCalo_AllEM_EVCreator
- 
-    (LArPSViewsMaker_AllEM, InViewRoIs) = fastCalo_AllEM_EVCreator()
-    (LArPSAllEMInViewSequence, sequenceOut) = fastCaloRecoSequence(flags, InViewRoIs,ClustersName="HLT_LArPS_AllCaloEMClusters",doAllEm=True,doAll=False)
-    LArPSViewsMaker_AllEM.ViewNodeName = LArPSAllEMInViewSequence.name()
-    LArPSAllEMSequence = seqAND(name,[LArPSViewsMaker_AllEM, LArPSAllEMInViewSequence])
-    return (LArPSAllEMSequence, LArPSViewsMaker_AllEM, sequenceOut)
+def getCaloAllEMLayersPSSequenceCfg(flags,doAllorAllEM=False):
+
+    from TrigT2CaloCommon.CaloDef import fastCaloVDVCfg
+    nameselAcc = "LArPSSequence_AllEM"
+    namerecoAcc = "fastCaloInViewSequenceAllEM"
+    hypoAlgName = "TrigL2CaloLayersAlg_AllEM"
+    output = "HLT_LArPS_AllCaloEMClusters"
+    if doAllorAllEM :
+       nameselAcc = "LArPSSequence_AllEM"
+       namerecoAcc = "fastCaloInViewSequenceAll"
+       hypoAlgName = "TrigL2CaloLayersAlg_All"
+       output = "HLT_LArPS_AllCaloClusters"
+    selAcc = SelectionCA(nameselAcc)
+    InViewRoIs="EMCaloRoIs"
+    reco = InViewRecoCA(namerecoAcc,InViewRoIs=InViewRoIs)
+    reco.mergeReco(fastCaloVDVCfg(InViewRoIs=InViewRoIs))
+    reco.mergeReco(fastCaloRecoSequenceCfg(flags, inputEDM=InViewRoIs,ClustersName=output,doAllEm=not doAllorAllEM,doAll=doAllorAllEM))
+
+    selAcc.mergeReco(reco)
+    
+    from TrigCaloHypo.TrigCaloHypoConfig import TrigL2CaloLayersHypoToolGen
+    TrigL2CaloLayersAlg = CompFactory.TrigL2CaloLayersAlg(hypoAlgName)
+    TrigL2CaloLayersAlg.TrigClusterContainerKey = output
+    selAcc.addHypoAlgo(TrigL2CaloLayersAlg)
+    return MenuSequenceCA(flags,selAcc,HypoToolGen=TrigL2CaloLayersHypoToolGen)
 
 def getCaloAllEMLayersPS(flags):
-
-    sequence, viewsmaker, sequenceOut =  RecoFragmentsPool.retrieve(LArPSAllEMSequence,flags)
-    
-    from TrigCaloHypo.TrigCaloHypoConfig import TrigL2CaloLayersHypoToolGen
-    TrigL2CaloLayersAlg = CompFactory.TrigL2CaloLayersAlg("TrigL2CaloLayersAlg_AllEM")
-    TrigL2CaloLayersAlg.TrigClusterContainerKey = sequenceOut
-
-    return MenuSequence(flags,
-        Sequence    = sequence,
-        Maker       = viewsmaker,
-        Hypo        = TrigL2CaloLayersAlg,
-        HypoToolGen = TrigL2CaloLayersHypoToolGen)
-
-#----------------------------------------------------------------
-
-# --------------------
-# LArPS Noise Detection all configuration
-# --------------------
-
-def LArPSAllSequence( flags,  name="LArPSSequence_All"):
-
-    from TrigT2CaloCommon.CaloDef import fastCalo_All_EVCreator
-    
-    (LArPSViewsMaker_All, InViewRoIs) = fastCalo_All_EVCreator()
-    (LArPSAllInViewSequence, sequenceOut) = fastCaloRecoSequence(flags, InViewRoIs,ClustersName="HLT_LArPS_AllCaloClusters",doAllEm=False,doAll=True)
-    LArPSViewsMaker_All.ViewNodeName = LArPSAllInViewSequence.name()
-    LArPSAllSequence = seqAND(name,[LArPSViewsMaker_All, LArPSAllInViewSequence])
-    return (LArPSAllSequence, LArPSViewsMaker_All, sequenceOut)
-
+    if isComponentAccumulatorCfg():
+       return getCaloAllEMLayersPSSequenceCfg(flags,doAllorAllEM=False)
+    else:
+       return menuSequenceCAToGlobalWrapper(getCaloAllEMLayersPSSequenceCfg,flags,doAllorAllEM=False)
 
 def getCaloAllLayersPS(flags):
-
-    sequence, viewsmaker, sequenceOut =  RecoFragmentsPool.retrieve(LArPSAllSequence,flags)
-
-    from TrigCaloHypo.TrigCaloHypoConfig import TrigL2CaloLayersHypoToolGen
-    TrigL2CaloLayersAlg = CompFactory.TrigL2CaloLayersAlg("TrigL2CaloLayersAlg_All")
-    TrigL2CaloLayersAlg.TrigClusterContainerKey = sequenceOut
-
-    return MenuSequence(flags,
-        Sequence    = sequence,
-        Maker       = viewsmaker,
-        Hypo        = TrigL2CaloLayersAlg,
-        HypoToolGen = TrigL2CaloLayersHypoToolGen)
+    if isComponentAccumulatorCfg():
+       return getCaloAllEMLayersPSSequenceCfg(flags,doAllorAllEM=True)
+    else:
+       return menuSequenceCAToGlobalWrapper(getCaloAllEMLayersPSSequenceCfg,flags,doAllorAllEM=True)
 
 #----------------------------------------------------------------
+
 class CalibChainConfiguration(ChainConfigurationBase):
 
     def __init__(self, chainDict):

@@ -20,13 +20,15 @@ class TopoAlgoDefMultiplicity(object):
         emThresholds_2bits = [
             'eEM12L', 'eEM15', 'eEM18',  'eEM18L', 'eEM18M', 'eEM22M',
             'eEM24L', 
+            #ATR-26979, replace original eEMSPARE1 with eEM1, replace original eEMSPARE2 with eEM2, decrement other eEMSPARE thresholds
+            'eEM1', 'eEM2',
             # spares
-            'eEMSPARE1', 'eEMSPARE2', 'eEMSPARE3',
+            'eEMSPARE1',
         ]
         emVarThresholds_2bits = [
             'eEM24VM',  'eEM26',  'eEM26L', 'eEM26M', 'eEM26T', 'eEM28M',
             # spares
-            'eEMSPARE4', 'eEMSPARE5', 'eEMSPARE6', 'eEMSPARE7', 
+            'eEMSPARE2', 'eEMSPARE3', 'eEMSPARE4', 'eEMSPARE5',
         ]
 
         for em in emThresholds_3bits:
@@ -140,10 +142,11 @@ class TopoAlgoDefMultiplicity(object):
             'jJ90', 'jJ125',
             'jJ140', 'jJ160', 'jJ180', 'jJ500',
 
+            'jJ15p31ETA49', 'jJ20p31ETA49',
             'jJ40p31ETA49', 'jJ50p31ETA49', 'jJ60p31ETA49', 'jJ90p31ETA49', 'jJ125p31ETA49',
 
             # spares
-            'jJSPARE3', 'jJSPARE4', 'jJSPARE5', 'jJSPARE6',
+            'jJSPARE3', 'jJSPARE4',
         ]
 
         for jJet in jJThresholds_3bits:
@@ -210,18 +213,22 @@ class TopoAlgoDefMultiplicity(object):
             'jXEC100', 'jTE200', 'jTEC200', 'jTEFWD100', 'jTEFWDA100', 'jTEFWDC100', 
             'gTE200',
 
+            #additional jTE thresholds needed for 2023 heavy ion runs
+            'jTE3','jTE5','jTE20','jTE50',
+            'jTE600', 'jTE1500', 'jTE3000',
+            'jTEFWDA1', 'jTEFWDC1', 'jTEFWDA5', 'jTEFWDC5',
+
             'gMHT500',
 
             'jXEPerf100',
 
             #spares (for any energy thresholds)
+            #replace jXESPARE19 - jXESPARE27 with heavy ion jTE threhsolds
             'jXESPARE1', 'jXESPARE2', 'jXESPARE3', 'jXESPARE4',
             'jXESPARE5', 'jXESPARE6', 'jXESPARE7', 'jXESPARE8', 'jXESPARE9',
             'jXESPARE10', 'jXESPARE11', 'jXESPARE12', 'jXESPARE13', 
             'jXESPARE14',
-            'jXESPARE15', 'jXESPARE16', 'jXESPARE17', 'jXESPARE18', 'jXESPARE19',
-            'jXESPARE20', 'jXESPARE21', 'jXESPARE22', 'jXESPARE23', 'jXESPARE24',
-            'jXESPARE25', 'jXESPARE26', 'jXESPARE27', 'jXESPARE28', 'jXESPARE29',
+            'jXESPARE15', 'jXESPARE16', 'jXESPARE17', 'jXESPARE18', 
 
         ]
 

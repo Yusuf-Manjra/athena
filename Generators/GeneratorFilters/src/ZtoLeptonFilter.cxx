@@ -17,7 +17,7 @@ StatusCode ZtoLeptonFilter::filterEvent() {
   for (itr = events()->begin(); itr!=events()->end(); ++itr) {
     const HepMC::GenEvent* genEvt = (*itr);
 #ifdef HEPMC3
-    for ( auto pitr: genEvt->particles()) {
+    for ( const auto& pitr: genEvt->particles()) {
       if (pitr->pdg_id() == 23) {
         if ( !pitr->end_vertex() && pitr->status()==3) continue; // Allow status 3 Zs with no end vertex
         else if (!pitr->end_vertex() ){
@@ -25,7 +25,7 @@ StatusCode ZtoLeptonFilter::filterEvent() {
           break;
         }
         // Z children
-        for (auto thisChild: pitr->end_vertex()->particles_out()) {
+        for (const auto& thisChild: pitr->end_vertex()->particles_out()) {
           if (std::abs(thisChild->pdg_id()) == 11 || std::abs(thisChild->pdg_id()) == 13 || std::abs(thisChild->pdg_id()) == 15) {
             return StatusCode::SUCCESS;
           }

@@ -26,9 +26,6 @@
 DerivationFramework::TruthCollectionMaker::TruthCollectionMaker(const std::string& t,
                                                                 const std::string& n,
                                                                 const IInterface* p)
-//m_do_compress = true: removes particles with the same pdgId in a decay chain (but keeps first and last)
-//m_do_sherpa = true: checks if there are truth W bosons in the current record.  If not, tries to combine W daughters to create one.
-//Disclaimer: m_do_sherpa currently only works for W+jets.  It will not work for Z+jets for dibosons (coming soon).
   : ExpressionParserUser<AthAlgTool>(t,n,p)
   , m_ntotpart(0)
   , m_npasspart(0)
@@ -68,19 +65,19 @@ StatusCode DerivationFramework::TruthCollectionMaker::initialize()
     // Initialise decorator handle keys
     m_linkDecoratorKey = m_particlesKey.key()+".originalTruthParticle";
     ATH_CHECK(m_linkDecoratorKey.initialize());
-    m_originDecoratorKey = m_particlesKey.key()+".classifierParticleOrigin";
+    m_originDecoratorKey = m_outputParticlesKey.key()+".classifierParticleOrigin";
     ATH_CHECK(m_originDecoratorKey.initialize());
-    m_typeDecoratorKey = m_particlesKey.key()+".classifierParticleType";
+    m_typeDecoratorKey = m_outputParticlesKey.key()+".classifierParticleType";
     ATH_CHECK(m_typeDecoratorKey.initialize());
-    m_outcomeDecoratorKey = m_particlesKey.key()+".classifierParticleOutCome";
+    m_outcomeDecoratorKey = m_outputParticlesKey.key()+".classifierParticleOutCome";
     ATH_CHECK(m_outcomeDecoratorKey.initialize());
-    m_classificationDecoratorKey = m_particlesKey.key()+".Classification";
+    m_classificationDecoratorKey = m_outputParticlesKey.key()+".Classification";
     ATH_CHECK(m_classificationDecoratorKey.initialize());
-    m_motherIDDecoratorKey = m_particlesKey.key()+".motherID"; 
+    m_motherIDDecoratorKey = m_outputParticlesKey.key()+".motherID"; 
     ATH_CHECK(m_motherIDDecoratorKey.initialize());
-    m_daughterIDDecoratorKey = m_particlesKey.key()+".daughterID";
+    m_daughterIDDecoratorKey = m_outputParticlesKey.key()+".daughterID";
     ATH_CHECK(m_daughterIDDecoratorKey.initialize());
-    m_hadronOriginDecoratorKey = m_particlesKey.key()+".TopHadronOriginFlag";
+    m_hadronOriginDecoratorKey = m_outputParticlesKey.key()+".TopHadronOriginFlag";
     ATH_CHECK(m_hadronOriginDecoratorKey.initialize());
 
     return StatusCode::SUCCESS;

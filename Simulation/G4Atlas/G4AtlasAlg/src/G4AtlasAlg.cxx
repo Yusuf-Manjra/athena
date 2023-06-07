@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 // Local includes
@@ -68,6 +68,8 @@ StatusCode G4AtlasAlg::initialize ATLAS_NOT_THREAD_SAFE ()
   // Create the scoring manager if requested
   if (m_recordFlux) G4ScoringManager::GetScoringManager();
 
+  ATH_CHECK( m_userActionSvc.retrieve() );
+  
   // One-time initialization
   try {
     std::call_once(initializeOnceFlag, &G4AtlasAlg::initializeOnce, this);
@@ -78,7 +80,7 @@ StatusCode G4AtlasAlg::initialize ATLAS_NOT_THREAD_SAFE ()
   }
 
   ATH_CHECK( m_rndmGenSvc.retrieve() );
-  ATH_CHECK( m_userActionSvc.retrieve() );
+  ATH_CHECK(m_actionTools.retrieve());
 
   ATH_CHECK(m_senDetTool.retrieve());
   ATH_CHECK(m_fastSimTool.retrieve());
@@ -100,6 +102,10 @@ StatusCode G4AtlasAlg::initialize ATLAS_NOT_THREAD_SAFE ()
 
   ATH_CHECK(m_inputConverter.retrieve());
 
+  if ( not m_qspatcher.empty() ) {
+    ATH_CHECK( m_qspatcher.retrieve() );
+  }
+
   ATH_MSG_DEBUG("End of initialize()");
   return StatusCode::SUCCESS;
 }
@@ -110,6 +116,11 @@ void G4AtlasAlg::initializeOnce()
   // Assign physics list
   if(m_physListSvc.retrieve().isFailure()) {
     throw std::runtime_error("Could not initialize ATLAS PhysicsListSvc!");
+  }
+  for (const auto& action_tool : m_actionTools) {
+    if (m_userActionSvc->addActionTool(action_tool).isFailure()) {
+      throw std::runtime_error("Failed to add action tool "+action_tool.name());
+    }
   }
 
   // Create the (master) run manager
@@ -128,7 +139,7 @@ void G4AtlasAlg::initializeOnce()
     workerInit->SetFastSimMasterTool( m_fastSimTool.typeAndName() );
     runMgr->SetUserInitialization( workerInit.release() );
     std::unique_ptr<G4AtlasActionInitialization> actionInitialization =
-      std::make_unique<G4AtlasActionInitialization>(&*m_userActionSvc);
+      std::make_unique<G4AtlasActionInitialization>(m_userActionSvc.get());
     runMgr->SetUserInitialization(actionInitialization.release());
 #else
     throw std::runtime_error("Trying to use multi-threading in non-MT build!");
@@ -145,7 +156,7 @@ void G4AtlasAlg::initializeOnce()
     runMgr->SetFastSimMasterTool(m_fastSimTool.typeAndName() );
     runMgr->SetPhysListSvc(m_physListSvc.typeAndName() );
     std::unique_ptr<G4AtlasActionInitialization> actionInitialization =
-      std::make_unique<G4AtlasActionInitialization>(&*m_userActionSvc);
+      std::make_unique<G4AtlasActionInitialization>(m_userActionSvc.get());
     runMgr->SetUserInitialization(actionInitialization.release());
   }
 
@@ -333,14 +344,21 @@ StatusCode G4AtlasAlg::execute()
     return StatusCode::FAILURE;
   }
   ATH_MSG_DEBUG("Found input GenEvent collection " << inputTruthCollection.name() << " in store " << inputTruthCollection.store());
-  // create copy
+  // create the output Truth collection
   SG::WriteHandle<McEventCollection> outputTruthCollection(m_outputTruthCollectionKey);
   ATH_CHECK(outputTruthCollection.record(std::make_unique<McEventCollection>(*inputTruthCollection)));
   if (!outputTruthCollection.isValid()) {
     ATH_MSG_FATAL("Unable to record output GenEvent collection " << outputTruthCollection.name() << " in store " << outputTruthCollection.store());
     return StatusCode::FAILURE;
-
   }
+  // Apply QS patch if required
+  if ( not m_qspatcher.empty() ) {
+    for (HepMC::GenEvent* currentGenEvent : *outputTruthCollection ) {
+      ATH_CHECK(m_qspatcher->applyWorkaround(*currentGenEvent));
+    }
+  }
+
+
   ATH_MSG_DEBUG("Recorded output GenEvent collection " << outputTruthCollection.name() << " in store " << outputTruthCollection.store());
   G4Event *inputEvent{};
   ATH_CHECK( m_inputConverter->convertHepMCToG4Event(*outputTruthCollection, inputEvent, HepMcParticleLink::find_enumFromKey(outputTruthCollection.name())) );
@@ -389,6 +407,13 @@ StatusCode G4AtlasAlg::execute()
   ATH_CHECK(m_fastSimTool->EndOfAthenaEvent());
 
   ATH_CHECK( m_truthRecordSvc->releaseEvent() );
+
+  // Remove QS patch if required
+  if(!m_qspatcher.empty()) {
+    for (HepMC::GenEvent* currentGenEvent : *outputTruthCollection ) {
+      ATH_CHECK(m_qspatcher->removeWorkaround(*currentGenEvent));
+    }
+  }
 
   return StatusCode::SUCCESS;
 }

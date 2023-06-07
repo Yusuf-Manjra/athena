@@ -85,7 +85,6 @@ const TrigCompositeUtils::LinkInfo<DataVector<T> > MuonMatchingTool :: matchLink
   for(const TrigCompositeUtils::LinkInfo<CONTAINER>& featureLinkInfo : featureCont){
     if ( !featureLinkInfo.isValid() ) continue;
     const ElementLink<CONTAINER> link = featureLinkInfo.link;
-
     const auto [status, trigEta, trigPhi] = trigPosForMatchFunc(*link);
     if(!status) continue;
     double deta = offlEta - trigEta;

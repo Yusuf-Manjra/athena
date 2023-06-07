@@ -26,19 +26,19 @@ atlas_add_citest( SimulationRun4FullSim
    LOG_IGNORE_PATTERN "WARNING FPE INVALID" )  # ignore FPEs from Geant4
 
 atlas_add_citest( PileUpPresamplingRun2
-   SCRIPT RunWorkflowTests_Run2.py --CI -p -w PileUpPresampling -e '--maxEvents 5' --no-output-checks )
+   SCRIPT RunWorkflowTests_Run2.py --CI -p -w PileUpPresampling -e '--maxEvents 5 --conditionsTag OFLCOND-MC16-SDR-RUN2-11' --no-output-checks )
 
 atlas_add_citest( PileUpPresamplingRun3
    SCRIPT RunWorkflowTests_Run3.py --CI -p -w PileUpPresampling -e '--maxEvents 5' --no-output-checks )
 
 atlas_add_citest( OverlayRun2MC
-   SCRIPT RunWorkflowTests_Run2.py --CI -o -w MCOverlay -e '--CA True' )
+   SCRIPT RunWorkflowTests_Run2.py --CI -o -w MCOverlay -e '--CA True --conditionsTag OFLCOND-MC16-SDR-RUN2-11' )
 
 atlas_add_citest( OverlayRun2MC_Legacy
-   SCRIPT RunWorkflowTests_Run2.py --CI -o -w MCOverlay -e '--CA False' )
+   SCRIPT RunWorkflowTests_Run2.py --CI -o -w MCOverlay -e '--CA False --conditionsTag OFLCOND-MC16-SDR-RUN2-11' )
 
 atlas_add_citest( OverlayRun2Data
-   SCRIPT RunWorkflowTests_Run2.py --CI -o -w DataOverlay )
+   SCRIPT RunWorkflowTests_Run2.py --CI -o -w DataOverlay -e '--conditionsTag CONDBR2-BLKPA-RUN2-11' )
 
 atlas_add_citest( OverlayRun3MC
    SCRIPT RunWorkflowTests_Run3.py --CI -o -w MCOverlay -e '--CA True' )
@@ -51,10 +51,10 @@ atlas_add_citest( OverlayRun3MC_Legacy
 #################################################################################
 
 atlas_add_citest( RecoRun2Data
-   SCRIPT RunWorkflowTests_Run2.py --CI -r -w DataReco -e '--CA True --maxEvents 25' )
+   SCRIPT RunWorkflowTests_Run2.py --CI -r -w DataReco -e '--CA True --maxEvents 25 --conditionsTag CONDBR2-BLKPA-RUN2-11' )
 
 atlas_add_citest( RecoRun2Data_Legacy
-   SCRIPT RunWorkflowTests_Run2.py --CI -r -w DataReco -e '--CA False --maxEvents 25' --no-output-checks )
+   SCRIPT RunWorkflowTests_Run2.py --CI -r -w DataReco -e '--CA False --maxEvents 25 --conditionsTag CONDBR2-BLKPA-RUN2-11' --no-output-checks )
 
 atlas_add_citest( RecoRun2Data_LegacyVsCA
    SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test/RecoLegacyVsCA.sh RecoRun2Data q442
@@ -69,17 +69,17 @@ atlas_add_citest( DerivationRun2Data_PHYSLITE
    PROPERTIES PROCESSORS 4 )
 
 atlas_add_citest( RecoRun2MC
-   SCRIPT RunWorkflowTests_Run2.py --CI -r -w MCReco --threads 0 -e '--CA "all:True" "RDOtoRDOTrigger:False" --maxEvents 25' --no-output-checks )
+   SCRIPT RunWorkflowTests_Run2.py --CI -r -w MCReco --threads 0 -e '--CA "all:True" "RDOtoRDOTrigger:False" --conditionsTag "default:OFLCOND-MC16-SDR-RUN2-11" "RDOtoRDOTrigger:OFLCOND-MC16-SDR-RUN2-08-02" --maxEvents 25' --no-output-checks )
 
 atlas_add_citest( RecoRun2MC_Legacy
-   SCRIPT RunWorkflowTests_Run2.py --CI -r -w MCReco -e '--CA False --maxEvents 25' )
+   SCRIPT RunWorkflowTests_Run2.py --CI -r -w MCReco -e '--CA False --conditionsTag "default:OFLCOND-MC16-SDR-RUN2-11" "RDOtoRDOTrigger:OFLCOND-MC16-SDR-RUN2-08-02" --maxEvents 25' )
 
 atlas_add_citest( RecoRun2MC_LegacyVsCA
    SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test/RecoLegacyVsCA.sh RecoRun2MC q443
    DEPENDS_SUCCESS RecoRun2MC RecoRun2MC_Legacy )
 
 atlas_add_citest( RecoRun2MC_PileUp
-   SCRIPT RunWorkflowTests_Run2.py --CI -p -w MCPileUpReco -e '--maxEvents 5 --inputRDO_BKGFile=../../PileUpPresamplingRun2/run_d1730/myRDO.pool.root' --no-output-checks  # go two levels up as the test runs in a subfolder
+   SCRIPT RunWorkflowTests_Run2.py --CI -p -w MCPileUpReco -e '--maxEvents 5 --inputRDO_BKGFile=../../PileUpPresamplingRun2/run_d1730/myRDO.pool.root --conditionsTag OFLCOND-MC16-SDR-RUN2-11' --no-output-checks  # go two levels up as the test runs in a subfolder
    DEPENDS_SUCCESS PileUpPresamplingRun2 )
 
 atlas_add_citest( DerivationRun2MC_PHYS
@@ -91,7 +91,7 @@ atlas_add_citest( DerivationRun2MC_PHYSLITE
    PROPERTIES PROCESSORS 4 )
 
 atlas_add_citest( RecoRun3Data
-   SCRIPT RunWorkflowTests_Run3.py --CI -r -w DataReco -a q449 --threads 8 -e '--CA True --maxEvents 100 --preExec pass' --run-only
+   SCRIPT RunWorkflowTests_Run3.py --CI -r -w DataReco -a q449 --threads 8 -e '--CA True --maxEvents 100 --preExec="flags.Exec.FPE=500;"' --run-only
    PROPERTIES PROCESSORS 8 )
 
 atlas_add_citest( RecoRun3Data_Checks
@@ -99,18 +99,18 @@ atlas_add_citest( RecoRun3Data_Checks
    DEPENDS_SUCCESS RecoRun3Data )
 
 atlas_add_citest( RecoRun3Data_Legacy
-   SCRIPT RunWorkflowTests_Run3.py --CI -r -w DataReco -e '--CA False --maxEvents 100' --threads 8 --no-output-checks )
+   SCRIPT RunWorkflowTests_Run3.py --CI -r -w DataReco -e '--CA False --maxEvents 100 --postExec="FPEAuditor.NStacktracesOnFPE=500;"' --threads 8 --no-output-checks )
 
 atlas_add_citest( RecoRun3Data_LegacyVsCA
    SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test/RecoLegacyVsCA.sh RecoRun3Data q449
    DEPENDS_SUCCESS RecoRun3Data RecoRun3Data_Legacy )
 
 atlas_add_citest( RecoRun3Data_Bulk
-   SCRIPT RunWorkflowTests_Run3.py --CI -r -w DataReco -a f1262 --threads 8 -e '--skipEvents 100 --maxEvents 500 --inputBSFile=/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/Tier0ChainTests/TCT_Run3/data22_13p6TeV.00431493.physics_Main.daq.RAW._lb0525._SFO-16._0001.data --postExec="all:FPEAuditor.NStacktracesOnFPE=20"' --run-only --no-output-checks
+    SCRIPT RunWorkflowTests_Run3.py --CI -r -w DataReco -a f1333 --threads 8  -e ' --CA True --skipEvents 100 --maxEvents 500 --inputBSFile=/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/Tier0ChainTests/TCT_Run3/data22_13p6TeV.00431493.physics_Main.daq.RAW._lb0525._SFO-16._0001.data'  --run-only --no-output-checks
    PROPERTIES PROCESSORS 8 )
 
 atlas_add_citest( RecoRun3Data_Bulk_Checks
-   SCRIPT RunWorkflowTests_Run3.py --CI -r -w DataReco -a f1262 --threads 8 -e '--skipEvents 100 --maxEvents 500 --inputBSFile=/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/Tier0ChainTests/TCT_Run3/data22_13p6TeV.00431493.physics_Main.daq.RAW._lb0525._SFO-16._0001.data --postExec="all:FPEAuditor.NStacktracesOnFPE=20"' --checks-only --output-path ../RecoRun3Data_Bulk --no-output-checks
+    SCRIPT RunWorkflowTests_Run3.py --CI -r -w DataReco -a f1333 --threads 8 -e ' --CA True --skipEvents 100 --maxEvents 500 --inputBSFile=/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/Tier0ChainTests/TCT_Run3/data22_13p6TeV.00431493.physics_Main.daq.RAW._lb0525._SFO-16._0001.data'  --checks-only --output-path ../RecoRun3Data_Bulk --no-output-checks
    DEPENDS_SUCCESS RecoRun3Data_Bulk )
 
 atlas_add_citest( RecoRun3Data_Express
@@ -243,8 +243,12 @@ atlas_add_citest( ACTS_ValidateClusters
     SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test/ActsValidateClusters.sh
     LOG_IGNORE_PATTERN "WARNING FPE INVALID" )
 
-atlas_add_citest( ACTS_ValidateSpacePoints
-    SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test/ActsValidateSpacePoints.sh
+atlas_add_citest( ACTS_ValidateActsCoreSpacePoints
+    SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test/ActsValidateActsCoreSpacePoints.sh
+    LOG_IGNORE_PATTERN "WARNING FPE INVALID" )
+
+atlas_add_citest( ACTS_ValidateActsTrkSpacePoints
+    SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test/ActsValidateActsTrkSpacePoints.sh
     LOG_IGNORE_PATTERN "WARNING FPE INVALID" )
 
 atlas_add_citest( ACTS_ValidateSeeds
@@ -265,6 +269,14 @@ atlas_add_citest( ACTS_ValidateTracks
 
 atlas_add_citest( ACTS_ActsKfRefitting
     SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test/ActsKfRefitting.sh
+    LOG_IGNORE_PATTERN "WARNING FPE INVALID" )
+
+atlas_add_citest( ACTS_ActsGSFRefitting
+    SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test/ActsGSFRefitting.sh
+    LOG_IGNORE_PATTERN "WARNING FPE INVALID" )
+
+atlas_add_citest( ACTS_ActsBenchmarkWithSpot
+    SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test/ActsBenchmarkWithSpot.sh
     LOG_IGNORE_PATTERN "WARNING FPE INVALID" )
 
 #################################################################################

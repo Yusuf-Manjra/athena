@@ -62,10 +62,8 @@ StatusCode TRT_LocalOccupancy::initialize()
     m_highGate = m_highWideGate ;
   }
 
-  ATH_MSG_INFO ("initialize() successful in " << name());
-
   //Initialize ReadHandleKeys -  AllowEmpty has to be kept for overlay client passing RDOs as input arg
-  ATH_CHECK( m_trt_driftcircles.initialize(SG::AllowEmpty));  
+  ATH_CHECK( m_trt_driftcircles.initialize(SG::AllowEmpty));
 
   ATH_CHECK( m_strawStatusKey.initialize() );
   ATH_CHECK( m_strawStatusPermKey.initialize() );
@@ -239,7 +237,7 @@ std::map<int, double> TRT_LocalOccupancy::getDetectorOccupancy(const EventContex
             mask>>=1;
             if(tdcvalue==7 || tdcvalue==15) mask>>=1;
           }
-          if(!(tdcvalue==0 || tdcvalue==24)) {
+          if(tdcvalue!=0 && tdcvalue!=24) {
             t0 =  m_CalDbTool->getT0(rdo_id);
           }
         }
@@ -294,7 +292,7 @@ TRT_LocalOccupancy::countHitsNearTrack (const EventContext &ctx,
 	  for(; p_rdo!=p_rdo_end; ++p_rdo){
 	    const TRT_DriftCircle* rdo = (*p_rdo);
 	    if(!rdo)        continue;
- 
+
 	      Identifier id = rdo->identify();
 
 	      int det      = m_TRTHelper->barrel_ec(         id)     ;

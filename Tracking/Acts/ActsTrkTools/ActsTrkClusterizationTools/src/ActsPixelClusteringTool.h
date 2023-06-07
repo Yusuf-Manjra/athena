@@ -1,18 +1,18 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef ACTS_PIXEL_CLUSTERING_TOOL_H
 #define ACTS_PIXEL_CLUSTERING_TOOL_H
 
 
-#include <ActsTrkToolInterfaces/IPixelClusteringTool.h>
+#include "ActsTrkToolInterfaces/IPixelClusteringTool.h"
 #include "InDetIdentifier/PixelID.h"
 #include "InDetRawData/InDetRawDataCollection.h"
 #include "InDetRawData/PixelRDORawData.h"
 #include "SiClusterizationTool/ClusterMakerTool.h"
 #include "SiClusterizationTool/PixelRDOTool.h"
-#include <xAODInDetMeasurement/PixelClusterContainer.h>
+#include "xAODInDetMeasurement/PixelClusterContainer.h"
 
 namespace ActsTrk {
 
@@ -68,12 +68,16 @@ private:
     StatusCode makeCluster(const PixelClusteringTool::Cluster &cluster,
 			   const PixelID& pixelID,
 			   const InDetDD::SiDetectorElement* element,
-			   xAOD::PixelClusterContainer& container) const;
+			   xAOD::PixelCluster& container) const;
 
     BooleanProperty m_addCorners{this, "AddCorners", true};
     ToolHandle<InDet::PixelRDOTool> m_pixelRDOTool {this, "PixelRDOTool", "InDet::PixelRDOTool"};
     ToolHandle<InDet::ClusterMakerTool> m_clusterMakerTool {this, "ClusterMakerTool", "InDet::ClusterMakerTool"};
     IntegerProperty m_errorStrategy{this, "ErrorStrategy", 1};
+
+    SG::ReadCondHandleKey<PixelChargeCalibCondData> m_chargeDataKey {this, "PixelChargeCalibCondData", "PixelChargeCalibCondData", "Pixel charge calibration data"};
+
+    SG::ReadCondHandleKey<PixelCalib::PixelOfflineCalibData> m_offlineCalibDataKey{this, "PixelOfflineCalibData", "PixelOfflineCalibData", "Pixel offline calibration data"};
 
 
 };

@@ -157,73 +157,13 @@ if InDetTrigFlags.loadRotCreator():
   from InDetRecExample.TrackingCommon import createAndAddCondAlg, getRIO_OnTrackErrorScalingCondAlg
   createAndAddCondAlg(getRIO_OnTrackErrorScalingCondAlg,'RIO_OnTrackErrorScalingCondAlg')
 
-  #
-  # smart ROT creator in case we do the TRT LR in the refit
-  #
-  if InDetTrigFlags.redoTRT_LR():
 
-    from InDetRecExample.TrackingCommon import getInDetTRT_DriftCircleOnTrackTool
-    from TRT_DriftCircleOnTrackTool.TRT_DriftCircleOnTrackToolConf import \
-        InDet__TRT_DriftCircleOnTrackUniversalTool
-    InDetTrigTRT_RefitRotCreator = \
-        InDet__TRT_DriftCircleOnTrackUniversalTool(name  = 'InDetTrigTRT_RefitRotCreator',
-                                                   RIOonTrackToolDrift = getInDetTRT_DriftCircleOnTrackTool(), # special settings for trigger needed ?
-                                                   ScaleHitUncertainty = 2.5) # fix from Thijs
-#    if InDetTrigFlags.doCommissioning():    #introduced for cosmics do not use for collisions
-#      InDetTrigTRT_RefitRotCreator.ScaleHitUncertainty = 5.
-    ToolSvc += InDetTrigTRT_RefitRotCreator
-      
-    if (InDetTrigFlags.doPrintConfigurables()):
-      print (     InDetTrigTRT_RefitRotCreator)
-  
-    from TrkRIO_OnTrackCreator.TrkRIO_OnTrackCreatorConf import Trk__RIO_OnTrackCreator
-    InDetTrigRefitRotCreator = Trk__RIO_OnTrackCreator(name              = 'InDetTrigRefitRotCreator',
-                                                       ToolPixelCluster= InDetTrigPixelClusterOnTrackTool,
-                                                       ToolSCT_Cluster     = SCT_ClusterOnTrackTool,
-                                                       ToolTRT_DriftCircle = InDetTrigTRT_RefitRotCreator,
-                                                       Mode                = 'indet')
-    if InDetTrigFlags.useBroadClusterErrors():
-      InDetTrigRefitRotCreator.ToolPixelCluster = InDetTrigBroadPixelClusterOnTrackTool
-      InDetTrigRefitRotCreator.ToolSCT_Cluster  = InDetTrigBroadSCT_ClusterOnTrackTool
-
-    ToolSvc += InDetTrigRefitRotCreator
-    if (InDetTrigFlags.doPrintConfigurables()):
-      print (     InDetTrigRefitRotCreator)
-         
-  else:
-    InDetTrigRefitRotCreator = InDetTrigRotCreator
-
-#
-# ----------- control loading of the kalman updator
-#
-if InDetTrigFlags.loadUpdator():
-   
-  if InDetTrigFlags.kalmanUpdator() == "fast" :
-    # fast Kalman updator tool
-    from TrkMeasurementUpdator_xk.TrkMeasurementUpdator_xkConf import Trk__KalmanUpdator_xk
-    InDetTrigUpdator = Trk__KalmanUpdator_xk(name = 'InDetTrigUpdator')
-  elif InDetTrigFlags.kalmanUpdator() == "weight" :
-    from TrkMeasurementUpdator.TrkMeasurementUpdatorConf import Trk__KalmanWeightUpdator as ConfiguredWeightUpdator
-    InDetTrigUpdator = ConfiguredWeightUpdator(name='InDetTrigUpdator')
-  else :
-    from TrkMeasurementUpdator.TrkMeasurementUpdatorConf import Trk__KalmanUpdator as ConfiguredKalmanUpdator
-    InDetTrigUpdator = ConfiguredKalmanUpdator('InDetTrigUpdator')
-
-  ToolSvc += InDetTrigUpdator
-  if (InDetTrigFlags.doPrintConfigurables()):
-    print (     InDetTrigUpdator)
 
 #
 # ----------- control loading extrapolation
 #
 if InDetTrigFlags.loadExtrapolator():
 
-  
-  # get propagator
-  from TrkConfig.TrkExRungeKuttaPropagatorConfig import RungeKuttaPropagatorCfg
-  InDetTrigPropagator = CAtoLegacyPublicToolWrapper(RungeKuttaPropagatorCfg,
-                                                      name="InDetTrigRKPropagator")
-    
   from TrkConfig.AtlasExtrapolatorToolsConfig import AtlasNavigatorCfg,AtlasMaterialEffectsUpdatorCfg
   InDetTrigNavigator = CAtoLegacyPublicToolWrapper(AtlasNavigatorCfg, 
                                                      name="InDetTrigNavigator")
@@ -241,8 +181,6 @@ if InDetTrigFlags.loadExtrapolator():
 #
 # ----------- control loading of fitters
 #
-
-from InDetRecExample import TrackingCommon
 
 from TrkConfig.TrkGlobalChi2FitterConfig import InDetTrigGlobalChi2FitterCfg,InDetTrigGlobalChi2FitterCosmicsCfg
 InDetTrigTrackFitter = CAtoLegacyPublicToolWrapper(InDetTrigGlobalChi2FitterCfg)
@@ -268,17 +206,9 @@ if DetFlags.haveRIO.SCT_on():
 else:
   InDetTrigSCTConditionsSummaryTool = None
 
-#
 # ------load association tool from Inner Detector to handle pixel ganged ambiguities
-#
-if InDetTrigFlags.loadAssoTool():
-  from InDetAssociationTools.InDetAssociationToolsConf import InDet__InDetPRD_AssociationToolGangedPixels
-  InDetTrigPrdAssociationTool = InDet__InDetPRD_AssociationToolGangedPixels(name = "InDetTrigPrdAssociationTool",
-                                                                             PixelClusterAmbiguitiesMapName = "TrigPixelClusterAmbiguitiesMap")
-   
-  ToolSvc += InDetTrigPrdAssociationTool
-  if (InDetTrigFlags.doPrintConfigurables()):
-    print (     InDetTrigPrdAssociationTool)
+from InDetConfig.InDetAssociationToolsConfig import TrigPrdAssociationToolCfg
+InDetTrigPrdAssociationTool = CAtoLegacyPublicToolWrapper(TrigPrdAssociationToolCfg)
 
 #
 # ----------- control loading of Summary Tool
@@ -312,12 +242,6 @@ if InDetTrigFlags.loadSummaryTool():
   from InDetConfig.InDetTrackHoleSearchConfig import TrigHoleSearchToolCfg
   InDetTrigHoleSearchTool = CAtoLegacyPublicToolWrapper(TrigHoleSearchToolCfg)
   
-  #Load inner Pixel layer tool
-  InDetTrigTestPixelLayerToolInner = TrackingCommon.getInDetTrigTestPixelLayerToolInner()
-  ToolSvc += InDetTrigTestPixelLayerToolInner
-  if (InDetTrigFlags.doPrintConfigurables()):
-    print ( InDetTrigTestPixelLayerToolInner)
-
   #
   # Configrable version of loading the InDetTrackSummaryHelperTool
   #
@@ -362,19 +286,6 @@ if InDetTrigFlags.loadSummaryTool():
   InDetTRTCalDbTool = TRT_CalDbTool(name = "TRT_CalDbTool")
 
  
-  #
-  # Configurable version of TrkTrackSummaryTool
-  #
-  from TrkTrackSummaryTool.TrkTrackSummaryToolConf import Trk__TrackSummaryTool
-  InDetTrigTrackSummaryTool = Trk__TrackSummaryTool(name = "InDetTrigTrackSummaryTool",
-                                                    InDetSummaryHelperTool = InDetTrigTrackSummaryHelperTool,
-                                                    doHolesInDet           = True,
-                                                    #this may be temporary #61512 (and used within egamma later)
-                                                    )
-  ToolSvc += InDetTrigTrackSummaryTool
-  if (InDetTrigFlags.doPrintConfigurables()):
-     print (     InDetTrigTrackSummaryTool)
-
 #
 # ----------- control loading of tools which are needed by new tracking and backtracking
 #
@@ -401,134 +312,11 @@ if InDetTrigFlags.doNewTracking() or InDetTrigFlags.doBackTracking() or InDetTri
 #
 # TRT segment minimum number of drift circles tool
 #
+from InDetConfig.InDetTrackSelectorToolConfig import (InDetTrigTRTDriftCircleCutToolCfg)
+InDetTrigTRTDriftCircleCut = CAtoLegacyPublicToolWrapper(InDetTrigTRTDriftCircleCutToolCfg)
 
-from InDetTrackSelectorTool.InDetTrackSelectorToolConf import InDet__InDetTrtDriftCircleCutTool
-InDetTrigTRTDriftCircleCut = InDet__InDetTrtDriftCircleCutTool(
-  name             = 'InDetTrigTRTDriftCircleCut',
-  MinOffsetDCs     = 5,
-  UseNewParameterization = True,
-  UseActiveFractionSvc   = True #DetFlags.haveRIO.TRT_on()  # Use Thomas's new parameterization by default
-  )
-
-ToolSvc += InDetTrigTRTDriftCircleCut
-if (InDetTrigFlags.doPrintConfigurables()):
-  print (  InDetTrigTRTDriftCircleCut)
-
-  
-if InDetTrigFlags.doNewTracking():
-  # SCT and Pixel detector elements road builder
-  #
-  from SiDetElementsRoadTool_xk.SiDetElementsRoadTool_xkConf import InDet__SiDetElementsRoadMaker_xk
-
-  InDetTrigSiDetElementsRoadMaker = \
-                                  InDet__SiDetElementsRoadMaker_xk(name = 'InDetTrigSiDetElementsRoadMaker',
-                                                                   PropagatorTool = InDetTrigPatternPropagator,
-                                                                   usePixel     = DetFlags.haveRIO.pixel_on(), 
-                                                                   useSCT       = DetFlags.haveRIO.SCT_on(),
-                                                                   RoadWidth    = InDetTrigCutValues.RoadWidth()
-                                                                   )
-  ToolSvc += InDetTrigSiDetElementsRoadMaker
-
-  # Condition algorithm for InDet__SiDetElementsRoadMaker_xk
-  if DetFlags.haveRIO.SCT_on():
-    from AthenaCommon.AlgSequence import AthSequencer
-    condSeq = AthSequencer("AthCondSeq")
-    if not hasattr(condSeq, "InDet__SiDetElementsRoadCondAlg_xk"):
-      from SiDetElementsRoadTool_xk.SiDetElementsRoadTool_xkConf import InDet__SiDetElementsRoadCondAlg_xk
-      condSeq += InDet__SiDetElementsRoadCondAlg_xk(name = "InDet__SiDetElementsRoadCondAlg_xk")
-
-  # Local combinatorial track finding using space point seed and detector element road
-  #
-  from SiCombinatorialTrackFinderTool_xk.SiCombinatorialTrackFinderTool_xkConf import InDet__SiCombinatorialTrackFinder_xk
-  InDetTrigSiComTrackFinder = \
-                            InDet__SiCombinatorialTrackFinder_xk(name = 'InDetTrigSiComTrackFinder',
-                                                                 PropagatorTool	= InDetTrigPatternPropagator,
-                                                                 UpdatorTool	= InDetTrigPatternUpdator,
-                                                                 RIOonTrackTool   = InDetTrigRotCreator,
-                                                                 usePixel         = DetFlags.haveRIO.pixel_on(),
-                                                                 useSCT           = DetFlags.haveRIO.SCT_on(),   
-                                                                 PixelClusterContainer = 'PixelTrigClusters',
-                                                                 SCT_ClusterContainer = 'SCT_TrigClusters',
-                                                                 PixelSummaryTool = InDetTrigPixelConditionsSummaryTool,
-                                                                 SctSummaryTool = InDetTrigSCTConditionsSummaryTool,
-                                                                 BoundaryCheckTool = InDetTrigBoundaryCheckTool
-                                                                 )															
-  if DetFlags.haveRIO.pixel_on():
-    # Condition algorithm for SiCombinatorialTrackFinder_xk
-    from AthenaCommon.AlgSequence import AthSequencer
-    condSeq = AthSequencer("AthCondSeq")
-    if not hasattr(condSeq, "InDetSiDetElementBoundaryLinksPixelCondAlg"):
-      from SiCombinatorialTrackFinderTool_xk.SiCombinatorialTrackFinderTool_xkConf import InDet__SiDetElementBoundaryLinksCondAlg_xk
-      condSeq += InDet__SiDetElementBoundaryLinksCondAlg_xk(name = "InDetSiDetElementBoundaryLinksPixelCondAlg",
-                                                            ReadKey = "PixelDetectorElementCollection",
-                                                            WriteKey = "PixelDetElementBoundaryLinks_xk")
-  if DetFlags.haveRIO.SCT_on():
-    # Condition algorithm for SiCombinatorialTrackFinder_xk
-    from AthenaCommon.AlgSequence import AthSequencer
-    condSeq = AthSequencer("AthCondSeq")
-    if not hasattr(condSeq, "InDetSiDetElementBoundaryLinksSCTCondAlg"):
-      from SiCombinatorialTrackFinderTool_xk.SiCombinatorialTrackFinderTool_xkConf import InDet__SiDetElementBoundaryLinksCondAlg_xk
-      condSeq += InDet__SiDetElementBoundaryLinksCondAlg_xk(name = "InDetSiDetElementBoundaryLinksSCTCondAlg",
-                                                            ReadKey = "SCT_DetectorElementCollection",
-                                                            WriteKey = "SCT_DetElementBoundaryLinks_xk")
-      #to here
-
-import InDetRecExample.TrackingCommon as TrackingCommon
-from InDetAmbiTrackSelectionTool.InDetAmbiTrackSelectionToolConf import InDet__InDetAmbiTrackSelectionTool
-InDetTrigAmbiTrackSelectionTool = \
-    InDet__InDetAmbiTrackSelectionTool(name               = 'InDetTrigAmbiTrackSelectionTool',
-                                       DriftCircleCutTool = InDetTrigTRTDriftCircleCut,
-                                       AssociationTool = TrackingCommon.getInDetTrigPRDtoTrackMapToolGangedPixels(),
-                                       minHits         = InDetTrigCutValues.minClusters(),
-                                       minNotShared    = InDetTrigCutValues.minSiNotShared(),
-                                       maxShared       = InDetTrigCutValues.maxShared(),
-                                       minTRTHits      = 0,  # used for Si only tracking !!!
-                                       Cosmics         = False,  #there is a different instance
-                                       UseParameterization = False,
-                                       # sharedProbCut   = 0.10,
-                                       # doPixelSplitting = InDetTrigFlags.doPixelClusterSplitting()
-                                       )
- 
- 
-ToolSvc += InDetTrigAmbiTrackSelectionTool
-if (InDetTrigFlags.doPrintConfigurables()):
-  print (InDetTrigAmbiTrackSelectionTool)
-
-if InDetTrigFlags.doNewTracking():
-
-  #
-  # ------ load new track selector (common for all vertexing algorithms, except for the moment VKalVrt
-  #
-  from InDetTrigRecExample.ConfiguredVertexingTrigCuts import EFIDVertexingCuts
-  from InDetTrackSelectionTool.InDetTrackSelectionToolConf import InDet__InDetTrackSelectionTool
-
-  InDetTrigTrackSelectorTool = \
-      InDet__InDetTrackSelectionTool(name = "InDetTrigDetailedTrackSelectorTool",
-                                     CutLevel                   =  EFIDVertexingCuts.TrackCutLevel(),
-                                     minPt                      =  EFIDVertexingCuts.minPT(),
-                                     maxD0			=  EFIDVertexingCuts.IPd0Max(),
-                                     maxZ0			=  EFIDVertexingCuts.z0Max(),
-                                     maxZ0SinTheta              =  EFIDVertexingCuts.IPz0Max(),
-                                     maxSigmaD0 = EFIDVertexingCuts.sigIPd0Max(),
-                                     maxSigmaZ0SinTheta = EFIDVertexingCuts.sigIPz0Max(),
-                                     # maxChiSqperNdf = EFIDVertexingCuts.fitChi2OnNdfMax(), # Seems not to be implemented?
-                                     maxAbsEta = EFIDVertexingCuts.etaMax(),
-                                     minNInnermostLayerHits = EFIDVertexingCuts.nHitInnermostLayer(),
-                                     minNPixelHits = EFIDVertexingCuts.nHitPix(),
-                                     maxNPixelHoles = EFIDVertexingCuts.nHolesPix(),
-                                     minNSctHits = EFIDVertexingCuts.nHitSct(),
-                                     minNTrtHits = EFIDVertexingCuts.nHitTrt(),
-                                     minNSiHits = EFIDVertexingCuts.nHitSi(),
-                                     TrackSummaryTool =  InDetTrigTrackSummaryTool,
-                                     Extrapolator     = InDetTrigExtrapolator,
-                                     #TrtDCCutTool     = InDetTrigTRTDriftCircleCut,
-                                     )
-
-
-
-  ToolSvc += InDetTrigTrackSelectorTool
-  if (InDetTrigFlags.doPrintConfigurables()):
-    print (     InDetTrigTrackSelectorTool)
+from InDetConfig.InDetAmbiTrackSelectionToolConfig import InDetTrigAmbiTrackSelectionToolCfg
+InDetTrigAmbiTrackSelectionTool = CAtoLegacyPublicToolWrapper(InDetTrigAmbiTrackSelectionToolCfg)
 
 
 # --- set Data/MC flag
@@ -541,86 +329,4 @@ from TRT_ConditionsServices.TRT_ConditionsServicesConf import TRT_CalDbTool
 InDetTRTCalDbTool = TRT_CalDbTool(name = "TRT_CalDbTool")
 
 
-# TRT_DriftFunctionTool
-from TRT_DriftFunctionTool.TRT_DriftFunctionToolConf import TRT_DriftFunctionTool
-
-InDetTrigTRT_DriftFunctionTool = TRT_DriftFunctionTool(name = "InDetTrigTRT_DriftFunctionTool",
-                                                       TRTCalDbTool        = InDetTRTCalDbTool,
-                                                       AllowDataMCOverride = True,
-                                                       ForceData = True,
-                                                       IsMC = isMC)
-
-# Second calibration DB Service in case pile-up and physics hits have different calibrations
-if DetFlags.overlay.TRT_on() :
-
-    InDetTrigTRTCalDbTool2 = TRT_CalDbTool(name = "TRT_CalDbSvc2")
-    InDetTrigTRTCalDbTool2.RtFolderName = "/TRT/Calib/MC/RT"             
-    InDetTrigTRTCalDbTool2.T0FolderName = "/TRT/Calib/MC/T0"             
-    InDetTrigTRT_DriftFunctionTool.TRTCalDbTool2 = InDetTrigTRTCalDbTool2
-    InDetTrigTRT_DriftFunctionTool.IsOverlay = True
-    InDetTrigTRT_DriftFunctionTool.IsMC = False
-
-# --- set HT corrections
-InDetTrigTRT_DriftFunctionTool.HTCorrectionBarrelXe = 1.5205
-InDetTrigTRT_DriftFunctionTool.HTCorrectionEndcapXe = 1.2712
-InDetTrigTRT_DriftFunctionTool.HTCorrectionBarrelAr = 1.5205
-InDetTrigTRT_DriftFunctionTool.HTCorrectionEndcapAr = 1.2712
-         
-# --- set ToT corrections
-InDetTrigTRT_DriftFunctionTool.ToTCorrectionsBarrelXe = [0., 4.358121, 3.032195, 1.631892, 0.7408397, -0.004113, -0.613288, -0.73758, -0.623346, -0.561229,-0.29828, -0.21344, -0.322892, -0.386718, -0.534751, -0.874178, -1.231799, -1.503689, -1.896464, -2.385958]
-InDetTrigTRT_DriftFunctionTool.ToTCorrectionsEndcapXe = [0., 5.514777, 3.342712, 2.056626, 1.08293693, 0.3907979, -0.082819, -0.457485, -0.599706, -0.427493, -0.328962, -0.403399, -0.663656, -1.029428, -1.46008, -1.919092, -2.151582, -2.285481, -2.036822, -2.15805]
-InDetTrigTRT_DriftFunctionTool.ToTCorrectionsBarrelAr = [0., 4.358121, 3.032195, 1.631892, 0.7408397, -0.004113, -0.613288, -0.73758, -0.623346, -0.561229, -0.29828, -0.21344, -0.322892, -0.386718, -0.534751, -0.874178, -1.231799, -1.503689, -1.896464, -2.385958]
-InDetTrigTRT_DriftFunctionTool.ToTCorrectionsEndcapAr = [0., 5.514777, 3.342712, 2.056626, 1.08293693, 0.3907979, -0.082819, -0.457485, -0.599706, -0.427493, -0.328962, -0.403399, -0.663656, -1.029428, -1.46008, -1.919092, -2.151582, -2.285481, -2.036822, -2.15805]
-
-
-ToolSvc += InDetTrigTRT_DriftFunctionTool
-
-from AthenaCommon.GlobalFlags import globalflags
-
-# TRT_DriftCircleTool
-import AthenaCommon.SystemOfUnits as Units
-
-MinTrailingEdge = 11.0*Units.ns
-MaxDriftTime = 60.0*Units.ns
-LowGate         = 14.0625*Units.ns # 4.5*3.125 ns
-HighGate        = 42.1875*Units.ns # LowGate + 9*3.125 ns
-LowGateArgon         = LowGate
-HighGateArgon        = HighGate
-
-if globalflags.DataSource == 'data':
-    MinTrailingEdge = 11.0*Units.ns
-    MaxDriftTime    = 60.0*Units.ns
-    LowGate         = 17.1875*Units.ns
-    HighGate        = 45.3125*Units.ns
-    LowGateArgon    = 18.75*Units.ns
-    HighGateArgon   = 43.75*Units.ns
-
-
-
-from TRT_DriftCircleTool.TRT_DriftCircleToolConf import InDet__TRT_DriftCircleTool
-InDetTrigTRT_DriftCircleTool = InDet__TRT_DriftCircleTool( name = "InDetTrigTRT_DriftCircleTool",
-                                                           TRTDriftFunctionTool = InDetTrigTRT_DriftFunctionTool,
-                                                           ConditionsSummaryTool           = InDetTrigTRTStrawStatusSummaryTool,
-                                                           UseConditionsStatus  = True,
-                                                           UseConditionsHTStatus  = True,
-                                                           SimpleOutOfTimePileupSupression = False,
-                                                           RejectIfFirstBit                = False, # fixes 50 nsec issue 
-                                                           MinTrailingEdge                 = MinTrailingEdge,
-                                                           MaxDriftTime                    = MaxDriftTime,
-                                                           ValidityGateSuppression         = InDetTrigFlags.InDet25nsec(),
-                                                           LowGate = LowGate,
-                                                           HighGate = HighGate,
-                                                           SimpleOutOfTimePileupSupressionArgon = False,# no OOT rejection for argon
-                                                           RejectIfFirstBitArgon                = False, # no OOT rejection for argon
-                                                           MinTrailingEdgeArgon                 = MinTrailingEdge,
-                                                           MaxDriftTimeArgon                    = MaxDriftTime,
-                                                           ValidityGateSuppressionArgon         = InDetTrigFlags.InDet25nsec(),
-                                                           LowGateArgon                         = LowGateArgon,
-                                                           HighGateArgon                        = HighGateArgon,
-                                                           useDriftTimeHTCorrection        = True,
-                                                           useDriftTimeToTCorrection       = True, # reenable ToT
-                                                           )
-
-
-ToolSvc += InDetTrigTRT_DriftCircleTool
   

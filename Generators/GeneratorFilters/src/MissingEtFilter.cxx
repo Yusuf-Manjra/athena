@@ -4,7 +4,7 @@
 
 #include "GeneratorFilters/MissingEtFilter.h"
 #include "TruthUtils/HepMCHelpers.h"
-#include "TruthUtils/PIDHelpers.h"
+#include "TruthUtils/HepMCHelpers.h"
 
 
 MissingEtFilter::MissingEtFilter(const std::string& name, ISvcLocator* pSvcLocator)
@@ -19,16 +19,24 @@ MissingEtFilter::MissingEtFilter(const std::string& name, ISvcLocator* pSvcLocat
 
 StatusCode MissingEtFilter::filterEvent() {
   double sumx(0), sumy(0);
+
+#ifdef HEPMC3
+  
+ATH_MSG_ERROR(" For HEPMC3 releases xAOD filters should be used. Exiting with ERROR. ");
+return StatusCode::FAILURE;
+  
+#endif
+
   McEventCollection::const_iterator itr;
   for (itr = events()->begin(); itr != events()->end(); ++itr) {
     const HepMC::GenEvent* genEvt = (*itr);
-    for (auto pitr: *genEvt) {
+    for (const auto& pitr: *genEvt) {
       if (!MC::isGenStable(pitr)) continue;
       // Consider all non-interacting particles
       // We want Missing Transverse Momentum, not "Missing Transverse Energy"
       if (MC::isNonInteracting(pitr) || (m_useChargedNonShowering && MC::isChargedNonShowering(pitr->pdg_id()))) {
         bool addpart = true;
-        if(!m_useHadronicNu && MC::isNeutrino(pitr->pdg_id()) && !(fromWZ(pitr) || fromTau(pitr)) ) {
+        if(!m_useHadronicNu && MC::PID::isNeutrino(pitr->pdg_id()) && !(fromWZ(pitr) || fromTau(pitr)) ) {
           addpart = false; // ignore neutrinos from hadron decays
         }
         if(addpart) {
@@ -47,7 +55,7 @@ StatusCode MissingEtFilter::filterEvent() {
   return StatusCode::SUCCESS;
 }
 
-bool MissingEtFilter::fromWZ( HepMC::ConstGenParticlePtr part ) const
+bool MissingEtFilter::fromWZ(const HepMC::ConstGenParticlePtr& part ) const
 {
   // !!! IMPORTANT !!! This is a TEMPORARY function
   //  it's used in place of code in MCTruthClassifier as long as this package is not dual-use
@@ -62,7 +70,7 @@ bool MissingEtFilter::fromWZ( HepMC::ConstGenParticlePtr part ) const
   //   This code, like the code before it, really assumes one incoming particle per vertex...
   if (!part->production_vertex()) return false;
 #ifdef HEPMC3
-  for (auto iter: part->production_vertex()->particles_in()){
+  for (const auto& iter: part->production_vertex()->particles_in()){
     int parent_pdgid = iter->pdg_id();
     if (MC::PID::isW(parent_pdgid) || MC::PID::isZ(parent_pdgid)) return true;
     if (MC::PID::isHadron( parent_pdgid ) ) return false;
@@ -82,7 +90,7 @@ bool MissingEtFilter::fromWZ( HepMC::ConstGenParticlePtr part ) const
   return false;
 }
 
-bool MissingEtFilter::fromTau( HepMC::ConstGenParticlePtr part ) const
+bool MissingEtFilter::fromTau(const HepMC::ConstGenParticlePtr& part ) const
 {
   // !!! IMPORTANT !!! This is a TEMPORARY function
   //  it's used in place of code in MCTruthClassifier as long as this package is not dual-use
@@ -95,7 +103,7 @@ bool MissingEtFilter::fromTau( HepMC::ConstGenParticlePtr part ) const
   //   This code, like the code before it, really assumes one incoming particle per vertex...
   if (!part->production_vertex()) return false;
 #ifdef HEPMC3
-  for (auto iter: part->production_vertex()->particles_in()){
+  for (const auto& iter: part->production_vertex()->particles_in()){
     int parent_pdgid = iter->pdg_id();
     if ( std::abs( parent_pdgid ) == 15  && fromWZ(iter)) return true;
     if (MC::PID::isHadron( parent_pdgid ) || std::abs( parent_pdgid ) < 9 ) return false;

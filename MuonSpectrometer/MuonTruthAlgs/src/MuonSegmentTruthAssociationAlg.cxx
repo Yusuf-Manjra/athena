@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "MuonSegmentTruthAssociationAlg.h"
@@ -10,6 +10,7 @@
 #include "xAODMuon/MuonSegmentAuxContainer.h"
 #include "xAODTruth/TruthParticleAuxContainer.h"
 #include "xAODTruth/TruthParticleContainer.h"
+#include "AtlasHepMC/MagicNumbers.h"
 
 namespace Muon {
 
@@ -27,7 +28,7 @@ namespace Muon {
         ATH_CHECK(m_muonTruthSegmentContainerName.initialize());
         ATH_CHECK(m_muonSegmentCollectionName.initialize());
         ATH_CHECK(m_mcEventColl.initialize());
-        if (!(m_idHelperSvc->hasSTgc() && m_idHelperSvc->hasMM())) m_muonSimData = {"MDT_SDO", "RPC_SDO", "TGC_SDO"};
+        if (!(m_idHelperSvc->hasSTGC() && m_idHelperSvc->hasMM())) m_muonSimData = {"MDT_SDO", "RPC_SDO", "TGC_SDO"};
         ATH_CHECK(m_muonSimData.initialize());
         ATH_CHECK(m_cscSimData.initialize(m_idHelperSvc->hasCSC()));
         ATH_CHECK(m_trackRecord.initialize());
@@ -210,7 +211,7 @@ namespace Muon {
                     continue;
                 }
                 // match barcodes
-                if (barcode % m_barcodeOffset == truthParticle->barcode()) {
+                if (barcode % HepMC::SIM_REGENERATION_INCREMENT == truthParticle->barcode()) {
                     ATH_MSG_DEBUG("Matched reconstructed segment: barcode " << barcode << " layer "
                                                                             << Muon::MuonStationIndex::chName(chIndex));
                     recoLink.toPersistent();

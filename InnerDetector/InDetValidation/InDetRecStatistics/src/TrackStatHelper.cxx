@@ -99,7 +99,7 @@ static const std::string track_types_string[InDet::N_TRACKTYPES]= {"all",
                                                                    "multipleMatches"
 								   };//LT added 06.21
  
-InDet::TrackStatHelper::TrackStatHelper(std::string TrackCollectionKey, std::string TrackTruthCollectionKey, bool careAboutTruth):
+InDet::TrackStatHelper::TrackStatHelper(const std::string& TrackCollectionKey, const std::string& TrackTruthCollectionKey, bool careAboutTruth):
   m_TrackCollectionKey       (std::move(TrackCollectionKey)),
   m_TrackTruthCollectionKey  (std::move(TrackTruthCollectionKey)),
   m_truthMissing             (false),
@@ -109,7 +109,7 @@ InDet::TrackStatHelper::TrackStatHelper(std::string TrackCollectionKey, std::str
 }
 
 
-void InDet::TrackStatHelper::SetCuts(struct cuts ct)
+void InDet::TrackStatHelper::SetCuts(const struct cuts& ct)
 {
   m_cuts = ct;
 
@@ -846,7 +846,7 @@ bool InDet::TrackStatHelper::PassTrackCuts(const Trk::TrackParameters *para) con
 
 }
 
-int InDet::TrackStatHelper::ClassifyParticle( HepMC::ConstGenParticlePtr particle, const double prob) const {
+int InDet::TrackStatHelper::ClassifyParticle( const HepMC::ConstGenParticlePtr& particle, const double prob) const {
 
   int partClass=-999;
 

@@ -106,7 +106,7 @@ from AtlasGeoModel import GeoModelInit
 #============================================================
 #--- check what is the latest tag using command CheckTagAssociation.py
 from IOVDbSvc.CondDB import conddb
-conddb.setGlobalTag("CONDBR2-BLKPA-2022-10")
+conddb.setGlobalTag("CONDBR2-BLKPA-2023-01")
 
 
 #============================================================
@@ -200,7 +200,5 @@ svcMgr.EventSelector.TimeStampInterval = 5
 #============================================================
 #=== print out job summary
 #============================================================
-from AthenaCommon.AlgSequence import AlgSequence
-job = AlgSequence()
 print(svcMgr)
-print(job)
+print(topSequence)

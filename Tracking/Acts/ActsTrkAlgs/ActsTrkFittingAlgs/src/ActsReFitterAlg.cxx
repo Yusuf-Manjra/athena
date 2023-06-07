@@ -25,7 +25,7 @@ ActsReFitterAlg::ActsReFitterAlg(const std::string &name,
 StatusCode ActsReFitterAlg::initialize() {
 
   ATH_MSG_DEBUG(name() << "::" << __FUNCTION__);
-  ATH_CHECK(m_actsKalmanFitter.retrieve());
+  ATH_CHECK(m_actsFitter.retrieve());
   ATH_CHECK(m_trackName.initialize());
   ATH_CHECK(m_newTrackName.initialize());
 
@@ -51,24 +51,35 @@ StatusCode ActsReFitterAlg::execute(const EventContext &ctx) const {
   // Perform the fit for each input track
   for (TrackCollection::const_iterator track  = (*tracks).begin(); track < (*tracks).end(); ++track){
 
-    auto newtrack = m_actsKalmanFitter->fit(ctx, (**track));
+    auto newtrack = m_actsFitter->fit(ctx, (**track));
 
-    if (msgLvl(MSG::VERBOSE)) {
-      msg(MSG::VERBOSE) << "ATLAS param : " << endmsg;
-      msg(MSG::VERBOSE) << *((**track).perigeeParameters()) << endmsg;
-      msg(MSG::VERBOSE) << *((**track).perigeeParameters()->covariance()) << endmsg;
-      msg(MSG::VERBOSE) << "ACTS param : " << endmsg;
-      msg(MSG::VERBOSE) << *(newtrack->perigeeParameters()) << endmsg;
-      msg(MSG::VERBOSE) << *(newtrack->perigeeParameters()->covariance()) << endmsg;
+    if (newtrack) {
+      if (msgLvl(MSG::VERBOSE)) {
+        msg(MSG::VERBOSE) << "ATLAS param : " << endmsg;
+        msg(MSG::VERBOSE) << *((**track).perigeeParameters()) << endmsg;
+        msg(MSG::VERBOSE) << *((**track).perigeeParameters()->covariance()) << endmsg;
+        msg(MSG::VERBOSE) << "ACTS param : " << endmsg;
+        msg(MSG::VERBOSE) << *(newtrack->perigeeParameters()) << endmsg;
+        msg(MSG::VERBOSE) << *(newtrack->perigeeParameters()->covariance()) << endmsg;
 
-      msg(MSG::VERBOSE) << "ATLAS INFO : " << endmsg;
-      msg(MSG::VERBOSE) << *((**track).trackSummary()) << endmsg;
-      msg(MSG::VERBOSE) << "ACTS INFO : " << endmsg;
-      msg(MSG::VERBOSE) << *(newtrack->trackSummary()) << endmsg;
-      msg(MSG::VERBOSE) << "==========================" << endmsg;
+        msg(MSG::VERBOSE) << "ATLAS INFO : " << endmsg;
+        msg(MSG::VERBOSE) << *((**track).trackSummary()) << endmsg;
+        msg(MSG::VERBOSE) << "ACTS INFO : " << endmsg;
+        msg(MSG::VERBOSE) << *(newtrack->trackSummary()) << endmsg;
+        msg(MSG::VERBOSE) << "==========================" << endmsg;
+      }
+      new_tracks.push_back(std::move(newtrack));
     }
+    else if (msgLvl(MSG::DEBUG)) {  // newtrack might be equal to a nullptr
+      msg(MSG::DEBUG) << "The Acts Refitting (KF or GSF) has returned a nullptr. Below is information on the offending track." << endmsg; // TODO: solve the cases where we return a nullptr
+      msg(MSG::DEBUG) << "ATLAS param : " << endmsg;
+      msg(MSG::DEBUG) << *((**track).perigeeParameters()) << endmsg;
+      msg(MSG::DEBUG) << *((**track).perigeeParameters()->covariance()) << endmsg;
 
-    new_tracks.push_back(std::move(newtrack));
+      msg(MSG::DEBUG) << "ATLAS INFO : " << endmsg;
+      msg(MSG::DEBUG) << *((**track).trackSummary()) << endmsg;
+      msg(MSG::DEBUG) << "==========================" << endmsg;
+    }
   }
   
   // Create a new track collection with the refitted tracks
@@ -79,7 +90,7 @@ StatusCode ActsReFitterAlg::execute(const EventContext &ctx) const {
     new_track_collection->push_back(std::move(new_track));
   }
   
-  ATH_MSG_VERBOSE ("Saving tracks");
+  ATH_MSG_DEBUG ("Saving tracks");
   ATH_CHECK(SG::WriteHandle<TrackCollection>(m_newTrackName, ctx).record(std::move(new_track_collection)));
   return StatusCode::SUCCESS;
 }

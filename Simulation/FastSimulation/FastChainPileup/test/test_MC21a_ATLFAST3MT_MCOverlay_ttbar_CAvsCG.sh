@@ -26,8 +26,6 @@ FastChain_tf.py \
   --simulator ATLFAST3MT \
   --physicsList FTFP_BERT_ATL \
   --useISF True \
-  --jobNumber 1 \
-  --DataRunNumber 410000 \
   --randomSeed 123 \
   --inputEVNTFile ${EVNT_File} \
   --inputRDO_BKGFile ${RDO_BKG_File} \
@@ -61,8 +59,6 @@ FastChain_tf.py \
   --steering doFCwOverlay \
   --physicsList FTFP_BERT_ATL \
   --useISF True \
-  --jobNumber 1 \
-  --DataRunNumber 410000 \
   --randomSeed 123 \
   --inputEVNTFile ${EVNT_File} \
   --inputRDO_BKGFile ${RDO_BKG_File} \
@@ -94,8 +90,6 @@ FastChain_tf.py \
   --steering doFCwOverlay \
   --physicsList FTFP_BERT_ATL \
   --useISF True \
-  --jobNumber 1 \
-  --DataRunNumber 410000 \
   --randomSeed 123 \
   --inputEVNTFile ${EVNT_File} \
   --inputRDO_BKGFile ${RDO_BKG_File} \
@@ -152,13 +146,17 @@ ntup=-9999
 if [ ${cg} -eq 0 ]
 then
     # Reconstruction
-    Reco_tf.py --inputRDOFile run_cg/${RDO_File} \
+    Reco_tf.py \
+               --CA "all:True" "RDOtoRDOTrigger:False" \
+               --inputRDOFile run_cg/${RDO_File} \
                --outputAODFile ${AOD_File} \
                --steering 'doRDO_TRIG' 'doTRIGtoALL' \
                --maxEvents '-1' \
                --autoConfiguration=everything \
+               --conditionsTag 'OFLCOND-MC21-SDR-RUN3-07'  \
+               --geometryVersion 'ATLAS-R3S-2021-03-00-00' \
                --athenaopts "all:--threads=1" \
-               --postExec 'RDOtoRDOTrigger:from AthenaCommon.ConfigurationShelve import saveToAscii;saveToAscii("RDOtoRDOTrigger_config.txt")' 'RAWtoALL:from AthenaCommon.ConfigurationShelve import saveToAscii;saveToAscii("RAWtoALL_config.txt")' \
+               --postExec 'RAWtoALL:from AthenaCommon.ConfigurationShelve import saveToAscii;saveToAscii("RAWtoALL_config.txt")' \
                --imf False
 
      rec=$?
@@ -169,6 +167,8 @@ then
                     --outputNTUP_PHYSVALFile ${NTUP_File} \
                     --maxEvents '-1' \
                     --ignoreErrors True \
+                    --conditionsTag 'OFLCOND-MC21-SDR-RUN3-07'  \
+                    --geometryVersion 'ATLAS-R3S-2021-03-00-00' \
                     --validationFlags 'doInDet' \
                     --valid 'True'
          ntup=$?

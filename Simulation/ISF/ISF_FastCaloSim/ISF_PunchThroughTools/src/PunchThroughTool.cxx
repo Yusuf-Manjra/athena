@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 // class header
@@ -12,10 +12,11 @@
 #include <algorithm>
 #include <vector>
 #include <numeric>
-
+#include <string_view>
+#include <charconv>
 
 // standard C libraries
-#include <math.h>
+#include <cmath>
 
 // Control
 #include "AthContainers/DataVector.h"
@@ -51,8 +52,6 @@
 //Amg
 #include "GeoPrimitives/GeoPrimitivesHelpers.h"
 
-const double ISF::PunchThroughTool::m_SQRT_0p5 = std::sqrt(0.5);
-const double ISF::PunchThroughTool::m_SQRT_2 = std::sqrt(2);
 
 /*=========================================================================
  *  DESCRIPTION OF FUNCTION:
@@ -85,20 +84,20 @@ StatusCode ISF::PunchThroughTool::initialize()
   // resolving lookuptable file
   std::string resolvedFileName = PathResolverFindCalibFile (m_filenameLookupTable);
   if (resolvedFileName.empty()) {
-    ATH_MSG_ERROR( "[ punchthrough ] Parameterisation file not found" );
+    ATH_MSG_ERROR( "[ punchthrough ] Parametrisation file '" << m_filenameLookupTable << "' not found" );
     return StatusCode::FAILURE;
   }
-  ATH_MSG_INFO( "[ punchthrough ] Parameterisation file found: " << resolvedFileName );
+  ATH_MSG_INFO( "[ punchthrough ] Parametrisation file found: " << resolvedFileName );
 
   // open the LookupTable file
   m_fileLookupTable = new TFile( resolvedFileName.c_str(), "READ");
   if (!m_fileLookupTable) {
-    ATH_MSG_WARNING("[ punchthrough ] unable to open the lookup-tabel for the punch-through simulation (file does not exist)");
+    ATH_MSG_WARNING("[ punchthrough ] unable to open the lookup-table for the punch-through simulation (file does not exist)");
     return StatusCode::FAILURE;
   }
 
   if (!m_fileLookupTable->IsOpen()) {
-    ATH_MSG_WARNING("[ punchthrough ] unable to open the lookup-tabel for the punch-through simulation (wrong or empty file?)");
+    ATH_MSG_WARNING("[ punchthrough ] unable to open the lookup-table for the punch-through simulation (wrong or empty file?)");
     return StatusCode::FAILURE;
   }
 
@@ -116,7 +115,7 @@ StatusCode ISF::PunchThroughTool::initialize()
     return StatusCode::FAILURE;
   }
 
-  //check size of infoMap for both PCA and CDF, they should be equal
+  //check first the size of infoMap for both PCA and CDF, they should be equal
   if (!(m_xml_info_pca.size() == m_xml_info_cdf.size()))
   {
     ATH_MSG_WARNING("[ punchthrough ] size of infoMap for PCA and CDF differs! Something is wrong with input xml files.");
@@ -473,7 +472,7 @@ int ISF::PunchThroughTool::getAllParticles(const ISF::ISFParticle &isfp, ISFPart
       // and ensure that we do not create too many particles
       do
         {
-          numParticles = lround( p->getNumParticlesPDF()->getRand(rndmEngine, parameters) );
+          numParticles = int( p->getNumParticlesPDF()->getRand(rndmEngine, parameters) );
 
           // scale the number of particles if requested
           numParticles = lround( numParticles *= p->getNumParticlesFactor() );
@@ -603,7 +602,7 @@ ISF::ISFParticle *ISF::PunchThroughTool::getOneParticle(const ISF::ISFParticle &
   // (0.) get the pca / cdf group based on pdgId and eta, eta times 100, e.g eta -4 to 4 is from eta -400 to 400
   int pcaCdfIterator = passedParamIterator(pdg, interpEta*100, m_xml_info_pca); //pca and cdf info should be of same size
 
-  ATH_MSG_DEBUG("[punchthrough] passedPCAIterator ==> passedParamIterator = "<< pcaCdfIterator <<" , pdg = "<< pdg <<" , interpEnergy = "<< interpEnergy <<" MeV, interpEta(*100) = "<< interpEta*100);
+  ATH_MSG_DEBUG("[ punchthrough ] passedPCAIterator ==> pcaCdfIterator = "<< pcaCdfIterator <<" , pdg = "<< pdg <<" , interpEnergy = "<< interpEnergy <<" MeV, interpEta(*100) = "<< interpEta*100);
 
   // (1.) decide if we create a particle or an anti-particle
   int anti = 1;
@@ -635,42 +634,38 @@ ISF::ISFParticle *ISF::PunchThroughTool::getOneParticle(const ISF::ISFParticle &
   double principal_component_4 = 0.;
   std::vector<double> transformed_variables;
 
-  int loopCount = 0;
-  while (energy < p->getMinEnergy()){
 
-      principal_component_0 = p->getPCA0PDF()->getRand(rndmEngine, parInitEnergyEta);
-      principal_component_1 = p->getPCA1PDF()->getRand(rndmEngine, parInitEnergyEta);
-      principal_component_2 = p->getPCA2PDF()->getRand(rndmEngine, parInitEnergyEta);
-      principal_component_3 = p->getPCA3PDF()->getRand(rndmEngine, parInitEnergyEta);
-      principal_component_4 = p->getPCA4PDF()->getRand(rndmEngine, parInitEnergyEta);
+  principal_component_0 = p->getPCA0PDF()->getRand(rndmEngine, parInitEnergyEta);
+  principal_component_1 = p->getPCA1PDF()->getRand(rndmEngine, parInitEnergyEta);
+  principal_component_2 = p->getPCA2PDF()->getRand(rndmEngine, parInitEnergyEta);
+  principal_component_3 = p->getPCA3PDF()->getRand(rndmEngine, parInitEnergyEta);
+  principal_component_4 = p->getPCA4PDF()->getRand(rndmEngine, parInitEnergyEta);
 
-      ATH_MSG_DEBUG("Drawn punch through kinematics PCA components: PCA0 = "<< principal_component_0 <<" PCA1 = "<< principal_component_1 <<" PCA2 = "<< principal_component_2 <<" PCA3 = "<< principal_component_3 <<" PCA4 = "<< principal_component_4 );
+  ATH_MSG_DEBUG("Drawn punch through kinematics PCA components: PCA0 = "<< principal_component_0 <<" PCA1 = "<< principal_component_1 <<" PCA2 = "<< principal_component_2 <<" PCA3 = "<< principal_component_3 <<" PCA4 = "<< principal_component_4 );
 
-      std::vector<double> principal_components;
-      principal_components.push_back(principal_component_0);
-      principal_components.push_back(principal_component_1);
-      principal_components.push_back(principal_component_2);
-      principal_components.push_back(principal_component_3);
-      principal_components.push_back(principal_component_4);
+  std::vector<double> principal_components {
+          principal_component_0, 
+          principal_component_1, 
+          principal_component_2, 
+          principal_component_3, 
+          principal_component_4
+   };
 
-      transformed_variables = inversePCA(pcaCdfIterator,principal_components);
+  transformed_variables = inversePCA(pcaCdfIterator,principal_components);
 
-      energy = inverseCdfTransform(transformed_variables.at(0), m_variable0_inverse_cdf[pcaCdfIterator]);
-      deltaTheta = inverseCdfTransform(transformed_variables.at(1), m_variable1_inverse_cdf[pcaCdfIterator]);
-      deltaPhi = inverseCdfTransform(transformed_variables.at(2), m_variable2_inverse_cdf[pcaCdfIterator]);
-      momDeltaTheta = inverseCdfTransform(transformed_variables.at(3), m_variable3_inverse_cdf[pcaCdfIterator]);
-      momDeltaPhi = inverseCdfTransform(transformed_variables.at(4), m_variable4_inverse_cdf[pcaCdfIterator]);
+  energy = inverseCdfTransform(transformed_variables.at(0), m_variable0_inverse_cdf[pcaCdfIterator]);
+  deltaTheta = inverseCdfTransform(transformed_variables.at(1), m_variable1_inverse_cdf[pcaCdfIterator]);
+  deltaPhi = inverseCdfTransform(transformed_variables.at(2), m_variable2_inverse_cdf[pcaCdfIterator]);
+  momDeltaTheta = inverseCdfTransform(transformed_variables.at(3), m_variable3_inverse_cdf[pcaCdfIterator]);
+  momDeltaPhi = inverseCdfTransform(transformed_variables.at(4), m_variable4_inverse_cdf[pcaCdfIterator]);
 
-      ATH_MSG_DEBUG("Transformed punch through kinematics: energy = "<< energy <<" MeV deltaTheta = "<< deltaTheta <<" deltaPhi = "<< deltaPhi <<" momDeltaTheta = "<< momDeltaTheta <<" momDeltaPhi = "<< momDeltaPhi );
-
-      loopCount++;
-      if (loopCount > 10000) {
-        energy = p->getMinEnergy() + 10;
-        ATH_MSG_WARNING("Loop exceeds max number attempts. Setting energy to " << energy << " MeV.");
-      }
-  }
+  ATH_MSG_DEBUG("Transformed punch through kinematics: energy = "<< energy <<" MeV deltaTheta = "<< deltaTheta <<" deltaPhi = "<< deltaPhi <<" momDeltaTheta = "<< momDeltaTheta <<" momDeltaPhi = "<< momDeltaPhi );
 
   energy *= p->getEnergyFactor(); // scale the energy if requested
+  if (energy < p->getMinEnergy()) {
+    energy = p->getMinEnergy() + 10;
+  }
+
 
   // (2.2) get the particles delta theta relative to the incoming particle
   double theta = 0;
@@ -733,7 +728,7 @@ ISF::ISFParticle *ISF::PunchThroughTool::getOneParticle(const ISF::ISFParticle &
 
 double ISF::PunchThroughTool::normal_cdf(double x) {
 
-    return  0.5 * TMath::Erfc(-x * m_SQRT_0p5);
+    return  0.5 * TMath::Erfc(-x * M_SQRT1_2);
 }
 
 std::vector<double> ISF::PunchThroughTool::dotProduct(const std::vector<std::vector<double>> &m, const std::vector<double> &v) 
@@ -747,77 +742,57 @@ std::vector<double> ISF::PunchThroughTool::dotProduct(const std::vector<std::vec
     return result;
 }
 
-std::vector<std::string> ISF::PunchThroughTool::str_to_list(std::string str)
+template<typename T>
+std::vector<T> str_to_list(const std::string_view str)
 {
-    std::vector<std::string> v;
-    std::stringstream ss(str); 
-    while (ss.good()) {
-        std::string substr;
-        std::getline(ss, substr, ',');
-        v.push_back(substr);
+    constexpr char delimiters = ',';
+    std::vector<T> tokens;
+    // Skip delimiters at beginning.
+    std::string_view::size_type lastPos = str.find_first_not_of(delimiters, 0);
+    // Find first "non-delimiter".
+    std::string_view::size_type pos = str.find_first_of(delimiters, lastPos);
+
+    while (std::string_view::npos != pos || std::string_view::npos != lastPos) {
+        // Found a token, add it to the vector.
+        std::string_view numbStr = str.substr(lastPos, pos - lastPos);
+        T num = -9999;
+        std::from_chars(numbStr.data(), numbStr.data() + numbStr.size(), num);
+        tokens.push_back(num);
+        // Skip delimiters.  Note the "not_of"
+        lastPos = str.find_first_not_of(delimiters, pos);
+        // Find next "non-delimiter"
+        pos = str.find_first_of(delimiters, lastPos);
     }
-    return v;
+    return tokens;
 }
 
-int ISF::PunchThroughTool::passedParamIterator(int pid, double eta, std::vector<std::map<std::string, std::string>> mapvect)
+int ISF::PunchThroughTool::passedParamIterator(int pid, double eta, const std::vector<std::map<std::string, std::string>> &mapvect) const
 {
     //convert the pid to absolute value and string for query
-    std::string pidStrSingle = std::to_string(std::abs(pid));
-    //initialize holder vector for pid string
-    std::vector<std::string> v;
-    //vector to hold filtered iterator of info mapvect
-    std::vector<int> elemNoForPid;
+    int pidStrSingle = std::abs(pid);
     //STEP 1
     //filter items matching pid first
 
     for (unsigned int i = 0; i < mapvect.size(); i++){
-        std::string pidStr = mapvect[i].at("pidStr");
-        v = str_to_list(pidStr);        
-        if(std::find(v.begin(), v.end(),pidStrSingle)!=v.end()){
-            // create a vector of positions in map satisfying (in loop)
-            elemNoForPid.push_back(i);
-        }        
-    }
-    //STEP 2
-    //then from that vector find the map element
-    //loop again this time for each of the map element, loop over the different etamins and etamaxs
-    std::string etaMaxsStr, etaMinsStr;
-    std::vector<std::string> etaMinsVect, etaMaxsVect;
-    std::vector<int> matchedCondVect;
-    double etaMinToCompare, etaMaxToCompare;
-    for (unsigned int i = 0; i < elemNoForPid.size(); i++){
-        etaMinsStr = mapvect[elemNoForPid[i]].at("etaMins");
-        etaMaxsStr = mapvect[elemNoForPid[i]].at("etaMaxs");
-        etaMinsVect = str_to_list(etaMinsStr);
-        etaMaxsVect = str_to_list(etaMaxsStr);   
-        std::vector<std::tuple<double, double>> etaRangesVect;
+        const std::string &pidStr = mapvect[i].at("pidStr");
+        auto v = str_to_list<int>(pidStr);
+        if(std::find(v.begin(), v.end(),pidStrSingle)==v.end()) continue;
+        const std::string &etaMinsStr = mapvect[i].at("etaMins");
+        const std::string &etaMaxsStr = mapvect[i].at("etaMaxs");
+        std::vector<double> etaMinsVect = str_to_list<double>(etaMinsStr);
+        std::vector<double> etaMaxsVect = str_to_list<double>(etaMaxsStr);
+        assert(etaMaxsVect.size() == etaMinsVect.size());
         for (unsigned int j = 0; j < etaMinsVect.size(); j++){ // assume size etaMinsVect == etaMaxsVect
-            etaRangesVect.push_back({std::stod(etaMinsVect[j]),std::stod(etaMaxsVect[j])});    
-        }
-        //make comparison
-        for (unsigned int k = 0; k < etaRangesVect.size(); k++){ // assume size etaMinsVect == etaMaxsVect
-          etaMinToCompare = std::get<0>(etaRangesVect[k]);
-          etaMaxToCompare = std::get<1>(etaRangesVect[k]);
+          double etaMinToCompare = etaMinsVect[j];
+          double etaMaxToCompare = etaMaxsVect[j];
           if((eta >= etaMinToCompare) && (eta < etaMaxToCompare)){
             //PASS CONDITION
             //then choose the passing one and note it's iterator
-            matchedCondVect.push_back(elemNoForPid[i]); //in case more than 1 match (ambiguous case)
+            return (i); //in case more than 1 match (ambiguous case)
           }
         }
     }
-    //STEP 3
-    //always take the first element in the mapvect as the pca (in case it is ambiguos)
-    int matchedIt; //matchedIterator
-    if((matchedCondVect.size() >= 1)){
-      matchedIt = matchedCondVect[0];
-    }
-    //if none found, set the iterator to the first (provided pca is not empty)
-    else{
-      //FAIL CONDITION
-      matchedIt = 0;      
-    }
-    //return the match
-    return matchedIt;
+    return 0;
 }
 
 std::vector<std::map<std::string, std::string>> ISF::PunchThroughTool::getInfoMap(std::string mainNode, const std::string &xmlFilePath){
@@ -1032,7 +1007,7 @@ double ISF::PunchThroughTool::interpolateEnergy(const double &energy, CLHEP::Hep
 
     ATH_MSG_DEBUG("[ punchthrough ] Shooting random number: "<< randomShoot);
 
-    double midPoint = *std::prev(upperEnergy)*m_SQRT_2;
+    double midPoint = *std::prev(upperEnergy)*M_SQRT2;
 
     if(energy <  midPoint){ //if energy smaller than mid point in log(energy)
 
@@ -1390,19 +1365,17 @@ double ISF::PunchThroughTool::getFloatAfterPatternInStr(const char *cstr, const 
 {
   double num = 0.;
 
-  const std::string str( cstr);
-  const std::string pattern( cpattern);
-  const size_t pos = str.find(cpattern);
+  const std::string_view str( cstr);
+  const std::string_view pattern( cpattern);
+  const size_t pos = str.find(pattern);
 
   if ( pos == std::string::npos)
     {
       ATH_MSG_WARNING("[ punchthrough ] unable to retrieve floating point number from string");
       return -999999999999.;
     }
-
-  std::istringstream iss( cstr+pos+pattern.length());
-  iss >> std::dec >> num;
-
+  const std::string_view substring = str.substr(pos+pattern.length());
+  std::from_chars(substring.data(), substring.data() + substring.size(), num);
   return num;
 }
 

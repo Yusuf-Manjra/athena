@@ -12,6 +12,10 @@
 
 export ATHENA_CORE_NUMBER=4
 
+if [ -z ${ATLAS_REFERENCE_DATA+x} ]; then
+  ATLAS_REFERENCE_DATA="/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art"
+fi
+
 DigiOutFileNameSP="RUN4_presampling_SP.RDO.pool.root"
 DigiOutFileNameMP0="RUN4_presampling_MP_fork_evt0.RDO.pool.root"
 DigiOutFileNameMP1="RUN4_presampling_MP_fork_evt1.RDO.pool.root"
@@ -43,6 +47,21 @@ Digi_tf.py \
 rc=$?
 status=$rc
 echo "art-result: $rc Digi_tf.py SP"
+
+rc1=-9999
+if [ $status -eq 0 ]; then
+    mv ${DigiOutFileNameSP} backup_${DigiOutFileNameSP}
+    rm PoolFileCatalog.xml
+    RDOMerge_tf.py \
+        --CA \
+        --PileUpPresampling True \
+        --inputRDOFile backup_${DigiOutFileNameSP} \
+        --outputRDO_MRGFile ${DigiOutFileNameSP}
+    rc1=$?
+    rm backup_${DigiOutFileNameSP}
+    status=$rc1
+fi
+echo "art-result: $rc1 RDOMerge_tf.py SP"
 
 Digi_tf.py \
 --multiprocess --athenaMPEventsBeforeFork 0 \
@@ -95,7 +114,7 @@ fi
 echo "art-result: $rc3 Digi_tf.py MP fork after 1"
 
 rc4=-9999
-if [[ $rc -eq 0 ]] && [[ $rc2 -eq 0 ]]
+if [[ $rc1 -eq 0 ]] && [[ $rc2 -eq 0 ]]
 then
     acmd.py diff-root ${DigiOutFileNameSP} ${DigiOutFileNameMP0} \
         --mode=semi-detailed --error-mode resilient --order-trees \
@@ -108,7 +127,7 @@ fi
 echo "art-result: $rc4 SP vs MP fork after 0"
 
 rc5=-9999
-if [[ $rc -eq 0 ]] && [[ $rc3 -eq 0 ]]
+if [[ $rc1 -eq 0 ]] && [[ $rc3 -eq 0 ]]
 then
     acmd.py diff-root ${DigiOutFileNameSP} ${DigiOutFileNameMP1} \
         --mode=semi-detailed --error-mode resilient --order-trees \

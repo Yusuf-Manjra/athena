@@ -34,6 +34,8 @@
 #include "AthenaBaseComps/AthAlgTool.h"
 #include "PathResolver/PathResolver.h"
 
+#include "AthenaMonitoringKernel/Monitored.h"
+
 // Gaudi includes
 #include "Gaudi/Property.h"
 
@@ -64,6 +66,11 @@ class jFexRoiByteStreamTool : public extends<AthAlgTool, IL1TriggerByteStreamToo
 
     private:
         // ------------------------- Properties --------------------------------------
+        ToolHandle<GenericMonitoringTool> m_monTool{this,"MonTool","","Monitoring tool"};
+        bool m_UseMonitoring = false;        
+        
+        
+        
         // ROBIDs property required by the interface
         Gaudi::Property<std::vector<uint32_t>> m_robIds {this, "ROBIDs", {}, "List of ROB IDs required for conversion to/from xAOD RoI"};
         Gaudi::Property<bool> m_convertExtendedTOBs {this, "ConvertExtendedTOBs", false, "Convert xTOBs instead of TOBs"};
@@ -92,8 +99,9 @@ class jFexRoiByteStreamTool : public extends<AthAlgTool, IL1TriggerByteStreamToo
 
         std::array<uint32_t,6> TOBCounterTrailer (uint32_t word) const;
         std::array<uint32_t,4> xTOBCounterTrailer(uint32_t word) const;
-        std::array<uint32_t,3> jFEXtoRODTrailer  (uint32_t word0, uint32_t word1) const;
+        std::array<uint32_t,4> jFEXtoRODTrailer  (uint32_t word0, uint32_t word1) const;
         void     jFEXtoRODHeader   (uint32_t word0, uint32_t word1) const;
+        
         
         //unpacking internal coordinates
         
@@ -120,6 +128,7 @@ class jFexRoiByteStreamTool : public extends<AthAlgTool, IL1TriggerByteStreamToo
         constexpr static unsigned int mapIndex(unsigned int jfex, unsigned int fpga, unsigned int iEta, unsigned int iPhi);
         std::unordered_map<unsigned int, std::array<float,2> > m_TobPos_map; /// {map index, {eta,phi}}
         
+        void printError(const std::string& location, const std::string& title, MSG::Level type, const std::string& detail) const;
         
 };
 

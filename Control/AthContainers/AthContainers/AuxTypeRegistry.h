@@ -1,7 +1,7 @@
 // This file's extension implies that it's C, but it's really -*- C++ -*-.
 
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 /**
  * @file AthContainers/AuxTypeRegistry.h
@@ -63,7 +63,7 @@ namespace SG {
 class AuxTypeRegistry
 {
 public:
-  /// Additional flags to quality an auxiliary variable.
+  /// Additional flags to qualify an auxiliary variable.
   enum Flags {
     /// No special flags set.
     None   = 0x00,
@@ -78,8 +78,12 @@ public:
     /// Contact core software before using this for new code.
     Atomic = 0x01,
 
+    // These flags control the behavior of findAuxID() but are not
+    // stored with the variable.
+    SkipNameCheck = 0x80,
+
     /// Enable bitwise functions on this enum; see bitmask.h.
-    IS_ATH_BITMASK
+    ATH_BITMASK
   };
 
   /**
@@ -449,6 +453,16 @@ private:
    */
   static std::string makeKey (const std::string& name,
                               const std::string& clsname);
+
+
+  /**
+   * @brief Check for valid variable name.
+   * @param name Name to check.
+   *
+   * Require that NAME be not empty, contains only alphanumeric characters plus
+   * underscore, and first character is not a digit.
+   */
+  static bool checkName (const std::string& s);
 
 
   /// Hold information about one aux data item.

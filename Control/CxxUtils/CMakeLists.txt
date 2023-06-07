@@ -4,7 +4,7 @@
 atlas_subdir( CxxUtils )
 
 # External dependencies:
-find_package( Boost COMPONENTS program_options regex filesystem thread system timer unit_test_framework )
+find_package( Boost COMPONENTS regex thread system timer unit_test_framework )
 find_package( TBB )
 
 # The main library of the package:
@@ -136,12 +136,6 @@ atlas_add_test( exctrace2_test
    LOG_IGNORE_PATTERN "0x[0-9a-f]{4,}"
 )
 
-atlas_add_test(
-   OptionalContainer_test
-   SOURCES test/OptionalContainer_test.cxx
-   LINK_LIBRARIES CxxUtils
-)
-
 # Set up the "simple" tests:
 foreach( test sincos_test ArrayScanner_test Arrayrep_test
       Array_test PackedArray_test pointer_list_test FloatPacker_test
@@ -156,7 +150,7 @@ foreach( test sincos_test ArrayScanner_test Arrayrep_test
       ConcurrentHashmapImpl_test SimpleUpdater_test hexdump_test
       FPControl_test LockedPointer_test nodiscard_test span_test
       reverse_wrapper_test atomic_bounded_decrement_test
-      releasing_iterator_test SizedUInt_test UIntConv_test )
+      releasing_iterator_test SizedUInt_test UIntConv_test starts_with_test )
    atlas_add_test( ${test}
       SOURCES test/${test}.cxx
       LINK_LIBRARIES CxxUtils TestTools )

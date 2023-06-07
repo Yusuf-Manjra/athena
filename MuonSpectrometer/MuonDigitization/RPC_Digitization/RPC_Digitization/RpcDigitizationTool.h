@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef RPC_DIGITIZATIONTOOL_H
@@ -218,6 +218,8 @@ private:
     bool m_SetEtaOn{false};
     Gaudi::Property<bool> m_muonOnlySDOs{this, "MuonOnlySDOs", true, ""};
 
+    double extract_time_over_threshold_value(CLHEP::HepRandomEngine* rndmEngine) const;
+    
 protected:
     ServiceHandle<PileUpMergeSvc> m_mergeSvc{this, "PileUpMergeSvc", "PileUpMergeSvc", "Pile up service"};
     Gaudi::Property<bool> m_onlyUseContainerName{this, "OnlyUseContainerName", true,

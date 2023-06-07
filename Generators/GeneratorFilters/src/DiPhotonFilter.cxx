@@ -10,7 +10,7 @@
 /// @todo Move to a sorting utils module
 class High2LowByGenParticleClassPt {
 public:
-  bool operator() (HepMC::ConstGenParticlePtr t1, HepMC::ConstGenParticlePtr t2) const {
+  bool operator() (const HepMC::ConstGenParticlePtr& t1, const HepMC::ConstGenParticlePtr& t2) const {
     return t1->momentum().perp2() > t2->momentum().perp2();
   }
 };
@@ -61,7 +61,7 @@ StatusCode DiPhotonFilter::filterEvent() {
   for (itr = events()->begin(); itr!=events()->end(); ++itr) {
     // Loop over all particles in the event
     const HepMC::GenEvent* genEvt = (*itr);
-    for (auto part: *genEvt) {
+    for (const auto& part: *genEvt) {
       if ( (part->pdg_id() == 22) ) {
         if ( part->status() == 1 && (part->momentum().perp() >= ptcut) ) {
           MCTruthPhotonList.push_back(part);

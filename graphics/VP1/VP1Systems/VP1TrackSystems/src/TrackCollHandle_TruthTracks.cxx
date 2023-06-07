@@ -60,7 +60,7 @@ public:
   TrackCollHandle_TruthTracks * theclass = nullptr;
   bool loadHitLists(std::map<SimBarCode,SimHitList> & hitLists);
   void loadGenParticles( std::map<SimBarCode,HepMC::ConstGenParticlePtr> & genParticles,
-			 HepMC::ConstGenVertexPtr vtx );
+			 const HepMC::ConstGenVertexPtr& vtx );
   bool loadGenParticles( std::map<SimBarCode,HepMC::ConstGenParticlePtr> & genParticles,
 			 const QString& hepMcCollKey );
 
@@ -318,19 +318,12 @@ void TrackCollHandle_TruthTracks::fixPDGCode(SimHitHandleBase* handle) const
 
 //____________________________________________________________________
 void TrackCollHandle_TruthTracks::Imp::loadGenParticles( std::map<SimBarCode,HepMC::ConstGenParticlePtr> & genParticles,
-							 HepMC::ConstGenVertexPtr vtx )
+							 const HepMC::ConstGenVertexPtr& vtx )
 {
   if (!vtx)
     return;
-#ifdef HEPMC3
-  for (auto p: vtx->particles_out()){
-#else    
-  HepMC::GenVertex::particles_out_const_iterator itPart(vtx->particles_out_const_begin());
-  HepMC::GenVertex::particles_out_const_iterator itPartEnd(vtx->particles_out_const_end());
+  for (const auto& p: *vtx){
 
-  for (;itPart!=itPartEnd;++itPart) {
-    const HepMC::GenParticle* p = *itPart;
-#endif
     if (!p)//fixme: message.
       continue;
     const HepMC::GenEvent* evt = p->parent_event();

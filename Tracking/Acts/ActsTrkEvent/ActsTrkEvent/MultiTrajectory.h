@@ -30,6 +30,15 @@ constexpr static bool IsReadWrite = false;
 }  // namespace ActsTrk
 
 namespace Acts {
+template<typename T>
+struct IsReadOnlyMultiTrajectory {};
+
+template<typename T>
+struct IsReadOnlyMultiTrajectory<T&> : IsReadOnlyMultiTrajectory<T> {};
+
+template<typename T>
+struct IsReadOnlyMultiTrajectory<T&&> : IsReadOnlyMultiTrajectory<T> {};
+
 template <>
 struct IsReadOnlyMultiTrajectory<ActsTrk::MultiTrajectory<ActsTrk::IsReadOnly>>
     : std::true_type {};
@@ -42,8 +51,8 @@ namespace ActsTrk {
 /**
  * @brief Athena implementation of ACTS::MultiTrajectory
  *
- * @tparam MOD - generates variant of the class that allows ro (if == CANMODIFY)
- * or rw (when not CANMODIFY)
+ * @tparam RWState - generates variant of the class that allows r/o (if == IsReadOnly)
+ * or r/w (when not IsReadWrite)
  */
 template <bool RWState>
 class MultiTrajectory final
@@ -78,6 +87,14 @@ class MultiTrajectory final
                   TrackParametersContainerBackendPtr parameters,
                   TrackJacobianContainerBackendPtr jacobians,
                   TrackMeasurementContainerBackendPtr measurements);
+
+  /**
+   * @brief Construct a new Multi Trajectory object given r/w input MTJ
+   * @note constructed MTJ does not copy backends, they remain shared
+   * @param other - source MTJ
+   */
+  template<bool OtherRWState>
+  MultiTrajectory(const MultiTrajectory<OtherRWState>& other);
 
   /**
    * @brief Add state with stograge for data that depends on the mask
@@ -263,7 +280,7 @@ class MultiTrajectory final
 
   /**
    * @brief clears backends
-   *
+   * decoration columns are still declared
    */
   inline void clear_impl() {
     m_trackStates->clear();
@@ -297,20 +314,25 @@ class MultiTrajectory final
   }
 
   /**
-   * Implementation of calibrated link insertion
-   */ 
-  ATH_MEMBER_REQUIRES(RWState == IsReadWrite, void)
-  setUncalibratedSourceLink_impl(const Acts::SourceLink& sourceLink,
-                                 IndexType istate);
-
+   * Implementation of uncalibrated link insertion
+   */  
+  ATH_MEMBER_REQUIRES(RWState == IsReadWrite,
+                      void)
+  setUncalibratedSourceLink_impl(IndexType istate, const Acts::SourceLink& sourceLink) {
+  auto el =
+      sourceLink.get<ElementLink<xAOD::UncalibratedMeasurementContainer>>();
+  trackStates()[istate]->setUncalibratedMeasurementLink(el);
+  trackStates()[istate]->setGeometryId(sourceLink.geometryId().value());
+  }
   /**
-   * Implementation of calibrated link fetch
+   * Implementation of uncalibrated link fetch
    */ 
-  ATH_MEMBER_REQUIRES(RWState == IsReadWrite, Acts::SourceLink)
-  getUncalibratedSourceLink_impl(IndexType istate);
+  typename Acts::SourceLink getUncalibratedSourceLink_impl(ActsTrk::MultiTrajectory<RWState>::IndexType istate) const;
 
-  ATH_MEMBER_REQUIRES(RWState == IsReadOnly, Acts::SourceLink)
-  getUncalibratedSourceLink_impl(IndexType istate) const;
+  ATH_MEMBER_REQUIRES(RWState == IsReadWrite,
+                      Acts::SourceLink)
+  getUncalibratedSourceLink_impl(ActsTrk::MultiTrajectory<RWState>::IndexType istate);
+
 
  private:
   // bare pointers to the backend (need to be fast and we do not claim ownership
@@ -379,12 +401,15 @@ struct Decoration {
   GetterType getter;
 };
 }  // namespace detail
-
 }  // namespace ActsTrk
 
 #include "MultiTrajectory.icc"
 
 #include "AthenaKernel/CLASS_DEF.h"
 CLASS_DEF(ActsTrk::ConstMultiTrajectory, 237752966, 1)
+
+// These two lines shouldn't be here, but necessary until we have a proper solution
+#include "Acts/EventData/VectorTrackContainer.hpp"
+CLASS_DEF(Acts::ConstVectorTrackContainer, 1074811884, 1)
 
 #endif

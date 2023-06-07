@@ -5,6 +5,13 @@
 #ifndef ACTSTRKSEEDINGTOOL_SEEDINGTOOL_H
 #define ACTSTRKSEEDINGTOOL_SEEDINGTOOL_H
 
+
+// gcc12 gives false positive warnings from copying boost::small_vector.
+#if __GNUC__ >= 12
+# pragma GCC diagnostic ignored "-Wstringop-overread"
+#endif
+
+
 // ATHENA
 #include "ActsTrkToolInterfaces/ISeedingTool.h"
 #include "AthenaBaseComps/AthAlgTool.h"
@@ -90,13 +97,13 @@ namespace ActsTrk {
     Gaudi::Property< float > m_impactMax {this, "impactMax", 2. * Acts::UnitConstants::mm,
       "maximum impact parameter"}; // Used in SeedfinderConfig as well
     Gaudi::Property< std::vector< float > > m_zBinEdges {this, "zBinEdges",
-      {-3000., -2500., -1400., -925., -450., -250.,  250., 450., 925.,   1400.,  2500.,  3000.},
+      {-3000., -2500., -1400., -925., -500., -250.,  250., 500., 925.,   1400.,  2500.,  3000.},
       "enable non equidistant binning in z"}; // Used in SeedfinderConfig as well
     Gaudi::Property< float > m_gridRMax {this, "gridRMax", 320. * Acts::UnitConstants::mm,
       "radial extension of subdetector to be used in grid building"};
-    Gaudi::Property< float > m_gridPhiMin {this, "gridPhiMin", 0,
+    Gaudi::Property< float > m_gridPhiMin {this, "gridPhiMin", -M_PI,
       "phi min for space point grid formation"};
-    Gaudi::Property< float > m_gridPhiMax {this, "gridPhiMax", 2*M_PI,
+    Gaudi::Property< float > m_gridPhiMax {this, "gridPhiMax", M_PI,
       "phi max for space point grid formation"};
     Gaudi::Property< int > m_phiBinDeflectionCoverage {this, "phiBinDeflectionCoverage", 3,
       "sets of consecutive phi bins to cover full deflection of minimum pT particle"};
@@ -106,8 +113,6 @@ namespace ActsTrk {
       "limiting location of measurements"};
     Gaudi::Property< float > m_binSizeR {this, "binSizeR", 1. * Acts::UnitConstants::mm,
       "defining radial bin for space point sorting"};
-    Gaudi::Property< bool > m_forceRadialSorting {this, "forceRadialSorting", true,
-      "enable radial sorting in space point grid"};
     Gaudi::Property< float > m_deltaRMin {this, "deltaRMin", 20. * Acts::UnitConstants::mm,
       "minimum distance in r between two measurements within one seed"}; // Used in SeedFilterConfig as well
     Gaudi::Property< float > m_deltaRMinTopSP {this, "deltaRMinTopSP", 6. * Acts::UnitConstants::mm,
@@ -116,7 +121,7 @@ namespace ActsTrk {
       "maximum distance in r between middle and top SP"};
     Gaudi::Property< float > m_deltaRMinBottomSP {this, "deltaRMinBottomSP", 6. * Acts::UnitConstants::mm,
       "minimum distance in r between middle and top SP"};
-    Gaudi::Property< float > m_deltaRMaxBottomSP {this, "deltaRMaxBottomSP", 120. * Acts::UnitConstants::mm,
+    Gaudi::Property< float > m_deltaRMaxBottomSP {this, "deltaRMaxBottomSP", 150. * Acts::UnitConstants::mm,
       "maximum distance in r between middle and top SP"};
     Gaudi::Property< float > m_deltaZMax {this, "deltaZMax",  600,
       "maximum distance in z between two measurements within one seed"};
@@ -128,7 +133,7 @@ namespace ActsTrk {
       "how many sigmas of scattering angle should be considered"};
     Gaudi::Property< float > m_maxPtScattering {this, "maxPtScattering", 10e6,
       "Upper pt limit for scattering calculation"};
-    Gaudi::Property< float > m_radLengthPerSeed {this, "radLengthPerSeed", 0.1,
+    Gaudi::Property< float > m_radLengthPerSeed {this, "radLengthPerSeed", 0.098045,
       "average radiation lengths of material on the length of a seed. used for scattering"};
     Gaudi::Property< int > m_maxSeedsPerSpM {this, "maxSeedsPerSpM", 4,
       "In dense environments many seeds may be found per middle space point. Only seeds with the highest weight will be kept if this limit is reached."}; // Used in SeedFilterConfig as well
@@ -204,8 +209,8 @@ namespace ActsTrk {
 
     Gaudi::Property<float> m_toleranceParam {this, "toleranceParam", 1.1 * Acts::UnitConstants::mm, 
       "tolerance parameter used to check the compatibility of SPs coordinates in xyz"};
-    Gaudi::Property<float> m_phiMin {this, "phiMin", 0, ""};
-    Gaudi::Property<float> m_phiMax {this, "phiMax", 2 * M_PI, ""};
+    Gaudi::Property<float> m_phiMin {this, "phiMin", -M_PI, ""};
+    Gaudi::Property<float> m_phiMax {this, "phiMax", M_PI, ""};
     Gaudi::Property<float> m_rMin {this, "rMin", 0 * Acts::UnitConstants::mm, ""};    
     Gaudi::Property<float> m_zAlign {this, "zAlign", 0 * Acts::UnitConstants::mm, ""};
     Gaudi::Property<float> m_rAlign {this, "rAlign", 0 * Acts::UnitConstants::mm, ""};
@@ -223,8 +228,6 @@ namespace ActsTrk {
       "increment in seed weight if needed"};
     Gaudi::Property< float > m_numSeedIncrement {this, "numSeedIncrement", 10e6,
       "increment in seed weight is applied if the number of compatible seeds is larger than numSeedIncrement"};
-    Gaudi::Property< bool > m_curvatureSortingInFilter {this, "curvatureSortingInFilter", true,
-      "sort seed vectors by curvature"};
     Gaudi::Property< bool > m_seedConfirmationInFilter {this, "seedConfirmationInFilter", true,
       "run seed confirmation"};
     Gaudi::Property< std::size_t > m_maxSeedsPerSpMConf {this, "maxSeedsPerSpMConf", 5,

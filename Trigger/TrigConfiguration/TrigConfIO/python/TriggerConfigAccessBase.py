@@ -1,7 +1,8 @@
-# Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 import os
 import json
+import re
 import six
 import xml.etree.ElementTree as ET
 from collections import OrderedDict as odict
@@ -38,7 +39,7 @@ class ConfigType(Enum):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-class ConfigLoader(object):
+class ConfigLoader:
     """ 
     ConfigLoader derived classes hold the information of the configuration source
     and define the method to load the configuration
@@ -51,7 +52,6 @@ class ConfigLoader(object):
         """
         if config['filetype'] != self.configType:
             raise RuntimeError("Can not load file with filetype '%s' when expecting '%s'" % (config['filetype'], self.configType.filetype))
-        
 
 class ConfigFileLoader(ConfigLoader):
     def __init__(self, configType, filename ):
@@ -136,7 +136,7 @@ class ConfigDBLoader(ConfigLoader):
         try:
             authFile = ConfigDBLoader.getResolvedFileName("authentication.xml", "CORAL_AUTH_PATH")
         except Exception as e:
-            log.warning("File authentication.xml is not available! Oracle connection cannot be established. Exception message is: {0}".format(e))
+            log.warning("File authentication.xml is not available! Oracle connection cannot be established. Exception message is: %s",e)
         else:
             for svc in filter(lambda s : s.startswith("oracle:"), listOfServices):
                 ap = ET.parse(authFile)
@@ -183,28 +183,41 @@ class ConfigDBLoader(ConfigLoader):
 
             versionTagPrefix = "Trigger-Run3-Schema-v"
             if not versionTag.startswith(versionTagPrefix):
-                raise RuntimeError( "Tag format error: Trigger schema version tag {0} does not start with {1}".format(versionTag, versionTagPrefix))   
+                raise RuntimeError( "Tag format error: Trigger schema version tag %s does not start with %s", versionTag, versionTagPrefix) 
 
             vstr = versionTag[len(versionTagPrefix)]
 
             if not vstr.isdigit():
-                raise RuntimeError( "Invalid argument when interpreting the version part {0} of schema tag {1} is {2}".format(vstr, versionTag, type(vstr))) 
+                raise RuntimeError( "Invalid argument when interpreting the version part %s of schema tag %s is %s", vstr, versionTag, type(vstr))
 
-            log.info("Found schema version {0}".format(vstr))
+            log.debug("Found schema version %s", vstr)
             return int(vstr)
 
         except Exception as e:
-            log.warning("Failed to read schema version: {0}".format(e))
+            log.warning("Failed to read schema version: %r", e)
 
     @staticmethod
-    def getCoralQuery(session, queryStr):
+    def getCoralQuery(session, queryStr, qdict = None):
         ''' Parse output, tables and contidion from the query string into coral query object'''
         query = session.nominalSchema().newQuery()
 
-        output = queryStr.split("SELECT")[1].split("FROM")[0]
-        query.addToOutputList(output)
+        if qdict is not None:
+            queryStr = queryStr.format(**qdict)
 
-        log.info("Conversion for Coral of query: {0}".format(queryStr))
+        # bind vars
+        bindVars = coral.AttributeList()
+        bindVarsInQuery = re.findall(r":(\w*)", queryStr)
+        if len(bindVarsInQuery) > 0 and qdict is None:
+            log.error("Query has bound-variable syntax but no value dictionary is provided. Query: %s", queryStr)
+        for k in bindVarsInQuery:
+            bindVars.extend(k, "int")
+            bindVars[k].setData(qdict[k])
+
+        output = queryStr.split("SELECT")[1].split("FROM")[0]
+        for field in output.split(','):
+            query.addToOutputList(field)
+
+        log.debug("Conversion for Coral of query: %s", queryStr)
 
         for table in queryStr.split("FROM")[1].split("WHERE")[0].split(","):
             tableSplit = list(filter(None, table.split(" ")))
@@ -212,7 +225,14 @@ class ConfigDBLoader(ConfigLoader):
             query.addToTableList(tableSplit[0].split(".")[1], tableSplit[1])
 
         if "WHERE" in queryStr:
-            query.setCondition(queryStr.split("WHERE")[1], coral.AttributeList())
+            cond = queryStr.split("WHERE")[1]
+            m = re.match("(.*)(?i: ORDER *BY )(.*)", cond) # check for "order by" clause
+            if m:
+                where, order = m.groups()
+                query.setCondition(where, bindVars)
+                query.addToOrderList(order)
+            else:
+                query.setCondition(cond, bindVars)
 
         return query
 
@@ -236,115 +256,88 @@ class ConfigDBLoader(ConfigLoader):
         svcconfig.disablePoolAutomaticCleanUp()
         svcconfig.setConnectionTimeOut(0)
 
+        failureMode = 0
         for credential in credentials:
-            log.info("Trying credentials {0}".format(credential))
+            log.debug("Trying credentials %s",credential)
 
             try: 
                 session = svc.connect(credential, coral.access_ReadOnly)
             except Exception as e:
-                log.warning("Failed to establish connection: {0}".format(e))
+                log.warning("Failed to establish connection: %s",e)
+                failureMode = max(1, failureMode)
                 continue
 
-            try:
-                # Check that the FRONTIER_SERVER is set properly, if not reduce the retrial period and time out values
-                if not ('FRONTIER_SERVER' in os.environ and os.environ['FRONTIER_SERVER']):
-                    svcconfig.setConnectionRetrialPeriod(1)
-                    svcconfig.setConnectionRetrialTimeOut(1)
-                else:
-                    svcconfig.setConnectionRetrialPeriod(300)
-                    svcconfig.setConnectionRetrialTimeOut(3600)
+            # Check that the FRONTIER_SERVER is set properly, if not reduce the retrial period and time out values
+            if 'FRONTIER_SERVER' in os.environ and os.environ['FRONTIER_SERVER']:
+                svcconfig.setConnectionRetrialPeriod(300)
+                svcconfig.setConnectionRetrialTimeOut(3600)
+            else:
+                svcconfig.setConnectionRetrialPeriod(1)
+                svcconfig.setConnectionRetrialTimeOut(1)
 
+            try:
                 session.transaction().start(True) # readOnly
-                schema = ConfigDBLoader.getSchema(credential)
-                qdict = { "schema" : schema, "dbkey" : self.dbkey }
+                self.schema = ConfigDBLoader.getSchema(credential)
+                qdict = { "schema" : self.schema, "dbkey" : self.dbkey }
                 
-                # Choose query basen on schema
+                # Choose query based on schema
                 schemaVersion = ConfigDBLoader.readSchemaVersion(qdict, session)
                 qstr = self.getQueryDefinition(schemaVersion)
-
-                if "HLT_MONITORING_GROUPS" in qstr:
-                    query = ConfigDBLoader.readMonGroupKey(qstr, qdict, session)
-                else:
-                    query = ConfigDBLoader.getCoralQuery(session, qstr.format(**qdict))
-
+                # execute coral query
+                query = ConfigDBLoader.getCoralQuery(session, qstr, qdict)
                 cursor = query.execute()
 
-                # Read query result
-                cursor.next()
-                configblob = cursor.currentRow()[0].data()
-                if type(configblob) != str:
-                    configblob = configblob.readline()
-                config = json.loads(configblob, object_pairs_hook = odict)
-                session.transaction().commit()
-                
-                self.confirmConfigType(config)
-                return config       
             except Exception as e:
-                log.warning("Failed to execute query: {0}".format(e))
-                ConfigDBLoader.readMaxTableKey(qstr, qdict, session)
-                session.transaction().commit()
+                log.warning(f"DB query on {credential} failed to execute.")
+                log.warning("Exception message: %r", e)
+                failureMode = max(2, failureMode)
+                continue # to next source
 
-        raise RuntimeError("Query failed")
+            # Read query result
+            if not cursor.next():
+                # empty result
+                log.warning(f"DB query on {credential} returned empty result, likely due to non-existing key {self.dbkey}")
+                failureMode = 3
+                continue # to next source
 
+            configblob = cursor.currentRow()[0].data()
+            if type(configblob) != str:
+                configblob = configblob.readline()
+            config = json.loads(configblob, object_pairs_hook = odict)
+            session.transaction().commit()
+            
+            self.confirmConfigType(config)
+            return config
 
-    @staticmethod
-    def readMaxTableKey(q, qdict, session):
-        ''' Read highest available key in table, based on the query'''
-        try:
-            # In the case of multiple queries (e.g. MonGroups) take only the former
-            q = q.split(";")[0]
-            # Create query - remove last condition for the key value and add it in begining as "SELECT MAX"
-            id_str = q.split("WHERE")[1].split("AND")[-1].split("=")[0]
-
-            q_formatted = "SELECT MAX(" + id_str + ") FROM " + q.split("FROM")[1].split("WHERE")[0]
-
-            query = ConfigDBLoader.getCoralQuery(session, q_formatted.format(**qdict))
-            cursor = query.execute()
-            cursor.next()
-
-            log.info("Highest available key in %s is %i", id_str, int(cursor.currentRow()[0].data()))
-        except Exception as e:
-            log.warning("Failed to read maximum available key: {0}".format(e))
-
-    @staticmethod
-    def readMonGroupKey(q, qdict1, session):
-        ''' Read highest available key in table, based on the query'''
-        try:
-            # First query is to find HLTMenuTableID
-            qStr1 = q.split(";")[0]
-            query1 = ConfigDBLoader.getCoralQuery(session, qStr1.format(**qdict1))
-            cursor1 = query1.execute()
-            cursor1.next()
-            dbkeyResult = int(cursor1.currentRow()[0].data())
-
-            # Second query is to use the found HLTMenuTableID and find the matching MonGroupKey
-            # The query is performed as part of load(), and is only built here
-            qdict2 = { "schema" : qdict1["schema"], "dbkeyResult" : dbkeyResult }
-            qStr2 = q.split(";")[1]
-            query2 = ConfigDBLoader.getCoralQuery(session, qStr2.format(**qdict2))
-            return query2
-
-        except Exception as e:
-            log.warning("Failed to read HLT menu to find MonGroup key: {0}".format(e))
-
+        log.error("Unsuccessful DB query: %s", qstr.format(**qdict))
+        log.error("Considered sources: %s", ", ".join(credentials))
+        if failureMode == 1:
+            log.error("TriggerDB query: could not connect to any source for %s", self.configType.basename)
+            raise RuntimeError("TriggerDB query: could not connect to any source", self.configType.basename)
+        if failureMode == 2:
+            log.error("Query failed due to wrong definition for %s", self.configType.basename)
+            raise RuntimeError("Query failed due to wrong definition", self.configType.basename)
+        elif failureMode == 3:
+            log.error("DB key %s does not exist for %s", self.dbkey, self.configType.basename)
+            raise KeyError("DB key does not exist", self.dbkey, self.configType.basename)
+        else:
+            raise RuntimeError("Query failed for unknown reason")
 
     # proposed filename when writing config to file
     def getWriteFilename(self):
         return "{basename}_{schema}_{dbkey}.json".format(basename = self.configType.basename, schema = self.schema, dbkey = self.dbkey)
 
-
-
-class TriggerConfigAccess(object):
+class TriggerConfigAccess:
     """ 
     base class to hold the configuration (OrderedDict) 
     and provides basic functions to access and print
     """
-    def __init__(self, configType, mainkey, filename = None, jsonString=None, dbalias = None, dbkey = None):
-        self._getLoader(configType = configType, filename = filename, jsonString=jsonString, dbalias = dbalias, dbkey = dbkey)
+    def __init__(self, configType, mainkey, filename = None, jsonString = None, dbalias = None, dbkey = None):
+        self._getLoader(configType = configType, filename = filename, jsonString = jsonString, dbalias = dbalias, dbkey = dbkey)
         self._mainkey = mainkey
         self._config = None
 
-    def _getLoader(self, configType, filename = None, jsonString=None, dbalias = None, dbkey = None ):
+    def _getLoader(self, configType, filename = None, jsonString = None, dbalias = None, dbkey = None ):
         if filename:
             self.loader = ConfigFileLoader( configType, filename )
         elif dbalias and dbkey:
@@ -387,9 +380,10 @@ class TriggerConfigAccess(object):
         """ print summary info, should be overwritten by derived classes """
         log.info("Configuration name: {0}".format(self.name()))
         log.info("Configuration size: {0}".format(len(self)))
+
     def writeFile(self, filename = None):
         if filename is None:
             filename = self.loader.getWriteFilename()
         with open(filename, 'w') as fh:
             json.dump(self.config(), fh, indent = 4, separators=(',', ': '))
-            log.info("Wrote file {0}".format(filename))
+            log.info("Wrote file %s", filename)

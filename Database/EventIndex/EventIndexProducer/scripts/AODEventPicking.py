@@ -18,6 +18,7 @@ class PyxAODEvtFilter(Alg):
         kw['name'] = name
         super(PyxAODEvtFilter, self).__init__(**kw)
         self.evtList = kw.get('evtList',   None)
+        self.isMC = kw.get('isMC', False)
         return
 
     # Initialize the algorithm
@@ -33,9 +34,12 @@ class PyxAODEvtFilter(Alg):
             ei = self.sg.retrieve('xAOD::EventInfo', 'EventInfo')
             runNumber = ei.runNumber()
             eventNumber = ei.eventNumber()
+            mcChannelNumber = ei.mcChannelNumber()
 
             # Check to see if we should accept or reject the event
             if (runNumber, eventNumber) in self.evtList:
+                self.setFilterPassed(True)
+            elif self.isMC and (mcChannelNumber, eventNumber) in self.evtList:
                 self.setFilterPassed(True)
             else:
                 self.setFilterPassed(False)
@@ -96,12 +100,17 @@ if '__main__' in __name__:
     cfg.merge(PoolReadCfg(flags))
 
     # Setup event picking
-    cfg.addEventAlgo(PyxAODEvtFilter('EventFilterAlg', evtList = evtList), sequenceName = 'AthAlgSeq')
+    cfg.addEventAlgo(PyxAODEvtFilter('EventFilterAlg', evtList = evtList, isMC = flags.Input.isMC), sequenceName = 'AthAlgSeq')
 
     # Configure the output stream
     log.info('== Configuring Output Stream')
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
     cfg.merge(OutputStreamCfg(flags, 'AOD'))
+
+    # Configure metadata
+    log.info('== Configuring metadata for the output stream')
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
+    cfg.merge(SetupMetaDataForStreamCfg(flags, 'AOD'))
 
     # Setup the output stream algorithm
     StreamAOD = cfg.getEventAlgo('OutputStreamAOD')

@@ -13,19 +13,16 @@ atlas_add_component( ActsTrkFindingTool
                      LINK_LIBRARIES
                      GaudiKernel
                      ActsCore
-                     ActsTrkEvent
+                     ActsTrkEventLib
                      ActsTrkToolInterfacesLib
                      ActsInteropLib
-                     CxxUtils
+                     
                      InDetRecToolInterfaces
                      SiSpacePoint
                      xAODInDetMeasurement
                      InDetRIO_OnTrack
                      ActsTrkEventCnvLib
                      )
-
-# Install files from the package:
-atlas_install_python_modules( python/*.py POST_BUILD_CMD ${ATLAS_FLAKE8} )
 
 
 

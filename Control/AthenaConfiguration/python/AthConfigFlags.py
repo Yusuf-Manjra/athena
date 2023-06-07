@@ -1,8 +1,11 @@
-# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 from copy import copy, deepcopy
+from difflib import get_close_matches
+import importlib
 from AthenaCommon.Logging import logging
 from PyUtils.moduleExists import moduleExists
+
 _msg = logging.getLogger('AthConfigFlags')
 
 def isGaudiEnv():
@@ -17,9 +20,9 @@ class CfgFlag(object):
     the value based on other flags.
     """
 
-    __slots__ = ['_value', '_setDef', '_enum']
+    __slots__ = ['_value', '_setDef', '_enum', '_help']
 
-    def __init__(self, default, enum=None):
+    def __init__(self, default, enum=None, help=None):
         """Initialise the flag with the default value.
 
         Optionally set an enum of allowed values.
@@ -27,6 +30,7 @@ class CfgFlag(object):
         if default is None:
             raise RuntimeError("Default value of a flag must not be None")
         self._enum = enum
+        self._help = help
         self.set(default)
         return
 
@@ -106,36 +110,14 @@ class FlagAddress(object):
             self._name  = f._name+"."+name
 
     def __getattr__(self, name):
-        # the logic it implements is as follows:
-        # full flag name is formed from the path + name passed as an argument
-        # first try if the flags is available (most frequent case)
-        # if not see if the path+name is used in one of the flags of longer name (having more pieces)
-        # if not try dynamic flags loading
-        # after basically above stops are repeated
-
-        merged = self._name + "." + name
-        if self._flags.hasFlag( merged ):
-            return self._flags._get( merged )
-
-        if self._flags.hasCategory( merged ): # the flag name is not complete yet
-            return FlagAddress( self, name )
-
-        self._flags._loadDynaFlags( merged )
-
-        if self._flags.hasCategory( merged ): # the flag name is not complete yet
-            return FlagAddress( self, name )
-
-        if self._flags.hasFlag( merged ):
-            return self._flags._get( merged )
-
-        raise RuntimeError( "No such flag: {}  The name is likely incomplete.".format(merged) )
+        return getattr(self._flags, self._name + "." + name)
 
     def __setattr__( self, name, value ):
         if name.startswith("_"):
             return object.__setattr__(self, name, value)
         merged = self._name + "." + name
 
-        if not self._flags.hasFlag( merged ): # flag ismisisng, try loading dynamic ones
+        if not self._flags.hasFlag( merged ): # flag is misisng, try loading dynamic ones
             self._flags._loadDynaFlags( merged )
 
         if not self._flags.hasFlag( merged ):
@@ -162,8 +144,11 @@ class AthConfigFlags(object):
         self._flagdict=dict()
         self._locked=False
         self._dynaflags = dict()
-        self._loaded    = set() # dynamic dlags that were loaded
+        self._loaded    = set()      # dynamic dlags that were loaded
+        self._categoryCache = set()  # cache for already found categories
         self._hash = None
+        self._parser = None
+        self._args = None # user args from parser
 
     def athHash(self):
         if self._hash is None:
@@ -178,9 +163,28 @@ class AthConfigFlags(object):
         return hash(str(self._flagdict.items()))
 
     def __getattr__(self, name):
-        if name in self._flagdict:
+        # Avoid infinite recursion looking up our own attributes
+        _flagdict = object.__getattribute__(self, "_flagdict")
+
+        # First try to get an already loaded flag or category
+        if name in _flagdict:
             return self._get(name)
-        return FlagAddress(self, name)
+
+        if self.hasCategory(name):
+            return FlagAddress(self, name)
+
+        # Reaching here means that we may need to load a dynamic flag
+        self._loadDynaFlags(name)
+
+        # Try again
+        if name in _flagdict:
+            return self._get(name)
+
+        if self.hasCategory(name):
+            return FlagAddress(self, name)
+
+        # Reaching here means that it truly isn't something we know about
+        raise AttributeError(f"No such flag: {name}")
 
     def __setattr__(self, name, value):
         if name.startswith("_"):
@@ -191,11 +195,11 @@ class AthConfigFlags(object):
         raise RuntimeError( "No such flag: "+ name+". The name is likely incomplete." )
 
 
-    def addFlag(self, name, setDef, enum=None):
+    def addFlag(self, name, setDef, enum=None, help=None):
         self._tryModify()
         if name in self._flagdict:
             raise KeyError("Duplicated flag name: {}".format( name ))
-        self._flagdict[name]=CfgFlag(setDef, enum)
+        self._flagdict[name]=CfgFlag(setDef, enum, help)
         return
 
     def addFlagsCategory(self, path, generator, prefix=False):
@@ -251,48 +255,50 @@ class AthConfigFlags(object):
                 self._loadDynaFlags( prefix )
 
     def hasCategory(self, name):
-        path = name+'.'
+        # We cache successfully found categories
+        if name in self._categoryCache:
+            return True
+
+        # If not found do search through all keys.
+        # TODO: could be improved by using a trie for _flagdict
         for f in self._flagdict.keys():
-            if f.startswith(path):
+            if f.startswith(name+'.'):
+                self._categoryCache.add(name)
                 return True
         for c in self._dynaflags.keys():
-            if c.startswith(path):
+            if c.startswith(name):
+                self._categoryCache.add(name)
                 return True
+
         return False
 
     def hasFlag(self, name):
-        if name in self._flagdict:
-            return True
-        return False
+        return name in self._flagdict
 
     def _set(self,name,value):
         self._tryModify()
-        if name in self._flagdict:
+        try:
             self._flagdict[name].set(value)
-            return
-        errString="No flag with name \'{}\' found".format( name )
-        from difflib import get_close_matches
-        closestMatch=get_close_matches(name,self._flagdict.keys(),1)
-        if len(closestMatch)>0:
-            errString+=". Did you mean \'{}\'?".format(  closestMatch[0] )
-        raise KeyError(errString)
+        except KeyError:
+            closestMatch = get_close_matches(name,self._flagdict.keys(),1)
+            raise KeyError(f"No flag with name '{name}' found" +
+                           (f". Did you mean '{closestMatch[0]}'?" if closestMatch else ""))
 
     def _get(self,name):
-        if name in self._flagdict:
+        try:
             return self._flagdict[name].get(self)
-
-        errString="No flag with name \'{}\' found".format( name )
-        from difflib import get_close_matches
-        closestMatch=get_close_matches(name,self._flagdict.keys(),1)
-        if len(closestMatch)>0:
-            errString+=". Did you mean \'{}\'?".format( closestMatch[0] )
-        raise KeyError(errString)
+        except KeyError:
+            closestMatch = get_close_matches(name,self._flagdict.keys(),1)
+            raise KeyError(f"No flag with name '{name}' found" +
+                           (f". Did you mean '{closestMatch[0]}'?" if closestMatch else ""))
 
     def __call__(self,name):
         return self._get(name)
 
     def lock(self):
         if not self._locked:
+            # before locking, parse args if a parser was defined
+            if self._args is None and self._parser is not None: self.fillFromArgs()
             self._locked = True
             self._hash = self._calculateHash()
         return
@@ -402,16 +408,25 @@ class AthConfigFlags(object):
             self._dynaflags[fullName] = loader
         return
 
-    def dump(self, pattern=".*", evaluate=False):
+    def dump(self, pattern=".*", evaluate=False, formatStr="{:40} : {}", maxLength=None):
         import re
         compiled = re.compile(pattern)
-        print("{:40} : {}".format( "Flag Name","Value" ) )
+        print(formatStr.format( "Flag Name","Value" ) )
+        def truncate(s): return s[:maxLength] + ("..." if maxLength and len(s)>maxLength else "")
         for name in sorted(self._flagdict):
             if compiled.match(name):
                 if evaluate:
-                    print("{:40} : {}".format( name, self._flagdict[name].get(self) ) )
+                    try:
+                        rep = repr(self._flagdict[name] )
+                        val = repr(self._flagdict[name].get(self))
+                        if val != rep:
+                            print(formatStr.format(name,truncate("{} {}".format( val, rep )) ))
+                        else:
+                            print(formatStr.format( name, truncate("{}".format(val)) ) )
+                    except Exception as e:
+                        print(formatStr.format(name, truncate("Exception: {}".format( e )) ))
                 else:
-                    print("{:40} : {}".format( name, repr(self._flagdict[name] ) ) )
+                    print(formatStr.format( name, truncate("{}".format(repr(self._flagdict[name] ) )) ))
 
         if len(self._dynaflags) == 0:
             return
@@ -431,23 +446,75 @@ class AthConfigFlags(object):
         return
 
 
-    def getArgumentParser(self):
+    def getArgumentParser(self, **kwargs):
         """
         Scripts calling AthConfigFlags.fillFromArgs can extend this parser, and pass their version to fillFromArgs
         """
         import argparse
-        parser= argparse.ArgumentParser()
-        parser.add_argument("-d","--debug", default=None, help="attach debugger (gdb) before run, <stage>: init, exec, fini")
-        parser.add_argument("-i","--interactive", default=None, help="Drop into interactive mode before <stage>: init or run")
+        parser= argparse.ArgumentParser(formatter_class = argparse.ArgumentDefaultsHelpFormatter, **kwargs )
+        parser.add_argument("-d","--debug", default=None, choices=["init", "exec", "fini"], help="attach debugger (gdb) before run, <stage>")
+        parser.add_argument("-i","--interactive", default=None, choices=["init","run"], help="Drop into interactive mode at <stage>")
         parser.add_argument("--evtMax", type=int, default=None, help="Max number of events to process")
         parser.add_argument("--skipEvents", type=int, default=None, help="Number of events to skip")
-        parser.add_argument("--filesInput", default=None, help="Input file(s), supports * wildcard")
-        parser.add_argument("-l", "--loglevel", default=None, help="logging level (ALL, VERBOSE, DEBUG,INFO, WARNING, ERROR, or FATAL")
+        parser.add_argument("--filesInput", default=None,nargs='+', help="Input file(s), supports * wildcard")
+        parser.add_argument("-l", "--loglevel", default=None, choices=["ALL","VERBOSE","DEBUG","INFO","WARNING","ERROR","FATAL"], help="logging level")
         parser.add_argument("--config-only", type=str, default=None, help="Stop after configuration phase (may not be respected by all diver scripts)")
-        parser.add_argument("--threads", type=int, default=0, help="Run with given number of threads")
-        parser.add_argument("--nprocs", type=int, default=0, help="Run AthenaMP with given number of worker processes")
+        parser.add_argument("--threads", type=int, default=None, help="Run with given number of threads (use 0 for serial execution)")
+        parser.add_argument('--concurrent-events', type=int, default=None, help='number of concurrent events for AthenaMT')
+        parser.add_argument("--nprocs", type=int, default=None, help="Run AthenaMP with given number of worker processes")
+        parser.add_argument("--mtes", type=bool, default=None, help="Run multi-threaded event service")
+        parser.add_argument("--mtes-channel", type=str, default=None, help="For multi-threaded event service: the name of communication channel between athena and pilot")
+        parser.add_argument("---",dest="terminator",action='store_true', help=argparse.SUPPRESS) # special hidden option required to convert option terminator -- for --help calls
+        parser.add_argument("--pmon", type=str.lower, default=None, choices=['fastmonmt','fullmonmt'], help="Performance monitoring")
 
         return parser
+
+    def parser(self):
+        if self._parser is None: self._parser = self.getArgumentParser()
+        return self._parser
+
+    def args(self):
+        return self._args
+
+
+    def fillFromString(self, flag_string):
+        """Fill the flags from a string of type key=value"""
+
+        try:
+            key, value = flag_string.split("=")
+        except ValueError:
+            raise ValueError(f"Cannot interpret argument {flag_string}, expected a key=value format")
+
+        key = key.strip()
+        value = value.strip()
+
+        # also allow key+=value to append
+        oper = "="
+        if (key[-1]=="+"):
+            oper = "+="
+            key = key[:-1]
+
+        if not self.hasFlag(key):
+            self._loadDynaFlags( '.'.join(key.split('.')[:-1]) ) # for a flag A.B.C dymanic flags from category A.B
+        if not self.hasFlag(key):
+            raise KeyError(f"{key} is not a known configuration flag")
+
+        enum = self._flagdict[key]._enum
+        # Regular flag
+        if enum is None:
+            try:
+                exec(f"type({value})")
+            except (NameError, SyntaxError): #Can't determine type, assume we got an un-quoted string
+                value=f"\"{value}\""
+        # FlagEnum
+        else:
+            # import the module containing the FlagEnum class
+            ENUM = importlib.import_module(enum.__module__)  # noqa: F841 (used in exec)
+            value=f"ENUM.{value}"
+
+        # Set the value
+        exec(f"self.{key}{oper}{value}")
+
 
     # parser argument must be an ArgumentParser returned from getArgumentParser()
     def fillFromArgs(self, listOfArgs=None, parser=None):
@@ -459,84 +526,145 @@ class AthConfigFlags(object):
         self._tryModify()
 
         if parser is None:
-            parser = self.getArgumentParser()
-        (args,leftover)=parser.parse_known_args(listOfArgs or sys.argv[1:])
+            parser = self.parser()
+        self._parser = parser # set our parser to given one
+        argList = listOfArgs or sys.argv[1:]
+        do_help = False
+        # We will now do a pre-parse of the command line arguments to propagate these to the flags
+        # the reason for this is so that we can use the help messaging to display the values of all
+        # flags as they would be *after* any parsing takes place. This is nice to see e.g. the value
+        # that any derived flag (functional flag) will take after, say, the filesInput are set
+        import argparse
+        unrequiredActions = []
+        if "-h" in argList or "--help" in argList:
+            do_help = True
+            if "-h" in argList: argList.remove("-h")
+            if "--help" in argList: argList.remove("--help")
+            # need to unrequire any required arguments in order to do a "pre parse"
+            for a in parser._actions:
+                if a.required:
+                    unrequiredActions.append(a)
+                    a.required = False
+        (args,leftover)=parser.parse_known_args(argList)
+        for a in unrequiredActions: a.required=True
+
+        # remove the leftovers from the argList ... for later use in the do_help
+        argList = [a for a in argList if a not in leftover]
 
         #First, handle athena.py-like arguments:
 
-        if args.debug:
+        if args.debug is not None:
             from AthenaCommon.Debugging import DbgStage
             if args.debug not in DbgStage.allowed_values:
                 raise ValueError("Unknown debug stage, allowed values {}".format(DbgStage.allowed_values))
             self.Exec.DebugStage=args.debug
 
-        if args.interactive:
+        if args.evtMax is not None:
+            self.Exec.MaxEvents=args.evtMax
+
+        if args.interactive is not None:
             if args.interactive not in ("init","run"):
                 raise ValueError("Unknown value for interactive, allowed values are 'init' and 'run'")
             self.Exec.Interactive=args.interactive
 
-        if args.evtMax:
-            self.Exec.MaxEvents=args.evtMax
-
-        if args.skipEvents:
+        if args.skipEvents is not None:
             self.Exec.SkipEvents=args.skipEvents
 
-        if args.filesInput:
-            filesList = args.filesInput.split(",")            
-            if '*' in args.filesInput: # handle wildcard
-                self.Input.Files = [] # remove generic
-                import glob
-                for path in filesList:
-                    self.Input.Files += glob.glob(path)
-            else:
-                self.Input.Files = filesList
-                
+        if args.filesInput is not None:
+            self.Input.Files = [] # remove generic
+            for f in args.filesInput:
+                #because of argparse used with nargs+, fileInput will also swallow arguments meant to be flags
+                if "=" in f:
+                    leftover.append(f)
+                else:
+                    for ffile in f.split(","):
+                        if '*' in ffile: # handle wildcard
+                            import glob
+                            self.Input.Files += glob.glob(ffile)
+                        else:
+                            self.Input.Files += [ffile]
 
-        if args.loglevel:
+        if args.loglevel is not None:
             from AthenaCommon import Constants
             if hasattr(Constants,args.loglevel):
                 self.Exec.OutputLevel=getattr(Constants,args.loglevel)
             else:
                 raise ValueError("Unknown log-level, allowed values are ALL, VERBOSE, DEBUG,INFO, WARNING, ERROR, FATAL")
-        
-        if args.config_only:
+
+        if args.config_only is not None:
             from os import environ
             environ["PICKLECAFILE"] = args.config_only
-            
-        if args.threads:
-            self.Concurrency.NumThreads = args.threads
 
-        if args.nprocs:
+        if args.threads is not None:
+            self.Concurrency.NumThreads = args.threads
+            #Work-around a possible inconsistency of NumThreads and NumConcurrentEvents that may
+            #occur when these values are set by the transforms and overwritten by --athenaopts .. 
+            #See also ATEAM-907
+            if args.concurrent_events is None and self.Concurrency.NumConcurrentEvents==0:
+                self.Concurrency.NumConcurrentEvents = args.threads
+
+
+        if args.concurrent_events is not None:
+            self.Concurrency.NumConcurrentEvents = args.concurrent_events
+
+        if args.nprocs is not None:
             self.Concurrency.NumProcs = args.nprocs
 
+        if args.pmon is not None:
+            self._loadDynaFlags("PerfMon")
+            dispatch = {'fastmonmt' : 'PerfMon.doFastMonMT',
+                        'fullmonmt' : 'PerfMon.doFullMonMT'}
+            self._set(dispatch[args.pmon.lower()], True)
+
+        if args.mtes is not None:
+            self.Exec.MTEventService = args.mtes
+
+        if args.mtes_channel is not None:
+            self.Exec.MTEventServiceChannel = args.mtes_channel
+
         #All remaining arguments are assumed to be key=value pairs to set arbitrary flags:
-
-
         for arg in leftover:
-            #Safety check on arg: Contains exactly one '=' and left side is a valid flag
-            argsplit=arg.split("=")
-            if len(argsplit)!=2:
-                raise ValueError("Can't interpret argument {}, expected a key=value format".format( arg ) )
+            if arg=='--':
+                argList += ["---"]
+                continue # allows for multi-value arguments to be terminated by a " -- "
+            if do_help and '=' not in arg:
+                argList += arg.split(".") # put arg back back for help (but split by sub-categories)
+                continue
 
-            key=argsplit[0].strip()
+            self.fillFromString(arg)
 
-            if not self.hasFlag(key):
-                self._loadDynaFlags( '.'.join(key.split('.')[:-1]) ) # for a flag A.B.C dymanic flags from category A.B
-            if not self.hasFlag(key):
-                raise KeyError("{} is not a known configuration flag".format( key ) )
+        if do_help:
+            if parser.epilog is None: parser.epilog=""
+            parser.epilog += "  Note: Specify additional flags in form <flagName>=<value>."
+            subparsers = {"":[parser,parser.add_subparsers(help=argparse.SUPPRESS)]} # first is category's parser, second is subparsers (effectively the category's subcategories)
+            # silence logging while evaluating flags
+            logging.root.setLevel(logging.ERROR)
+            def getParser(category): # get parser for a given category
+                if category not in subparsers.keys():
+                    cat1,cat2 = category.rsplit(".",1) if "." in category else ("",category)
+                    p,subp = getParser(cat1)
+                    if subp.help==argparse.SUPPRESS:
+                        subp.help = "Flag subcategories:"
+                    newp = subp.add_parser(cat2,help="{} flags".format(category),
+                                           formatter_class = argparse.ArgumentDefaultsHelpFormatter,usage=argparse.SUPPRESS)
+                    newp._positionals.title = "flags"
+                    subparsers[category] = [newp,newp.add_subparsers(help=argparse.SUPPRESS)]
+                return subparsers[category]
+            self.loadAllDynamicFlags()
+            for name in sorted(self._flagdict):
+                category,flagName = name.rsplit(".",1) if "." in name else ("",name)
+                try:
+                    val = repr(self._flagdict[name].get(self))
+                except Exception:
+                    val = None
+                if self._flagdict[name]._help != argparse.SUPPRESS:
+                    getParser(category)[0].add_argument(name,nargs='?',default=val,help=": " + (self._flagdict[name]._help if self._flagdict[name]._help is not None else ""))
 
-            value=argsplit[1].strip()
+            parser._positionals.title = 'flags and positional arguments'
+            parser.parse_known_args(argList + ["--help"])
 
-            try:
-                exec("type({})".format( value ) )
-            except (NameError, SyntaxError): #Can't determine type, assume we got an un-quoted string
-                value="\"{}\"".format( value )
+        self._args = args
 
-            #Arg looks good enough, just exec it:
-            argToExec="self.{}={}".format( key, value )
-
-            exec(argToExec)
-            pass
         return args
 
 

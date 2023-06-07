@@ -49,8 +49,6 @@ StatusCode InDet::InDetBoundaryCheckTool::initialize() {
             ATH_MSG_WARNING("Since ITk Strip is used, m_check_bad_sct is turned off.");
         }
     }
-
-    ATH_MSG_INFO("InDeTBoundaryCheckTool::initialize() successful in " << name());
     return StatusCode::SUCCESS;
 }
 
@@ -69,12 +67,13 @@ bool InDet::InDetBoundaryCheckTool::isAliveSCT(
     const InDetDD::SiDetectorElement &element,
     const Trk::TrackParameters &parameters
 ) const {
-    SG::ReadHandle<InDet::SiDetectorElementStatus> sctDetElStatus( getSCTDetElStatus());
+    const EventContext& ctx{Gaudi::Hive::currentContext()};
+    SG::ReadHandle<InDet::SiDetectorElementStatus> sctDetElStatus( getSCTDetElStatus(ctx));
     if (m_checkBadSCT.value() && isBadSCTChipStrip(!m_sctDetElStatus.empty() ? sctDetElStatus.cptr() : nullptr, element.identify(), parameters, element)) {
         return false;
     }
-    VALIDATE_STATUS_ARRAY(!m_sctDetElStatus.empty(),sctDetElStatus->isGood(element.identifyHash()), m_sctCondSummaryTool->isGood(element.identifyHash()));
-    return !m_sctDetElStatus.empty() ? sctDetElStatus->isGood(element.identifyHash()) : m_sctCondSummaryTool->isGood(element.identifyHash());
+    VALIDATE_STATUS_ARRAY(!m_sctDetElStatus.empty(),sctDetElStatus->isGood(element.identifyHash()), m_sctCondSummaryTool->isGood(element.identifyHash(), ctx));
+    return !m_sctDetElStatus.empty() ? sctDetElStatus->isGood(element.identifyHash()) : m_sctCondSummaryTool->isGood(element.identifyHash(), ctx);
 }
 
 Trk::BoundaryCheckResult InDet::InDetBoundaryCheckTool::boundaryCheckSiElement(
@@ -136,21 +135,13 @@ Trk::BoundaryCheckResult InDet::InDetBoundaryCheckTool::boundaryCheckSiElement(
          * while still being recorded on the trajectory for later 
          * refinement. 
          */
-        ATH_MSG_VERBOSE(
-            "Track parameter on the module edge"
-        );
         return Trk::BoundaryCheckResult::OnEdge; 
-
     }
 
     if (intersection.out()) {
         /*
          * In this case, we are _not_ inside the active region of the element.
          */
-        ATH_MSG_VERBOSE(
-            "Track parameter not inside (active?) detector within " <<
-            phitol << " " << etatol 
-        );
         return Trk::BoundaryCheckResult::Outside;
     }
 
@@ -194,10 +185,6 @@ Trk::BoundaryCheckResult InDet::InDetBoundaryCheckTool::boundaryCheckSiElement(
         * shared property and a shared check.
         */
         if (siElement.nearBondGap(parameters.localPosition(), etatol )) {
-            ATH_MSG_VERBOSE(
-                "Track parameter on bond gap within " << etatol << ", so hit " <<
-                "is on an insensitive part of the element."
-            );
             return Trk::BoundaryCheckResult::Insensitive;
         }
         /*
@@ -205,7 +192,6 @@ Trk::BoundaryCheckResult InDet::InDetBoundaryCheckTool::boundaryCheckSiElement(
          * we have a good hit. Note that this is the only way we can return a
          * Candidate result! It's the only success state.
          */
-        ATH_MSG_VERBOSE("Module is good, and we're hitting a sensitive part!");
         return Trk::BoundaryCheckResult::Candidate;
 
     } 
@@ -214,7 +200,6 @@ Trk::BoundaryCheckResult InDet::InDetBoundaryCheckTool::boundaryCheckSiElement(
          * Finally, if the module is not alive, we simply return a DeadElement
          * result.
          */
-        ATH_MSG_VERBOSE("Track is hiting a bad module!");
         return Trk::BoundaryCheckResult::DeadElement;
     }
 }
@@ -275,19 +260,19 @@ bool InDet::InDetBoundaryCheckTool::isBadSCTChipStrip(
     }
 
     {
+      const EventContext& ctx{Gaudi::Hive::currentContext()};
        if (sctDetElStatus) {
           unsigned int chip_i=SCT::getGeometricalChipID(*m_sctID, stripIdentifier);
-
-          VALIDATE_STATUS_ARRAY(sctDetElStatus,sctDetElStatus->isChipGood(siElement.identifyHash(), chip_i) && sctDetElStatus->isCellGood(siElement.identifyHash(), m_sctID->strip(stripIdentifier) ),m_sctCondSummaryTool->isGood(stripIdentifier, InDetConditions::SCT_CHIP) && m_sctCondSummaryTool->isGood(stripIdentifier, InDetConditions::SCT_STRIP));
+          VALIDATE_STATUS_ARRAY(sctDetElStatus,sctDetElStatus->isChipGood(siElement.identifyHash(), chip_i) && sctDetElStatus->isCellGood(siElement.identifyHash(), m_sctID->strip(stripIdentifier) ),m_sctCondSummaryTool->isGood(stripIdentifier, InDetConditions::SCT_CHIP, ctx) && m_sctCondSummaryTool->isGood(stripIdentifier, InDetConditions::SCT_STRIP, ctx));
           if (!sctDetElStatus->isChipGood(siElement.identifyHash(), chip_i)) return true;
 
           return !sctDetElStatus->isCellGood(siElement.identifyHash(), m_sctID->strip(stripIdentifier) );
        }
        else {
-          if (!m_sctCondSummaryTool->isGood(stripIdentifier, InDetConditions::SCT_CHIP)) {
+          if (!m_sctCondSummaryTool->isGood(stripIdentifier, InDetConditions::SCT_CHIP, ctx)) {
              // The position is on a bad chip.
              return true;
-          } else if (!m_sctCondSummaryTool->isGood(stripIdentifier, InDetConditions::SCT_STRIP)) {
+          } else if (!m_sctCondSummaryTool->isGood(stripIdentifier, InDetConditions::SCT_STRIP, ctx)) {
              // The position is on a bad strip. (We may need to check neighboring strips.)
              return true;
           }

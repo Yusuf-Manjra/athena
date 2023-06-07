@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 /***************************************************************************
@@ -11,12 +11,9 @@
 		changes : M.ELSING
 ***************************************************************************/ 
 #include "InDetConversionFinderTools/VertexPointEstimator.h"
-#include "CLHEP/Units/SystemOfUnits.h"
-#include "TMath.h"
 
-//Do we need to replace this?
-using CLHEP::pi;
-using CLHEP::twopi;
+constexpr double pi = M_PI;
+constexpr double twopi = M_2_PI;
 
 namespace InDet {
 
@@ -27,7 +24,7 @@ namespace InDet {
   // ----------------------------------
   VertexPointEstimator::VertexPointEstimator(const std::string& type, const std::string& name, const IInterface* parent) :
     AthAlgTool(type, name, parent),
-    m_maxChi2(20.), m_returnOnError(true)
+    m_returnOnError(true)
   {
     declareInterface<VertexPointEstimator>(this);
     /// Cuts for selecting track pairs
@@ -72,7 +69,6 @@ namespace InDet {
     declareProperty("MaxTrkXYValue",          m_maxR);
     declareProperty("MinArcLength",           m_minArcLength);
     declareProperty("MaxArcLength",           m_maxArcLength);
-    declareProperty("MaxChi2OfVtxEstimation", m_maxChi2);
     declareProperty("MinDeltaR",              m_minDr);
     declareProperty("MaxDeltaR",              m_maxDr);
     declareProperty("MaxHl",                  m_maxHl);
@@ -409,7 +405,7 @@ namespace InDet {
         double xb = (xi1-xc2)*norm2;
         double yb = (yi1-yc2)*norm2;
         double costheta = xa*xb + ya*yb;
-        phi = M_PI-acos(costheta);
+        phi = M_PI-std::acos(costheta);
       }
     }
     return ret;
@@ -447,7 +443,7 @@ namespace InDet {
         double xb = (xi1 - xc2)/norm2;
         double yb = (yi1 - yc2)/norm2;
         double costheta = xa*xb +ya*yb;
-        double phi = TMath::Pi()-TMath::ACos(costheta);
+        double phi = M_PI-std::acos(costheta);
         ddphi = phi;
       }
     }

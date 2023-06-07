@@ -13,7 +13,6 @@ from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.AccumulatorCache import AccumulatorCache
 from AthenaConfiguration.Enums import ProductionStep
 from AthenaCommon.SystemOfUnits import GeV, MeV, deg
-from tauRec.tauRecFlags import tauFlags
 
 
 ########################################################################
@@ -37,6 +36,7 @@ def TVAToolCfg(flags):
     # returns a component accumulator instance, also sets UsedInFitDecorator
     TVAToolCA = _TTVAToolCfg(flags, _name,
                            WorkingPoint = "Nonprompt_Hard_MaxWeight",
+                           HardScatterLinkDeco="",
                            TrackContName = flags.Tau.ActiveConfig.TrackCollection,
                            VertexContName = flags.Tau.ActiveConfig.VertexCollection)
     return TVAToolCA
@@ -193,7 +193,7 @@ def EnergyCalibrationLCCfg(flags):
 
     TauCalibrateLC = CompFactory.getComp("TauCalibrateLC")
     TauCalibrateLC = TauCalibrateLC(name = _name,
-                                    calibrationFile = tauFlags.tauRecCalibrateLCConfig(),
+                                    calibrationFile = flags.Tau.CalibrateLCConfig,
                                     Key_vertexInputContainer = flags.Tau.ActiveConfig.VertexCollection)
             
     result.setPrivateTools(TauCalibrateLC)

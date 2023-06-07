@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef G4ATLASALG_G4AtlasAlg_H
@@ -22,12 +22,14 @@
 #include "StoreGate/WriteHandleKey.h"
 #include "AthenaKernel/IAthRNGSvc.h"
 #include "G4AtlasInterfaces/IUserActionSvc.h"
+#include "G4AtlasInterfaces/IUserActionTool.h"
 #include "G4AtlasInterfaces/IDetectorGeometrySvc.h"
 #include "G4AtlasInterfaces/ISensitiveDetectorMasterTool.h"
 #include "G4AtlasInterfaces/IFastSimulationMasterTool.h"
 #include "G4AtlasInterfaces/IPhysicsListSvc.h"
 #include "G4AtlasInterfaces/IUserLimitsSvc.h"
 #include "GeneratorObjects/McEventCollection.h"
+#include "HepMC_Interfaces/IZeroLifetimePatcher.h"
 #include "xAODEventInfo/EventInfo.h"
 
 // ISF includes
@@ -134,6 +136,10 @@ private:
   ServiceHandle<G4UA::IUserActionSvc> m_userActionSvc{this, "UserActionSvc", "G4UA::UserActionSvc", ""};
   /// Detector Geometry Service (builds G4 Geometry)
   ServiceHandle<IDetectorGeometrySvc> m_detGeoSvc{this, "DetGeoSvc", "DetectorGeometrySvc", ""};
+
+  /// Quasi-Stable Particle Simulation Patcher
+  ServiceHandle<Simulation::IZeroLifetimePatcher> m_qspatcher{this, "QuasiStablePatcher", "", "Quasi-Stable Particle Simulation Patcher"};
+
   /// Service to convert ISF_Particles into a G4Event
   ServiceHandle<ISF::IInputConverter> m_inputConverter{this, "InputConverter", "ISF_InputConverter", ""};
   /// Physics List Tool
@@ -143,6 +149,7 @@ private:
   /// Fast Simulation Master Tool
   PublicToolHandle<IFastSimulationMasterTool> m_fastSimTool{this, "FastSimMasterTool", "FastSimulationMasterTool", ""};
   /// @}
+  PublicToolHandleArray<G4UA::IUserActionTool> m_actionTools{this, "UserActionTools", {}, "User action tools to be added to the G4 Action service."};
 
 };
 

@@ -12,7 +12,6 @@
 #include "AtlasHepMC/GenParticle.h"
 #include "AtlasHepMC/GenVertex.h"
 #include "AthenaKernel/errorcheck.h"
-#include "barcodeOrder.h"
 #include "McParticleEvent/TruthParticle.h"
 #include "McParticleEvent/TruthParticleContainer.h"
 #include "GeneratorObjects/McEventCollection.h"
@@ -50,11 +49,8 @@ TruthTauDecayAssociationTool::reset (const TruthParticle& p)
   const McEventCollection* mcec{nullptr};
   if (evtStore()->retrieve<McEventCollection>(mcec,"GEN_EVENT").isSuccess()){
     // Loop over GenEvent's.
-    for (const HepMC::GenEvent* ev_in : *mcec) {
-      if (!ev_in) continue;
-      auto Part = HepMC::barcode_to_particle(ev_in,p.barcode());
+      auto Part = p.genParticle();
       if (Part) addStableDaughters( Part );
-    } // Loop over events
   } // Successful retrieve
 
   const TruthParticleContainer* tpc{nullptr};

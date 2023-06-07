@@ -1,6 +1,6 @@
 """Define methods to construct configured RPC Digitization tools and algorithms
 
-Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 """
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
@@ -8,6 +8,7 @@ from AthenaConfiguration.Enums import LHCPeriod, ProductionStep
 from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
 from MuonConfig.MuonGeometryConfig import MuonGeoModelCfg
 from MuonConfig.MuonByteStreamCnvTestConfig import RpcDigitToRpcRDOCfg
+from MuonConfig.MuonByteStreamCnvTestConfig import NrpcDigitToNrpcRDOCfg
 from MuonConfig.MuonCablingConfig import RPCCablingConfigCfg
 from Digitization.TruthDigitizationOutputConfig import TruthDigitizationOutputCfg
 from Digitization.PileUpToolsConfig import PileUpToolsCfg
@@ -55,7 +56,7 @@ def RPC_DigitizationToolCommonCfg(flags, name="RpcDigitizationTool", **kwargs):
     kwargs.setdefault("turnON_efficiency", True)
     kwargs.setdefault("turnON_clustersize", True)
     kwargs.setdefault("testbeam_clustersize", 0)
-    kwargs.setdefault("ClusterSize1_2uncorr", 0)
+    kwargs.setdefault("ClusterSize1_2uncorr", False)
     kwargs.setdefault("CutProjectedTracks", 100)
     kwargs.setdefault("RPCInfoFromDb", True)
     kwargs.setdefault("Efficiency_fromCOOL", True)
@@ -122,6 +123,8 @@ def RPC_OutputCfg(flags):
     acc = ComponentAccumulator()
     if flags.Output.doWriteRDO:
         ItemList = ["RpcPadContainer#*"]
+        if flags.Muon.enableNRPC:
+            ItemList += [ 'xAOD::NRPCRDOContainer#NRPCRDO' , 'xAOD::NRPCRDOAuxContainer#NRPCRDOAux.' ]
         if flags.Digitization.EnableTruth:
             ItemList += ["MuonSimDataCollection#*"]
             acc.merge(TruthDigitizationOutputCfg(flags))
@@ -175,4 +178,7 @@ def RPC_DigitizationDigitToRDOCfg(flags):
     acc = RPC_DigitizationCfg(flags)
     acc.merge(RPCCablingConfigCfg(flags))
     acc.merge(RpcDigitToRpcRDOCfg(flags))
+    if flags.Muon.enableNRPC:
+        acc.merge(NrpcDigitToNrpcRDOCfg(flags))
     return acc
+

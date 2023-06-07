@@ -62,15 +62,9 @@ def getL1BackgroundSeed():
 ##############################
 def getL1_ALFA_Diff_Phys_Seeds():
     return [
-        'L1_ALFA_SDIFF5','L1_ALFA_SDIFF6','L1_ALFA_SDIFF7','L1_ALFA_SDIFF8',
         'L1_MBTS_1_A_ALFA_C','L1_MBTS_1_C_ALFA_A',
-        'L1_MBTS_1_A_ALFA_C_UNPAIRED_ISO','L1_MBTS_1_C_ALFA_A_UNPAIRED_ISO',
-        'L1_MBTS_2_A_ALFA_C','L1_MBTS_2_C_ALFA_A',
-        'L1_MBTS_2_A_ALFA_C_UNPAIRED_ISO','L1_MBTS_2_C_ALFA_A_UNPAIRED_ISO',
-        'L1_LUCID_A_ALFA_C','L1_LUCID_C_ALFA_A',
-        'L1_LUCID_A_ALFA_C_UNPAIRED_ISO','L1_LUCID_C_ALFA_A_UNPAIRED_ISO',
-        'L1_EM3_ALFA_ANY','L1_EM3_ALFA_ANY_UNPAIRED_ISO',
-        'L1_TE5_ALFA_ANY','L1_TE5_ALFA_ANY_UNPAIRED_ISO'
+        'L1_EM3_ALFA_ANY',
+        'L1_TE5_ALFA_ANY',
     ]
 
 ##############################
@@ -282,7 +276,19 @@ def getL1BKeePrimary():
         'L1_J100',
         'L1_4J15', 
         'L1_3J35p0ETA23',
-        'L1_3J15p0ETA25_XE40' 
+        'L1_3J15p0ETA25_XE40',
+        'L1_2eEM24L',
+        'L1_2eEM18M',
+        'L1_eEM26M',
+        'L1_eEM28M',
+        'L1_eEM24L_3eEM12L',
+        'L1_eEM22M_jMJJ-300',
+        'L1_eEM18L_MU8F',
+        'L1_2eEM10L_MU8F',
+        'L1_BPH-0M9-eEM9-eEM7_2MU3V',
+        'L1_MU18VFCH',
+        'L1_eTAU80_2eTAU60',
+        'L1_jJ160'
     ]
 
 #####################################
@@ -308,7 +314,11 @@ def getL1BKeePrescaled():
         'L1_2EM15VH',#  already requested as support trigger, so OK. what PS?
         'L1_3J25p0ETA23', # exist in menu, but currently not used at HLT. We may drop as CTP output
         'L1_EM20VH_3J20', # exist in menu, but currently not used at HLT. We may drop as CTP output
-        'L1_EM18VHI_3J20' #  exist in menu, but currently not used at HLT. We may drop as CTP output
+        'L1_EM18VHI_3J20', #  exist in menu, but currently not used at HLT. We may drop as CTP output
+        'L1_eTAU80',
+        'L1_eEM26L',
+        'L1_eEM18',
+        'L1_2eEM18L'
     ]
 
 #####################################
@@ -373,8 +383,6 @@ def getSpecificL1Seeds(l1seedname, l1itemobject, menu_name):
     else: 
         log.error('Given seed %s could not be found!', l1seedname)
         raise RuntimeError(f'Failed to retrieve L1 item list for {l1seedname}')
-
-    print(f"BAH, {l1seedname} --> {L1Seed}")
 
     # check if all the l1 background seeds given are in the current L1 menu
     for item in L1Seed:

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef ISF_INPUTCONVERTER_H
@@ -16,15 +16,12 @@
 
 #include "BarcodeEvent/Barcode.h"
 
-// forward declarations
-namespace Barcode {
-  class IBarcodeSvc;
-}
 namespace HepPDT {
   class ParticleDataTable;
 }
 #include "AtlasHepMC/GenEvent_fwd.h"
 #include "AtlasHepMC/GenParticle_fwd.h"
+#include "AtlasHepMC/MagicNumbers.h"
 
 class IPartPropSvc;
 class McEventCollection;
@@ -80,21 +77,23 @@ namespace ISF {
     const G4ParticleDefinition* getG4ParticleDefinition(int pdgcode) const;
 
 #ifdef HEPMC3
-    G4PrimaryParticle* getG4PrimaryParticle(HepMC::GenParticlePtr gp) const;
+    G4PrimaryParticle* getDaughterG4PrimaryParticle(const HepMC::GenParticlePtr& gp, bool makeLinkToTruth=true) const;
 #else
-    G4PrimaryParticle* getG4PrimaryParticle(HepMC::GenParticle& gp) const;
+    G4PrimaryParticle* getDaughterG4PrimaryParticle(HepMC::GenParticle& gp, bool makeLinkToTruth=true) const;
 #endif
 
     G4PrimaryParticle* getG4PrimaryParticle(ISF::ISFParticle& isp, bool useHepMC) const;
 
     void addG4PrimaryVertex(G4Event* g4evt, ISF::ISFParticle& isp, bool useHepMC) const;
 
+    void processPredefinedDecays(const HepMC::GenParticlePtr& genpart, ISF::ISFParticle& isp, G4PrimaryParticle* g4particle, bool makeLinkToTruth=true) const;
+
     /** Tests whether the given ISFParticle is within the Geant4 world volume */
     bool isInsideG4WorldVolume(const ISF::ISFParticle& isp, const G4VSolid* worldSolid) const;
 
     /** get right GenParticle mass */
 #ifdef HEPMC3
-    double getParticleMass(HepMC::ConstGenParticlePtr p) const;
+    double getParticleMass(const HepMC::ConstGenParticlePtr& p) const;
 #else
     double getParticleMass(const HepMC::GenParticle& p) const;
 #endif
@@ -104,13 +103,13 @@ namespace ISF {
 
     /** check if the given particle passes all filters */
 #ifdef HEPMC3
-    bool passesFilters(HepMC::ConstGenParticlePtr p) const;
+    bool passesFilters(const HepMC::ConstGenParticlePtr& p) const;
 #else
     bool passesFilters(const HepMC::GenParticle& p) const;
 #endif
 
     /** convert GenParticle to ISFParticle */
-    ISF::ISFParticle* convertParticle(HepMC::GenParticlePtr genPartPtr, EBC_EVCOLL kindOfCollection=EBC_MAINEVCOLL) const;
+    ISF::ISFParticle* convertParticle(const HepMC::GenParticlePtr& genPartPtr, EBC_EVCOLL kindOfCollection=EBC_MAINEVCOLL) const;
 
     /** ParticlePropertyService and ParticleDataTable */
     ServiceHandle<IPartPropSvc>           m_particlePropSvc;          //!< particle properties svc to retrieve PDT
@@ -122,8 +121,7 @@ namespace ISF {
 
     bool                                  m_quasiStableParticlesIncluded; //<! will quasi-stable particles be included in the simulation
 
-    ServiceHandle<Barcode::IBarcodeSvc>   m_barcodeSvc;                 //!< The ISF Barcode service
-    Barcode::ParticleBarcode              m_barcodeGenerationIncrement; //!< to be retrieved from ISF Barcode service
+    const Barcode::ParticleBarcode              m_barcodeGenerationIncrement = HepMC::SIM_REGENERATION_INCREMENT; //!< to be retrieved from ISF Barcode service
 
   };
 

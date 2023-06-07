@@ -47,7 +47,8 @@ def CaloCellMakerCfg(flags):
         cellMakerTools.append(result.popToolsAndMerge(theCaloTimeCorr))
 
     cellAlgo = CompFactory.CaloCellMaker(CaloCellMakerToolNames=cellMakerTools,
-                                         CaloCellsOutputName="AllCalo")
+                                         CaloCellsOutputName="AllCalo",
+                                         EnableChronoStat=(flags.Concurrency.NumThreads == 0))
 
     result.addEventAlgo(cellAlgo, primary=True)
 
@@ -87,7 +88,7 @@ if __name__=="__main__":
     cfg.merge(acc)
     
     from AthenaCommon.SystemOfUnits import GeV
-    cfg.addEventAlgo(CompFactory.CaloCellDumper(InputContainer="AllCaloNew",EnergyCut=2*GeV))
+    cfg.addEventAlgo(CompFactory.CaloCellDumper(InputContainer="AllCaloNew",EnergyCut=2*GeV),sequenceName="AthAlgSeq")
 
     #cfg.getService("StoreGateSvc").Dump=True
     cfg.run(5)

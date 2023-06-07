@@ -1,9 +1,9 @@
-# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 #!/usr/bin/env python
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
-from AthenaConfiguration.Enums import LHCPeriod
+from AthenaConfiguration.Enums import LHCPeriod, MetadataCategory
 
 def TCAL2MbtsToVectorsToolCfg(flags, **kwargs):
     """ Configure the MbtsToVectorsTool augmentation tool """
@@ -73,9 +73,10 @@ def TCAL2Cfg(ConfigFlags):
     TCAL2Prefix = 'TCAL2_'
 
     acc = ComponentAccumulator()
-    acc.merge(TCAL2KernelCfg(ConfigFlags, name="TCAL2Kernel", StreamName = "OutputStreamDAOD_TCAL2", Prefix=TCAL2Prefix))
+    acc.merge(TCAL2KernelCfg(ConfigFlags, name="TCAL2Kernel", StreamName = "StreamDAOD_TCAL2", Prefix=TCAL2Prefix))
 
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     TCAL2SlimmingHelper = SlimmingHelper("TCAL2SlimmingHelper", NamesAndTypes = ConfigFlags.Input.TypedCollections, ConfigFlags = ConfigFlags)
     TCAL2SlimmingHelper.SmartCollections = ["EventInfo"]
@@ -91,5 +92,6 @@ def TCAL2Cfg(ConfigFlags):
     TCAL2ItemList = TCAL2SlimmingHelper.GetItemList()
 
     acc.merge(OutputStreamCfg(ConfigFlags, "DAOD_TCAL2", ItemList=TCAL2ItemList, AcceptAlgs=["TCAL2Kernel"]))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, "DAOD_TCAL2", AcceptAlgs=["TCAL2Kernel"], createMetadata=[MetadataCategory.CutFlowMetaData]))
 
     return acc

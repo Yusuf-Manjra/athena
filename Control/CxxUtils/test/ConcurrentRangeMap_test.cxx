@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 /**
  * @file  CxxUtils/test/ConcurrentRangeMap_test.cxx
@@ -807,6 +807,18 @@ void test1b()
     map.quiescent (i);
   }
   assert (phist.size() == 1);
+
+  assert (map.trim (keys) == 0);
+  assert (map.size() == 1);
+  assert (map.find (55)->second->m_x == 400);
+  assert (phist.size() == 1);
+  assert (map.trim (keys, true) == 1);
+  assert (map.size() == 0);
+  assert (map.find(55) == nullptr);
+  for (int i=0; i < nslots; i++) {
+    map.quiescent (i);
+  }
+  assert (phist.size() == 0);
 }
 
 
@@ -894,6 +906,40 @@ void test1d()
           TestMap::EmplaceResult::SUCCESS);
   assert (map.size() == 1);
   assert (phist.size() == 1);
+}
+
+
+// Test for insertion problem found in ATR-27419.
+void test1e()
+{
+  // If we do an emplace where:
+  //   - The map is empty.
+  //   - The insertion point is at the end of the map (so we need to reallocate)
+  //   - The last entry in the map (which has been removed) matches the
+  //     new range being inserted
+  // then we would return DUPLICATE rather than inserting new element.
+  // Test for this failure.
+  std::cout << "test1e\n";
+  Payload::Hist phist;
+  TestMap map (TestMap::Updater_t(), std::make_shared<PayloadDeleter>(), 2);
+
+  assert (map.emplace (Range (10, 20), std::make_unique<Payload> (100, &phist)) ==
+          TestMap::EmplaceResult::SUCCESS);
+  assert (map.emplace (Range (20, 30), std::make_unique<Payload> (200, &phist)) ==
+          TestMap::EmplaceResult::SUCCESS);
+
+  assert (map.capacity() == 2);
+  assert (map.size() == 2);
+
+  std::vector<TestMap::key_query_type> keys;
+  assert (map.trim (keys, true) == 2);
+
+  assert (map.capacity() == 2);
+  assert (map.size() == 0);
+
+  assert (map.emplace (Range (20, 30), std::make_unique<Payload> (300, &phist)) ==
+          TestMap::EmplaceResult::SUCCESS);
+  assert (map.size() == 1);
 }
 
 
@@ -1117,6 +1163,7 @@ int main()
   test1b();
   test1c();
   test1d();
+  test1e();
   test2();
   return 0;
 }

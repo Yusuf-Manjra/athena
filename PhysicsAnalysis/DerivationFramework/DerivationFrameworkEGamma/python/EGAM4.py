@@ -9,6 +9,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.Enums import MetadataCategory
 
 from AthenaCommon.SystemOfUnits import MeV
 
@@ -137,14 +138,14 @@ def EGAM4KernelCfg(ConfigFlags, name='EGAM4Kernel', **kwargs):
 
     # thinning tools
     thinningTools = []
-    
+    streamName = kwargs['StreamName']
+
     # Track thinning
     if ConfigFlags.Derivation.Egamma.doTrackThinning:
 
         from DerivationFrameworkInDet.InDetToolsConfig import (
             TrackParticleThinningCfg, MuonTrackParticleThinningCfg,
             TauTrackParticleThinningCfg )
-        streamName = kwargs['StreamName']
 
         TrackThinningKeepElectronTracks = True
         TrackThinningKeepAllElectronTracks = False
@@ -195,6 +196,7 @@ def EGAM4KernelCfg(ConfigFlags, name='EGAM4Kernel', **kwargs):
                     SGKey = 'Photons',
                     GSFTrackParticlesKey = 'GSFTrackParticles',
                     InDetTrackParticlesKey = 'InDetTrackParticles',
+                    GSFConversionVerticesKey = 'GSFConversionVertices',
                     SelectionString = 'Photons.pt > 0*GeV',
                     BestMatchOnly = True,
                     ConeSize = 0.3)
@@ -211,6 +213,7 @@ def EGAM4KernelCfg(ConfigFlags, name='EGAM4Kernel', **kwargs):
                     SGKey = 'Photons',
                     GSFTrackParticlesKey = 'GSFTrackParticles',
                     InDetTrackParticlesKey = 'InDetTrackParticles',
+                    GSFConversionVerticesKey = 'GSFConversionVertices',
                     SelectionString = 'Photons.pt > 9.5*GeV',
                     BestMatchOnly = False,
                     ConeSize = 0.6)
@@ -312,6 +315,7 @@ def EGAM4Cfg(ConfigFlags):
 
     # configure slimming
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     EGAM4SlimmingHelper = SlimmingHelper(
         'EGAM4SlimmingHelper',
@@ -464,5 +468,11 @@ def EGAM4Cfg(ConfigFlags):
                               'DAOD_EGAM4',
                               ItemList = EGAM4ItemList,
                               AcceptAlgs = ['EGAM4Kernel']))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, 'DAOD_EGAM4',
+                                        AcceptAlgs=['EGAM4Kernel'],
+                                        createMetadata=[
+                                            MetadataCategory.CutFlowMetaData,
+                                            MetadataCategory.TruthMetaData,
+                                        ]))
 
     return acc

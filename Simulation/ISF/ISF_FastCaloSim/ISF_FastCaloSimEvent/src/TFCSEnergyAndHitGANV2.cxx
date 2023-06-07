@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "ISF_FastCaloSimEvent/TFCSEnergyAndHitGANV2.h"
@@ -141,6 +141,15 @@ bool TFCSEnergyAndHitGANV2::fillEnergy(
 
   unsigned int energyBins = outputs.size();
   ATH_MSG_VERBOSE("energy voxels size = " << energyBins);
+
+  double totalEnergy = 0;
+  for (unsigned int i = 0; i < energyBins; ++i){
+    totalEnergy += outputs.at("out_" + std::to_string(i));
+  }
+  if (totalEnergy < 0){
+    ATH_MSG_WARNING("Energy from GAN is negative, skipping particle");
+    return false;   
+  }
 
   ATH_MSG_VERBOSE("Get binning");
 
@@ -400,10 +409,10 @@ bool TFCSEnergyAndHitGANV2::fillEnergy(
               // -delta_eta
               if (center_eta < 0.)
                 delta_eta_mm = -delta_eta_mm;
-              // Particle with negative charge are expected to have the same
-              // shape as positively charged particles after transformation:
-              // delta_phi --> -delta_phi
-              if (charge < 0.)
+              // We derive the shower shapes for electrons and positively charged hadrons.
+              // Particle with the opposite charge are expected to have the same shower shape
+              // after the transformation: delta_phi --> -delta_phi
+              if ((charge < 0. && pdgId!=11) || pdgId==-11)
                 delta_phi_mm = -delta_phi_mm;
 
               const float delta_eta = delta_eta_mm / eta_jakobi / dist000;
@@ -417,10 +426,10 @@ bool TFCSEnergyAndHitGANV2::fillEnergy(
             } else { // FCAL is in (x,y,z)
               const float hit_r = r * cos(alpha) + center_r;
               float delta_phi = r * sin(alpha) / center_r;
-              // Particle with negative charge are expected to have the same
-              // shape as positively charged particles after transformation:
-              // delta_phi --> -delta_phi
-              if (charge < 0.)
+              // We derive the shower shapes for electrons and positively charged hadrons.
+              // Particle with the opposite charge are expected to have the same shower shape
+              // after the transformation: delta_phi --> -delta_phi
+              if ((charge < 0. && pdgId!=11) || pdgId==-11)
                 delta_phi = -delta_phi;
               const float hit_phi =
                   TVector2::Phi_mpi_pi(center_phi + delta_phi);
@@ -553,6 +562,7 @@ void TFCSEnergyAndHitGANV2::Print(Option_t *option) const {
 void TFCSEnergyAndHitGANV2::unit_test(TFCSSimulationState *simulstate,
                                       const TFCSTruthState *truth,
                                       const TFCSExtrapolationState *extrapol) {
+  ISF_FCS::MLogging logger;
   if (!simulstate) {
     simulstate = new TFCSSimulationState();
 #if defined(__FastCaloSimStandAlone__)
@@ -562,7 +572,7 @@ void TFCSEnergyAndHitGANV2::unit_test(TFCSSimulationState *simulstate,
 #endif
   }
   if (!truth) {
-    std::cout << "New particle" << std::endl;
+    ATH_MSG_NOCLASS(logger, "New particle");
     TFCSTruthState *t = new TFCSTruthState();
     t->SetPtEtaPhiM(65536, 0, 0, 139.6);
     t->set_pdgid(211);
@@ -594,7 +604,7 @@ void TFCSEnergyAndHitGANV2::unit_test(TFCSSimulationState *simulstate,
   int pid = 211;
   int etaMin = 20;
   int etaMax = etaMin + 5;
-  std::cout << "Initialize Networks" << std::endl;
+  ATH_MSG_NOCLASS(logger, "Initialize Networks");
   GAN.initializeNetwork(pid, etaMin,
                         "/eos/atlas/atlascerngroupdisk/proj-simul/AF3_Run3/"
                         "InputsToBigParamFiles/FastCaloGANWeightsVer02");
@@ -620,21 +630,19 @@ void TFCSEnergyAndHitGANV2::unit_test(TFCSSimulationState *simulstate,
 
   GAN.Print();
 
-  std::cout << "Writing GAN to FCSGANtest.root" << std::endl;
+  ATH_MSG_NOCLASS(logger, "Writing GAN to FCSGANtest.root");
   TFile *fGAN = TFile::Open("FCSGANtest.root", "recreate");
   GAN.Write();
   fGAN->ls();
   fGAN->Close();
 
-  std::cout << "Open FCSGANtest.root" << std::endl;
+  ATH_MSG_NOCLASS(logger, "Open FCSGANtest.root");
   fGAN = TFile::Open("FCSGANtest.root");
   TFCSEnergyAndHitGANV2 *GAN2 = (TFCSEnergyAndHitGANV2 *)(fGAN->Get("GAN"));
-  if (GAN2) {
-    GAN2->Print();
-  }
+  GAN2->Print();
 
   GAN2->setLevel(MSG::DEBUG);
-  std::cout << "Before running GAN2->simulate()" << std::endl;
+  ATH_MSG_NOCLASS(logger, "Before running GAN2->simulate()");
   GAN2->simulate(*simulstate, truth, extrapol);
   simulstate->Print();
 }

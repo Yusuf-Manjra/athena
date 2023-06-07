@@ -82,6 +82,9 @@ def fromRunArgs(runArgs):
     # Pre-exec
     processPreExec(runArgs, flags)
 
+    # To respect --athenaopts 
+    flags.fillFromArgs()
+
     # Lock flags
     flags.lock()
 
@@ -98,16 +101,9 @@ def fromRunArgs(runArgs):
        from AthenaServices.MetaDataSvcConfig import MetaDataSvcCfg
        cfg.merge(MetaDataSvcCfg(flags, ['IOVDbMetaDataTool']))
 
-    # Cut flow service
-    from EventBookkeeperTools.EventBookkeeperToolsConfig import CutFlowSvcCfg
-    cfg.merge(CutFlowSvcCfg(flags))
-
-    from xAODMetaDataCnv.InfileMetaDataConfig import InfileMetaDataCfg
     for formatName in formats:
         derivationConfig = getattr(DerivationConfigList, f'{formatName}Cfg')
         cfg.merge(derivationConfig(flags))
-        # Needed for MetaData
-        cfg.merge(InfileMetaDataCfg(flags, f"DAOD_{formatName}"))
 
     # Pass-through mode (ignore skimming and accept all events)
     if hasattr(runArgs, 'passThrough'):

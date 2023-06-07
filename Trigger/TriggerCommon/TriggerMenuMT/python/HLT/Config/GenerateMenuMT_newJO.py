@@ -79,7 +79,13 @@ def generateMenuMT(flags):
     """         
     global _isCAMenu
     _isCAMenu = True
-    
+
+    # generate L1 menu
+    # This probably will go to TriggerConfig.triggerRunCfg
+    from TrigConfigSvc.TrigConfigSvcCfg import generateL1Menu, createL1PrescalesFileFromMenu
+    generateL1Menu(flags)
+    createL1PrescalesFileFromMenu(flags)
+
     # Generate the menu, stolen from HLT_standalone
     from TriggerMenuMT.HLT.Config.GenerateMenuMT import GenerateMenuMT
     menu = GenerateMenuMT() 
@@ -98,11 +104,6 @@ def generateMenuMT(flags):
     log.info("Making the HLT configuration tree")
     menuAcc=makeHLTTree(flags)
 
-    # generate L1 menu
-    # This probably will go to TriggerConfig.triggerRunCfg
-    from TrigConfigSvc.TrigConfigSvcCfg import generateL1Menu, createL1PrescalesFileFromMenu
-    generateL1Menu(flags)
-    createL1PrescalesFileFromMenu(flags)
     return menuAcc
     
 
@@ -114,8 +115,7 @@ def makeHLTTree(flags):
     acc = ComponentAccumulator()
     
     steps = seqAND('HLTAllSteps')
-    finalDecisions, menuAcc = decisionTreeFromChains(flags, steps, HLTMenuConfig.configsList(), HLTMenuConfig.dictsList(), newJO=False)        
-    menuAcc.wasMerged()
+    finalDecisions, menuAcc = decisionTreeFromChains(flags, steps, HLTMenuConfig.configsList(), HLTMenuConfig.dictsList(), newJO=False)
     if log.getEffectiveLevel() <= logging.DEBUG:
         menuAcc.printConfig()
 
@@ -138,7 +138,7 @@ def makeHLTTree(flags):
 
     from AthenaCommon.CFElements import checkSequenceConsistency 
     checkSequenceConsistency(steps)
-    return menuAcc
+    return acc
 
 
 if __name__ == "__main__":

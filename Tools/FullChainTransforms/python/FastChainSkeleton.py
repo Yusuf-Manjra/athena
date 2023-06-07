@@ -122,6 +122,13 @@ def fromRunArgs(runArgs):
             setupPileUpProfile(flags)
 
     flags.Sim.DoFullChain = True
+    # For jobs running (MC) Overlay we take the run number from the
+    # presampled RDOs, so we don't actually need to override the run
+    # number.
+    flags.Input.OverrideRunNumber = not flags.Overlay.FastChain
+    
+    # To respect --athenaopts 
+    flags.fillFromArgs()
 
     # Lock flags
     flags.lock()

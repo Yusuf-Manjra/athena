@@ -93,13 +93,15 @@ def defineInputsMenu():
 
             'eEM12L', 'eEM15', 'eEM18', 'eEM18L', 'eEM18M',
             'eEM22M', 'eEM24L', 
-            'eEMSPARE1', 'eEMSPARE2', 'eEMSPARE3',
+            #ATR-26979, eEMSPARE1 was replaced by eEM1, eEMSPARE2 was replaced by eEM2, decrement other eEMSPARE thresholds
+            'eEM1', 'eEM2',
+            'eEMSPARE1',
 
             # variable eEM  thresholds
             'eEM24VM', 'eEM26', 'eEM26L', 'eEM26M', 'eEM26T', 'eEM28M', 
 
             # eEM thresholds for production      
-            'eEMSPARE4', 'eEMSPARE5', 'eEMSPARE6', 'eEMSPARE7', 
+            'eEMSPARE2', 'eEMSPARE3', 'eEMSPARE4', 'eEMSPARE5',
         ],
     })
 
@@ -162,10 +164,11 @@ def defineInputsMenu():
             'jJ70p0ETA23', 'jJ80', 'jJ80p0ETA25', 'jJ85p0ETA21', 'jJ90', 'jJ125',
             'jJ140', 'jJ160', 'jJ180', 'jJ500',
 
+            'jJ15p31ETA49','jJ20p31ETA49',
             'jJ40p31ETA49', 'jJ50p31ETA49', 'jJ60p31ETA49', 'jJ90p31ETA49', 'jJ125p31ETA49',
 
             # jJ thresholds for production
-            'jJSPARE3', 'jJSPARE4', 'jJSPARE5', 'jJSPARE6',
+            'jJSPARE3', 'jJSPARE4',
 
             None, None,
 
@@ -233,16 +236,19 @@ def defineInputsMenu():
             # test thresholds
             ('jXEC100',1),
             ('jTE200',1), ('jTEC200',1), ('jTEFWD100',1), ('jTEFWDA100',1), ('jTEFWDC100',1),
+            # additional heavy ion jTE items
+            ('jTE3',1), ('jTE5',1), ('jTE20',1), ('jTE50',1),
+            ('jTE600',1), ('jTE1500',1), ('jTE3000',1), 
+            ('jTEFWDA1',1), ('jTEFWDC1',1), ('jTEFWDA5',1), ('jTEFWDC5',1),
 
             # spare energy thresholds for commissioning
             ('jXESPARE1',1), ('jXESPARE2',1), ('jXESPARE3',1), ('jXESPARE4',1), ('jXESPARE5',1), ('jXESPARE6',1), ('jXESPARE7',1), ('jXESPARE8',1), ('jXESPARE9',1),
 
             # production
+            # decrement jXESPARE for additional heavy ion jTE thresholds
             ('jXESPARE10',1), ('jXESPARE11',1), ('jXESPARE12',1), ('jXESPARE13',1), 
             ('jXESPARE14',1),
-            ('jXESPARE15',1), ('jXESPARE16',1), ('jXESPARE17',1), ('jXESPARE18',1), ('jXESPARE19',1),
-            ('jXESPARE20',1), ('jXESPARE21',1), ('jXESPARE22',1), ('jXESPARE23',1), ('jXESPARE24',1),
-            ('jXESPARE25',1), ('jXESPARE26',1), ('jXESPARE27',1), ('jXESPARE28',1),
+            ('jXESPARE15',1), ('jXESPARE16',1), ('jXESPARE17',1),
 
         ]
     })

@@ -37,13 +37,6 @@ ToolSvc += cfgtool
 jps.AthenaCommonFlags.FilesInput = FilesInput
 
 
-##### Histogram File Part #################
-from AthenaMonitoring.AthenaMonitoringConf import AthenaMonManager
-
-HLTMonManager = CfgMgr.AthenaMonManager( "HLTMonManager")
-algseq += HLTMonManager
-# HLTMonManager = algseq.HLTMonManager
-
 doTier0Mon = False
 
 if 'doTIDATier0' in locals():
@@ -226,6 +219,14 @@ if ( True ) :
     "HLT_e26_lhtight_e14_idperf_tight_probe_50invmAB130_L1EM22VHI:key=HLT_IDTrack_Electron_GSF:extra=el_tag:te=0",
     "HLT_e26_lhtight_e14_idperf_tight_probe_50invmAB130_L1EM22VHI:key=HLT_IDTrack_Electron_GSF:extra=el_probe:te=1",
     "HLT_e26_lhtight_e14_idperf_tight_probe_50invmAB130_L1EM22VHI:key=HLT_IDTrack_Electron_GSF:te=1",
+
+    "HLT_mu14_mu14_idtp_idZmumu_L12MU8F:key=HLT_IDTrack_Muon_FTF:roi=HLT_Roi_L2SAMuon:extra=mu_probe:te=1",
+    "HLT_mu14_mu14_idtp_idZmumu_L12MU8F:key=HLT_IDTrack_Muon_FTF:roi=HLT_Roi_L2SAMuon:extra=mu_tag:te=0",
+    "HLT_mu14_mu14_idtp_idZmumu_L12MU8F:key=HLT_IDTrack_Muon_FTF::roi=HLT_Roi_L2SAMuon:te=1",
+
+    "HLT_mu14_mu14_idtp_idZmumu_L12MU8F:key=HLT_IDTrack_Muon_IDTrig:roi=HLT_Roi_L2SAMuon:extra=mu_probe:te=1",
+    "HLT_mu14_mu14_idtp_idZmumu_L12MU8F:key=HLT_IDTrack_Muon_IDTrig:roi=HLT_Roi_L2SAMuon:extra=mu_tag:te=0",
+    "HLT_mu14_mu14_idtp_idZmumu_L12MU8F:key=HLT_IDTrack_Muon_IDTrig:roi=HLT_Roi_L2SAMuon:te=1",
 
     # two stage tau FTF
     "HLT_tau.*_idperf.*tracktwo.*:HLT_IDTrack_TauCore_FTF:roi=HLT_Roi_TauCore",

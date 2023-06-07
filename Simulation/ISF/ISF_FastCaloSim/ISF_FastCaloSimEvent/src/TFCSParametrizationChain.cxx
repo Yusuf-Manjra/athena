@@ -227,18 +227,18 @@ void TFCSParametrizationChain::Streamer(TBuffer &R__b) {
       R__b >> R__n;
       R__stl.reserve(R__n);
       for (R__i = 0; R__i < R__n; R__i++) {
-        TFCSParametrizationBase *R__t;
-        R__t = (TFCSParametrizationBase *)R__b.ReadObjectAny(R__tcl1);
+        std::unique_ptr<TFCSParametrizationBase> R__t;
+        R__t.reset((TFCSParametrizationBase *)R__b.ReadObjectAny(R__tcl1));
         if (R__t != nullptr) {
           if (R__t->InheritsFrom(TFCSParametrizationPlaceholder::Class())) {
-            TFCSParametrizationBase *new_R__t = nullptr;
+            std::unique_ptr<TFCSParametrizationBase> new_R__t = nullptr;
 
-            if (dir)
-              new_R__t = (TFCSParametrizationBase *)dir->Get(R__t->GetName());
+            if (dir) {
+              new_R__t.reset((TFCSParametrizationBase *)dir->Get(R__t->GetName()));
+            }
 
             if (new_R__t) {
-              delete R__t;
-              R__t = new_R__t;
+              R__t = std::move(new_R__t);
             } else {
               Error("TFCSParametrizationChain::Streamer",
                     "Found placeholder object in the parametrization chain, "
@@ -246,7 +246,7 @@ void TFCSParametrizationChain::Streamer(TBuffer &R__b) {
             }
           }
         }
-        R__stl.push_back(R__t);
+        R__stl.emplace_back(R__t.release());
       }
 
       R__b.CheckByteCount(R__s, R__c, TFCSParametrizationChain::IsA());
@@ -269,25 +269,18 @@ void TFCSParametrizationChain::Streamer(TBuffer &R__b) {
     R__b << R__n;
     if (R__n) {
       TFCSParametrizationChain::Chain_t::iterator R__k;
-      std::vector<TFCSParametrizationBase *> cleanup_list;
       for (R__k = R__stl.begin(); R__k != R__stl.end(); ++R__k) {
-        TFCSParametrizationBase *R__t = *R__k;
-        TFCSParametrizationBase *new_R__t = nullptr;
+        std::unique_ptr<TFCSParametrizationBase> R__t(*R__k);
+        std::unique_ptr<TFCSParametrizationBase> new_R__t;
         if (dir && R__t != nullptr) {
-          dir->WriteTObject(R__t);
-          new_R__t = new TFCSParametrizationPlaceholder(
+          dir->WriteTObject(R__t.get());
+          new_R__t = std::make_unique<TFCSParametrizationPlaceholder>(
               R__t->GetName(), TString("Placeholder for: ") + R__t->GetTitle());
-          R__t = new_R__t;
+          R__t = std::move(new_R__t);
         }
-        R__b << R__t;
+        R__b << R__t.get(); // get raw pointer from R__t because TBuffer operator<< does not support unique_ptr
 
-        // delete new_R__t only after the end of read/write operations by
-        // calling TFCSParametrizationBase::DoCleanup();
-        if (new_R__t)
-          cleanup_list.push_back(new_R__t);
       }
-      // transfer to global (locked) garbage collector
-      AddToCleanup(cleanup_list);
     }
     R__b.SetByteCount(R__c, kTRUE);
   }
@@ -296,6 +289,7 @@ void TFCSParametrizationChain::Streamer(TBuffer &R__b) {
 void TFCSParametrizationChain::unit_test(
     TFCSSimulationState *simulstate, const TFCSTruthState *truth,
     const TFCSExtrapolationState *extrapol) {
+  ISF_FCS::MLogging logger;
   if (!simulstate)
     simulstate = new TFCSSimulationState();
   if (!truth)
@@ -306,11 +300,11 @@ void TFCSParametrizationChain::unit_test(
   TFCSParametrizationChain chain("chain", "chain");
   chain.setLevel(MSG::DEBUG);
 
-  std::cout << "====         Chain setup       ====" << std::endl;
+  ATH_MSG_NOCLASS(logger, "====         Chain setup       ====");
   chain.Print();
-  std::cout << "==== Simulate with empty chain ====" << std::endl;
+  ATH_MSG_NOCLASS(logger, "==== Simulate with empty chain ====");
   chain.simulate(*simulstate, truth, extrapol);
-  std::cout << "===================================" << std::endl << std::endl;
+  ATH_MSG_NOCLASS(logger, "===================================" << std::endl);
 
   TFCSParametrizationBase *param;
   param = new TFCSInvisibleParametrization("A begin all", "A begin all");
@@ -320,14 +314,14 @@ void TFCSParametrizationChain::unit_test(
   param->setLevel(MSG::DEBUG);
   chain.push_back(param);
 
-  std::cout << "====         Chain setup       ====" << std::endl;
+  ATH_MSG_NOCLASS(logger, "====         Chain setup       ====");
   chain.Print();
-  std::cout << "==== Simulate only begin/end all ====" << std::endl;
+  ATH_MSG_NOCLASS(logger, "==== Simulate only begin/end all ====");
   chain.simulate(*simulstate, truth, extrapol);
-  std::cout << "==== Simulate only begin/end all with chain retry===="
-            << std::endl;
+  ATH_MSG_NOCLASS(logger,
+                  "==== Simulate only begin/end all with chain retry====");
   chain.set_RetryChainFromStart();
   chain.simulate(*simulstate, truth, extrapol);
   chain.reset_RetryChainFromStart();
-  std::cout << "===================================" << std::endl << std::endl;
+  ATH_MSG_NOCLASS(logger, "===================================" << std::endl);
 }

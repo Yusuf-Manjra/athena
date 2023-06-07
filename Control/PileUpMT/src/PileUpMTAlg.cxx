@@ -58,17 +58,18 @@ PileUpMTAlg::PileUpMTAlg(const std::string& name, ISvcLocator* pSvcLocator)
 PileUpMTAlg::~PileUpMTAlg() {}
 
 StatusCode PileUpMTAlg::get_ei(StoreGateSvc& sg, std::unique_ptr<const xAOD::EventInfo>& ei_,
-                               bool /* pileup */) const {
+                               bool pileup) const {
+    std::string key = pileup ? "EventInfo" : "HSEventInfo";
     xAOD::EventInfo* newEi = new xAOD::EventInfo();
     xAOD::EventAuxInfo* eiAux = new xAOD::EventAuxInfo();
     newEi->setStore(eiAux);
-    SG::ReadHandle<xAOD::EventInfo> ei_h("EventInfo", sg.name());
+    SG::ReadHandle<xAOD::EventInfo> ei_h(key, sg.name());
     const xAOD::EventInfo* ei = ei_h.get();
     if (ei != nullptr) {
         *newEi = *ei;
     }
     else {
-        SG::ReadHandle<::EventInfo> ei2_h("EventInfo", sg.name());
+        SG::ReadHandle<::EventInfo> ei2_h(key, sg.name());
         const ::EventInfo* ei2 = ei2_h.get();
         if (ei2 == nullptr) {
             // Just in case
@@ -172,7 +173,7 @@ StatusCode PileUpMTAlg::initialize() {
             }
         }
     }
-    m_evtInfoContKey = fmt::format("{}Container", m_evtInfoKey.key());
+    m_evtInfoContKey = "PileUpEventInfo";
     ATH_CHECK(m_evtInfoKey.initialize());
     ATH_CHECK(m_evtInfoContKey.initialize());
     return StatusCode::SUCCESS;
@@ -192,6 +193,7 @@ StatusCode PileUpMTAlg::execute() {
     ATH_MSG_DEBUG("Executing " << name() << "...");
     // Gaudi::Hive::setCurrentContext(ctx);
     const EventContext& ctx = Gaudi::Hive::currentContext();
+    const auto& evtID = ctx.eventID();
     const long long hs_id = ctx.evt() + m_skippedHSEvents.value();
     ATH_CHECK(evtStore().retrieve());
     if (m_fracLowPt != 0) {
@@ -225,6 +227,13 @@ StatusCode PileUpMTAlg::execute() {
     overlaidEvt->setEvtStore(evtStore().get());
     overlaidEvt->clearSubEvents();
 
+    // This was the problem. Need to fix overlaidEvt using context run and lb number
+    overlaidEvt->setRunNumber(evtID.run_number());
+    overlaidEvt->setLumiBlock(evtID.lumi_block());
+    overlaidEvt->setEventNumber(evtID.event_number());
+    overlaidEvt->setBCID(evtID.bunch_crossing_id());
+    overlaidEvt->setTimeStamp(evtID.time_stamp());
+    overlaidEvt->setTimeStampNSOffset(evtID.time_stamp_ns_offset());
     // Pileup container
     SG::WriteHandle<xAOD::EventInfoContainer> puCont(m_evtInfoContKey, ctx);
     ATH_CHECK(puCont.record(std::make_unique<xAOD::EventInfoContainer>(),
@@ -239,7 +248,7 @@ StatusCode PileUpMTAlg::execute() {
 
     // Set properties
     bool sf_updated = false;
-    float lumi_sf = m_beamLumi->scaleFactor(hsEvt->runNumber(), hsEvt->lumiBlock(), sf_updated);
+    float lumi_sf = m_beamLumi->scaleFactor(evtID.run_number(), evtID.lumi_block(), sf_updated);
     float cur_avg_mu = lumi_sf * m_avgMu;
     overlaidEvt->setAverageInteractionsPerCrossing(cur_avg_mu);
     overlaidEvt->setActualInteractionsPerCrossing(m_beamInt->normFactor(0) * cur_avg_mu);
@@ -473,7 +482,17 @@ StatusCode PileUpMTAlg::execute() {
             }
             catch (const std::exception& e) {
                 ATH_MSG_ERROR("Caught exception processing subevent: " << e.what() << ", TOOL: "
-                                                                       << tool.name());
+                                                                       << tool.name() << ", BC: " << start_evt->time());
+                const auto evt_ids =
+                    ranges::make_subrange(start_evt, end_evt) |
+                    rv::transform([](const SubEvent& sev) {
+                      return fmt::format("({}, {})", sev.ptr()->runNumber(),
+                                         sev.ptr()->eventNumber());
+                    }) |
+                    ranges::to<std::vector>;
+                const std::string evts = fmt::format("[{}]", fmt::join(evt_ids, ", "));
+                ATH_MSG_ERROR(
+                    "Exception occured in one of these events: " << evts);
                 return StatusCode::FAILURE;
             }
         }

@@ -39,7 +39,10 @@ def getFlavourTagging( flags, inputJets, inputVertex, inputTracks, BTagName,
         'BTagging/20211216trig/dl1d/AntiKt4EMPFlow/network.json',
         # Trigger GN1 training
         'BTagging/20220813trig/gn1/antikt4empflow/network.onnx',
+        # Trigger DL1dbb training
+        'BTagging/20230314trig/dl1dbb/antikt4empflow/network.json',
     ]
+
 
     acc.merge(BTagAlgsCfg(
         inputFlags=flags,
@@ -82,6 +85,14 @@ def getFastFlavourTagging( flags, inputJets, inputVertex, inputTracks, isPFlow=F
             trackIpPrefix=trackIpPrefix,
             )
         )
+        if inputVertex:
+            ca.merge(
+            BTagTrackAugmenterAlgCfg(
+                flags,
+                TrackCollection=inputTracks,
+                PrimaryVertexCollectionName=inputVertex,
+            )
+        )
 
     # now we associate the tracks to the jet
     ## JetParticleAssociationAlgCfg uses a shrinking cone.
@@ -116,7 +127,14 @@ def getFastFlavourTagging( flags, inputJets, inputVertex, inputTracks, isPFlow=F
                 {
                     'BTagTrackToJetAssociator': tracksOnJetDecoratorName,
                 },
-            ]
+            ],
+
+            [
+                'BTagging/20230331trig/gn1/antikt4empflow/network.onnx',
+                {
+                    'BTagTrackToJetAssociator': tracksOnJetDecoratorName,
+                },
+            ],
         ]
     else:
         dl2_configs=[
@@ -129,14 +147,30 @@ def getFastFlavourTagging( flags, inputJets, inputVertex, inputTracks, isPFlow=F
                 }
             ],
             [
-                'BTagging/20230130/FastGN1/antikt4empflow/fastGN1_20230130.onnx',
+                'BTagging/20230327trig/gn1/antikt4emtopo/network.onnx',
                 {
                     'BTagTrackToJetAssociator': tracksOnJetDecoratorName,
-                    **{f'GN120230130_p{x}': f'fastGN120230130_p{x}' for x in 'cub'},
+                    **{f'GN120230327_p{x}': f'fastGN120230327_p{x}' for x in 'cub'},
+                    'btagIp_': trackIpPrefix,
+                }
+            ],
+            [
+                'BTagging/20230223trig/dipz/antikt4emtopo/network.json',
+                {
+                    'BTagTrackToJetAssociator': tracksOnJetDecoratorName,
                     'btagIp_': trackIpPrefix,
                 }
             ]
         ]
+        if inputVertex: 
+            dl2_configs += [
+                [
+                 'BTagging/20230331trig/gn1/antikt4empflow/network.onnx',
+                {
+                    'BTagTrackToJetAssociator': tracksOnJetDecoratorName,
+                },   
+                ]
+            ]
 
     # not all the keys that the NN requests are declaired. This will
     # cause an algorithm stall if we don't explicetly tell it that it

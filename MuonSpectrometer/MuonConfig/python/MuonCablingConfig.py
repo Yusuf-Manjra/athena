@@ -5,16 +5,18 @@ from AthenaConfiguration.ComponentFactory import CompFactory
 
 def NRPCCablingConfigCfg(flags, name = "MuonNRPC_CablingAlg", **kwargs):
     result = ComponentAccumulator()
-    from AthenaConfiguration.Enums  import LHCPeriod
-    if  flags.GeoModel.Run < LHCPeriod.Run3:
+    if not flags.Muon.enableNRPC:
         return result
     ### Add the database configuration here
     NRPCCablingAlg = CompFactory.MuonNRPC_CablingAlg(name, **kwargs)
     result.addCondAlgo( NRPCCablingAlg, primary= True)
     return result
 
+
 def RPCCablingConfigCfg(flags):
     acc = ComponentAccumulator()
+    if not flags.Detector.GeometryRPC: return acc
+    acc.merge(NRPCCablingConfigCfg(flags))
 
     dbName = 'RPC_OFL' if flags.Input.isMC else 'RPC'
     dbRepo="MuonRPC_Cabling/ATLAS.data"
@@ -88,7 +90,7 @@ def MuonTGC_CablingSvcCfg(flags):
 
 def TGCCablingConfigCfg(flags):
     acc = ComponentAccumulator()
-
+    if not flags.Detector.GeometryTGC: return acc
     # No ServiceHandle in TGCcablingServerSvc
     acc.merge(MuonTGC_CablingSvcCfg(flags))
 
@@ -104,11 +106,11 @@ def TGCCablingConfigCfg(flags):
 
 # This should be checked by experts since I just wrote it based on 
 # athena/MuonSpectrometer/MuonCnv/MuonCnvExample/python/MuonCablingConfig.py
-def MDTCablingConfigCfg(flags):
+def MDTCablingConfigCfg(flags, name = "MuonMDT_CablingAlg", **kwargs):
     acc = ComponentAccumulator()
-
-    MuonMDT_CablingAlg=CompFactory.MuonMDT_CablingAlg
-    MDTCablingAlg = MuonMDT_CablingAlg("MuonMDT_CablingAlg")
+    from AthenaConfiguration.Enums import LHCPeriod
+    kwargs.setdefault("isRun3", flags.GeoModel.Run >= LHCPeriod.Run3 )
+    MDTCablingAlg = CompFactory.MuonMDT_CablingAlg(name, **kwargs)
    
     from IOVDbSvc.IOVDbSvcConfig import addFolders
     if flags.Input.isMC is True:
@@ -122,7 +124,7 @@ def MDTCablingConfigCfg(flags):
         acc.merge( addFolders( flags, ["/MDT/CABLING/MAP_SCHEMA",
                                        "/MDT/CABLING/MEZZANINE_SCHEMA"], 'MDT', className="CondAttrListCollection") )
 
-    acc.addCondAlgo( MDTCablingAlg )
+    acc.addCondAlgo( MDTCablingAlg, primary = True )
    
     return acc
 
@@ -130,7 +132,7 @@ def MDTCablingConfigCfg(flags):
 # This should be checked by experts 
 def CSCCablingConfigCfg(flags):
     acc = ComponentAccumulator()
-
+    if not flags.Detector.GeometryCSC: return acc
     CSCcablingSvc=CompFactory.CSCcablingSvc
     cscCablingSvc = CSCcablingSvc()
 
@@ -138,6 +140,14 @@ def CSCCablingConfigCfg(flags):
 
     return acc
 
+def MicroMegaCablingCfg(flags, name = "MMCabling_Alg", **kwargs):
+    result = ComponentAccumulator()
+    #### Only setup the MM Cabling algorithm for data
+    if flags.Input.isMC or not flags.Detector.GeometryMM: 
+        return result
+    the_alg = CompFactory.MuonMM_CablingAlg(name, **kwargs)
+    result.addCondAlgo(the_alg, primary = True)
+    return result
 #All the cabling configs together (convenience function)
 def MuonCablingConfigCfg(flags):
     acc = ComponentAccumulator()
@@ -153,6 +163,8 @@ def MuonCablingConfigCfg(flags):
 
     result = CSCCablingConfigCfg(flags)
     acc.merge( result )
+
+    acc.merge(MicroMegaCablingCfg(flags))
 
     return acc
 

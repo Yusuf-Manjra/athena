@@ -3,7 +3,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
-from AthenaConfiguration.Enums import BeamType
+from AthenaConfiguration.Enums import BeamType, MetadataCategory
 from AthenaCommon.SystemOfUnits import GeV
 
 
@@ -37,6 +37,7 @@ def TCAL1TileCellsMuonDecoratorCfg(flags, **kwargs):
     kwargs.setdefault('MinMuonPt', 10 * GeV)
     kwargs.setdefault('MaxAbsMuonEta', 1.7)
     kwargs.setdefault('IsoCone', 0.4)
+    kwargs.setdefault('MaxRelETrkInIsoCone', 100000)
 
     kwargs.setdefault('TrackTools', acc.popToolsAndMerge(TCAL1TrackToolsCfg(flags)) )
 
@@ -60,7 +61,12 @@ def TCAL1StringSkimmingToolCfg(flags, **kwargs):
     acc = ComponentAccumulator()
     tdt = acc.getPrimaryAndMerge(TrigDecisionToolCfg(flags))
 
-    selectionExpression = f'Muons.{prefix}SelectedMuon' if flags.Beam.Type is BeamType.Collisions else 'abs(Muons.eta) < 1.7'
+    selectionExpression = ""
+    if flags.Beam.Type is BeamType.Collisions:
+        selectionExpression = f'(Muons.ptvarcone30_Nonprompt_All_MaxWeightTTVA_pt500 + 0.4 * Muons.neflowisol20) / Muons.pt < 0.18 && Muons.{prefix}SelectedMuon'
+    else:
+        selectionExpression = 'abs(Muons.eta) < 1.7'
+
     skimmingExpression = f'count({selectionExpression}) > 0'
 
     kwargs.setdefault('name', 'TCAL1StringSkimmingTool')
@@ -97,7 +103,7 @@ def TCAL1KernelCfg(flags, name='TCAL1Kernel', **kwargs):
     acc = ComponentAccumulator()
 
     prefix = kwargs.pop('Prefix', 'TCAL1_')
-    streamName = kwargs.pop('StreamName', 'OutputStreamDAOD_TCAL1')
+    streamName = kwargs.pop('StreamName', 'StreamDAOD_TCAL1')
 
     # Common augmentations
     triggerListsHelper = kwargs.pop('TriggerListsHelper', 'TriggerListsHelper')
@@ -125,11 +131,12 @@ def TCAL1Cfg(ConfigFlags):
     TCAL1Prefix = 'TCAL1_'
     from DerivationFrameworkPhys.TriggerListsHelper import TriggerListsHelper
     TCAL1TriggerListsHelper = TriggerListsHelper(ConfigFlags)
-    
+
     acc = ComponentAccumulator()
-    acc.merge(TCAL1KernelCfg(ConfigFlags, name="TCAL1Kernel", StreamName="OutputStreamDAOD_TCAL1", Prefix=TCAL1Prefix,  TriggerListsHelper=TCAL1TriggerListsHelper))
+    acc.merge(TCAL1KernelCfg(ConfigFlags, name="TCAL1Kernel", StreamName="StreamDAOD_TCAL1", Prefix=TCAL1Prefix,  TriggerListsHelper=TCAL1TriggerListsHelper))
 
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+    from xAODMetaDataCnv.InfileMetaDataConfig import SetupMetaDataForStreamCfg
     from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
     TCAL1SlimmingHelper = SlimmingHelper("TCAL1SlimmingHelper", NamesAndTypes = ConfigFlags.Input.TypedCollections, ConfigFlags = ConfigFlags)
     TCAL1SlimmingHelper.SmartCollections = ['EventInfo', 'Muons', 'AntiKt4EMTopoJets', 'AntiKt4EMPFlowJets', 'MET_Baseline_AntiKt4EMTopo', 'MET_Baseline_AntiKt4EMPFlow', 'PrimaryVertices']
@@ -165,17 +172,9 @@ def TCAL1Cfg(ConfigFlags):
     if ConfigFlags.Trigger.EDMVersion == 3:
         from TrigNavSlimmingMT.TrigNavSlimmingMTConfig import AddRun3TrigNavSlimmingCollectionsToSlimmingHelper
         AddRun3TrigNavSlimmingCollectionsToSlimmingHelper(TCAL1SlimmingHelper)        
-        # Run 2 is added here temporarily to allow testing/comparison/debugging
-        from DerivationFrameworkPhys.TriggerMatchingCommonConfig import AddRun2TriggerMatchingToSlimmingHelper
-        AddRun2TriggerMatchingToSlimmingHelper(SlimmingHelper = TCAL1SlimmingHelper, 
-                                               OutputContainerPrefix = "TrigMatch_", 
-                                               TriggerList = TCAL1TriggerListsHelper.Run3TriggerNamesTau)
-        AddRun2TriggerMatchingToSlimmingHelper(SlimmingHelper = TCAL1SlimmingHelper, 
-                                               OutputContainerPrefix = "TrigMatch_",
-                                               TriggerList = TCAL1TriggerListsHelper.Run3TriggerNamesNoTau)
-    
 
     TCAL1ItemList = TCAL1SlimmingHelper.GetItemList()
     acc.merge(OutputStreamCfg(ConfigFlags, "DAOD_TCAL1", ItemList=TCAL1ItemList, AcceptAlgs=["TCAL1Kernel"]))
+    acc.merge(SetupMetaDataForStreamCfg(ConfigFlags, "DAOD_TCAL1", AcceptAlgs=["TCAL1Kernel"], createMetadata=[MetadataCategory.CutFlowMetaData]))
 
     return acc

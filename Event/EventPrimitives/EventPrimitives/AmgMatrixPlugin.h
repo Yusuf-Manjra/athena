@@ -5,8 +5,6 @@
 #ifndef EVENTPRIMITIVES_AMGMATRIXPLUGIN_H
 #define EVENTPRIMITIVES_AMGMATRIXPLUGIN_H
 
-#include <cmath>
-
     //////////////////////////////////////////////////////////////////////
     // Inverse calculation for symmetric matrix (5x5) with Gauss-Jordan
     //
@@ -20,35 +18,12 @@
     //
     // Output parameters : Vn(0/24) symmetric ////////////////////////////
 
-
-    inline Scalar mag() const {
-        EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(Matrix, 3)
-        const Scalar* data = this->data();
-        return std::sqrt(data[0] * data[0] + data[1] * data[1] + data[2]*data[2]);
-    }
-
-    /**pseudorapidity method */
-    inline Scalar eta() const {
-        EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(Matrix, 3)
-        const Scalar rho2 = (*this).x() * (*this).x() + (*this).y() * (*this).y();
-        const Scalar z = (*this).z();
-        if ( rho2 > 0. ) { // rho^2 >0.
-          const double m = std::sqrt(rho2 + z * z);
-          return 0.5 * std::log(( m + z) / (m - z));
-        }
-        if ( z ==  0   ) { return  0.0; }
-        constexpr Scalar s_etaMax = static_cast<Scalar>(22756.0); // Following math/genvector/inc/Math/GenVector/etaMax.h in ROOT 6.26
-        return (z > 0) ? z + s_etaMax :  z - s_etaMax; // Following math/genvector/inc/Math/GenVector/eta.h in ROOT 6.26
-    }
-
-
     bool inverseSym5(Matrix<Scalar, 5,5>& out) const {
 
      if(this == &out || this->cols() != 5 || this->rows() != 5){
          return false;
      }
      const double * a = this->data();
-
 
      double* b = out.data();
      if   (a[ 0] == 0. ) {

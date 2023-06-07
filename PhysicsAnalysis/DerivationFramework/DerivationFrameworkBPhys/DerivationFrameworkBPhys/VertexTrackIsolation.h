@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -13,12 +13,10 @@
 
 #include "AthenaBaseComps/AthAlgTool.h"
 #include "DerivationFrameworkInterfaces/IAugmentationTool.h"
-#include "JpsiUpsilonTools/PrimaryVertexRefitter.h"
-//#include "MuonIdHelpers/MuonIdHelperTool.h"
-//#include "IsolationTool/TrackIsolationTool.h"
 #include "RecoToolInterfaces/ITrackIsolationTool.h"
-//#include "xAODPrimitives/IsolationType.h"
 #include <vector>
+#include "InDetTrackSelectionTool/InDetTrackSelectionTool.h"
+
 /** THE reconstruction tool
  */
 namespace DerivationFramework {
@@ -38,6 +36,7 @@ namespace DerivationFramework {
     private:
 
 	ToolHandle<xAOD::ITrackIsolationTool> m_trackIsoTool;
+
 	std::string m_trackContainerName;
 	std::string m_vertexContainerName;
 	std::vector<unsigned int> m_cones;
@@ -46,6 +45,9 @@ namespace DerivationFramework {
 
         bool m_doIsoPerTrk;
         int m_removeDuplicate;
+
+  bool m_fixElecExclusion;
+  bool m_includeV0;
   }; 
 }
 

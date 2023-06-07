@@ -310,7 +310,7 @@ StatusCode PixelPrepDataToxAOD::execute()
       // Add information for each contributing hit
       if(m_writeRDOinformation) {
         IdentifierHash moduleHash = clusterCollection->identifyHash();
-        AUXDATA(xprd,int,hasBSError) = (int)m_pixelSummary->hasBSError(moduleHash);
+        AUXDATA(xprd,int,hasBSError) = (int)m_pixelSummary->hasBSError(moduleHash, ctx);
         AUXDATA(xprd,int,DCSState) = dcsState->getModuleStatus(moduleHash);
 
         float deplVoltage = 0.0;
@@ -375,18 +375,12 @@ StatusCode PixelPrepDataToxAOD::execute()
       if (m_need_sihits) {
         const std::vector<SiHit> matched_hits = findAllHitsCompatibleWithCluster(prd, &siHits[prd->detectorElement()->identifyHash()], sdo_tracks);
         if (m_writeSiHits) {
-          if (!m_writeSDOs) {
-            ATH_MSG_WARNING("Si hit truth information requested, but SDO collection not available! (m_writeSiHits)");
-          }
           addSiHitInformation(xprd, prd, matched_hits); 
         }
 	    
         if (m_writeNNinformation) {
-          if (!m_writeSDOs) {
-            ATH_MSG_WARNING("Si hit truth information requested, but SDO collection not available! (m_writeNNinformation)");
-          }
           addNNTruthInfo(xprd, prd, matched_hits);
-	}
+        }
       }
     }
   }
@@ -668,7 +662,7 @@ std::vector<SiHit> PixelPrepDataToxAOD::findAllHitsCompatibleWithCluster( const 
       
       float energyDep(0);
       float time(0);
-      for( auto& siHit :  ajoiningHits){
+      for( const auto& siHit :  ajoiningHits){
         energyDep += siHit->energyLoss();
         time += siHit->meanTime();    
       }
@@ -1018,7 +1012,7 @@ void  PixelPrepDataToxAOD::addNNTruthInfo(  xAOD::TrackMeasurementValidation* xp
   // lorentz shift correction    
   double shift = m_lorentzAngleTool->getLorentzShift(de->identifyHash());
   unsigned hitNumber(0);
-  for( auto& siHit : matchingHits ){
+  for( const auto& siHit : matchingHits ){
     
     HepGeom::Point3D<double> averagePosition = (siHit.localStartPosition() + siHit.localEndPosition()) * 0.5;
     

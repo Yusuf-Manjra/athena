@@ -45,7 +45,7 @@ StatusCode ParentChildFilter::filterInitialize() {
 StatusCode ParentChildFilter::filterEvent() {
   for (McEventCollection::const_iterator itr = events()->begin(); itr != events()->end(); ++itr) {
     const HepMC::GenEvent* genEvt = (*itr);
-    for (auto  pitr: *genEvt) {
+    for (const auto&  pitr: *genEvt) {
       int okPDGParent = 0;
       for (int i = 0; i < int(m_PDGParent.size()); i++) if (std::abs(pitr->pdg_id()) == m_PDGParent[i]) okPDGParent=1;
       if ( (m_PDGParent[0] == 0) || (okPDGParent
@@ -59,7 +59,7 @@ StatusCode ParentChildFilter::filterEvent() {
 	   && (std::abs(pitr->momentum().rap()) > m_RapidityMinParent)
 	   && (std::abs(pitr->momentum().rap()) < m_RapidityRangeParent))) {
 #else
-     && (std::abs(getRapidity(pitr)) > m_RapidityMinParent)
+       && (std::abs(getRapidity(pitr)) > m_RapidityMinParent)
 	   && (std::abs(getRapidity(pitr)) < m_RapidityRangeParent))) {
 #endif
         // Check if has end_vertex (skips initial protons)

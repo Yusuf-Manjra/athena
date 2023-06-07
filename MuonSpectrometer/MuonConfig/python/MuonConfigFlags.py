@@ -39,7 +39,7 @@ def createMuonConfigFlags():
     mcf.addFlag("Muon.doDigitization",True)
     mcf.addFlag("Muon.doFastDigitization",False)
     mcf.addFlag("Muon.doPseudoTracking",False)
-    
+
     # 2. Reco MuonRecFlags
     
     mcf.addFlag("Muon.doTGCClusterSegmentFinding", False) # Run cluster segment finding
@@ -58,6 +58,8 @@ def createMuonConfigFlags():
     
     mcf.addFlag("Muon.makePRDs",True) # Disable when e.g. re-running from ESD
     
+    mcf.addFlag("Muon.enableNRPC",False) # To be enabled for NRPC processing. Disabled by default for backward compatibility
+
     # MuonStandaloneFlags.py 
     mcf.addFlag("Muon.printSummary", False) # Print out a summary for each event at each reco stage
     mcf.addFlag("Muon.segmentOrigin", "Muon") # Can be 'Muon','TruthTracking'
@@ -122,6 +124,13 @@ def createMuonConfigFlags():
 
     mcf.addFlag("Muon.enableAlignment",lambda flags: (flags.Common.Project is not Project.AthSimulation \
                                                       and (flags.Common.ProductionStep not in [ProductionStep.Simulation, ProductionStep.FastChain] or flags.Overlay.DataOverlay)))
+
+    # configuration of the DESDM_MCP output format 
+
+    mcf.addFlag("Muon.DESDM_MCP.doAlignmentFormat", False) # Flag to stear the DESDM_MCP format which switches to a looser event selection for toroid off runs used for alignment. 
+
+    # configuration to write out RPC RDO for trigger timing calibration
+    mcf.addFlag("Muon.doWriteRpcRDO", True)
 
     # TODO - add configuration for above    
         

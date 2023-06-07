@@ -187,6 +187,15 @@ def update_nested_dict(d, u):
          d[k] = v
    return d
 
+def get_run_mode(jobOptions):
+   """Deduce the running mode: (legacy) 'JO', 'CA' or 'JSON'"""
+   if jobOptions.endswith('.json'):  # json file
+      return 'JSON'
+   elif jobOptions.endswith('.py'):  # regular job options
+      return 'JO'
+   else:                             # ComponentAccumulator
+      return 'CA'
+
 def HLTMPPy_cfgdict(args):
    """Create the configuration dictionary as expected by HLTMPPy as defined in
    https://gitlab.cern.ch/atlas-tdaq-software/HLTMPPU/blob/master/python/HLTMPPy/runner.py"""
@@ -271,10 +280,9 @@ def HLTMPPy_cfgdict(args):
       'joType' : args.joboptionsvc_type,
       'msgType' : args.msgsvc_type
    }
-   if not args.use_database:      # job options
+   if not args.use_database:
       cdict['trigger'].update({
          'module': 'joboptions',
-         'pythonSetupFile' : 'TrigPSC/TrigPSCPythonSetup.py',
          'joFile': args.jobOptions,
          'SMK': None,
          'l1PSK': None,
@@ -284,9 +292,12 @@ def HLTMPPy_cfgdict(args):
          'postcommand' : args.postcommand,
          'logLevels' : args.log_level
       })
-      # Special case for running from a json file
-      if os.path.splitext(args.jobOptions)[1].lower()=='.json':
-         cdict['trigger']['pythonSetupFile'] = 'TrigPSC.TrigPSCPythonDbSetup'
+      # Python bootstrap depending on file type
+      bootstrap = {'JSON' : 'TrigPSC.TrigPSCPythonDbSetup',
+                   'JO'   : 'TrigPSC/TrigPSCPythonSetup.py',
+                   'CA'   : 'TrigPSC.TrigPSCPythonCASetup'}
+      cdict['trigger']['pythonSetupFile'] = bootstrap[get_run_mode(args.jobOptions)]
+
    else:
       cdict['trigger'].update({
          'module': 'DBPython',
@@ -331,7 +342,7 @@ def main():
 
    ## Global options
    g = parser.add_argument_group('Options')
-   g.add_argument('jobOptions', nargs='?', help='job options (or JSON) file')
+   g.add_argument('jobOptions', nargs='?', help='job options, CA module or JSON file')
    g.add_argument('--threads', metavar='N', type=int, default=1, help='number of threads')
    g.add_argument('--nprocs', metavar='N', type=int, default=1, help='number of children to fork')
    g.add_argument('--concurrent-events', metavar='N', type=int, help='number of concurrent events if different from --threads')
@@ -422,15 +433,16 @@ def main():
                   help='HLTMPPy config dictionary with additional options, e.g.: '
                   '--cfgdict \'{"global": {"log_root" : "/tmp"}}\'')
 
-   args = parser.parse_args()
+   (args, unparsed_args) = parser.parse_known_args()
    check_args(parser, args)
 
    # set default OutputLevels and file inclusion
    import AthenaCommon.Logging
    AthenaCommon.Logging.log.setLevel(getattr(logging, args.log_level[0]))
    AthenaCommon.Logging.log.setFormat("%(asctime)s  Py:%(name)-31s %(levelname)7s %(message)s")
-   from AthenaCommon.Include import include
-   include.setShowIncludes( args.show_includes )
+   if args.show_includes:
+      from AthenaCommon.Include import include
+      include.setShowIncludes( True )
 
    # consistency checks for arguments
    if not args.concurrent_events:
@@ -438,6 +450,14 @@ def main():
 
    if args.loop_files and args.number_of_events<0:
       log.warning("Looping over files without specifying number of events will run forever!")
+
+   # In CA-mode we always dump and reload:
+   if args.jobOptions and get_run_mode(args.jobOptions)=='CA':
+      args.dump_config_reload = True
+
+   # the '-i' command line option only becomes active after the reload:
+   if args.dump_config_reload:
+      args.interactive = False
 
    # Update args and set athena flags
    from TrigPSC import PscConfig
@@ -461,6 +481,12 @@ def main():
    # Extra Psc configuration
    from TrigPSC.PscDefaultFlags import defaultOnlineFlags
    flags = defaultOnlineFlags()
+
+   # Fill flags from command line (if not running from DB/JSON):
+   if not args.use_database and not args.jobOptions.endswith('.json'):
+      PscConfig.unparsedArguments = unparsed_args
+      for flag_arg in unparsed_args:
+         flags.fillFromString(flag_arg)
 
    PscConfig.interactive = args.interactive
    PscConfig.dumpJobProperties = args.dump_config or args.dump_config_exit or args.dump_config_reload

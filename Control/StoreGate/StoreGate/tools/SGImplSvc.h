@@ -52,7 +52,6 @@
 #include "AthenaKernel/IIOVSvc.h"
 #include "StoreGate/SGIterator.h"
 #include "StoreGate/SGWPtr.h"
-#include "SGTools/DataStore.h"
 #include "SGTools/SGVersionedKey.h"
 #include "StoreGate/SGObjectWithVersion.h"
 #include "AthAllocators/Arena.h"
@@ -66,6 +65,7 @@ namespace SG {
   struct RemapImpl;
   class AuxVectorBase;
   class AuxElement;
+  class DataStore;
 }
 
 class DataObject;
@@ -704,6 +704,7 @@ private:
   ServiceHandle<IIncidentSvc> m_pIncSvc; ///< property
   bool m_DumpStore; ///< Dump Property flag: triggers dump() at EndEvent 
   bool m_ActivateHistory; ///< Activate the history service
+  bool m_DumpArena; ///< DumpArena Property flag : trigger m_arena->report() at clearStore
 
   //  typedef std::list<std::string> StrList; 
   StringArrayProperty m_folderNameList; ///< FolderNameList Property

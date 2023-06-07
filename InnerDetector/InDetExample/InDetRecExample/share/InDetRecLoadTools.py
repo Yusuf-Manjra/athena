@@ -234,8 +234,7 @@ if InDetFlags.loadFitter():
     if InDetFlags.doBremRecovery() and InDetFlags.trackFitterType() == 'GlobalChi2Fitter' :
         # @TODO  create where it is needed
         from TrkExTools.TrkExToolsConf import Trk__EnergyLossUpdator
-        InDetEnergyLossUpdator = Trk__EnergyLossUpdator(name="AtlasEnergyLossUpdator",
-                                                        UseBetheBlochForElectrons = False)
+        InDetEnergyLossUpdator = Trk__EnergyLossUpdator(name="AtlasEnergyLossUpdator")
         ToolSvc               += InDetEnergyLossUpdator
 
     from AthenaCommon import CfgGetter
@@ -383,8 +382,7 @@ InDetTRTExtensionTool = TrackingCommon.getInDetTRT_ExtensionTool(TrackingCuts = 
 if InDetFlags.doPattern() and InDetFlags.doCosmics():
 
     from InDetTrackScoringTools.InDetTrackScoringToolsConf import InDet__InDetCosmicScoringTool
-    InDetScoringToolCosmics = InDet__InDetCosmicScoringTool(name         = 'InDetCosmicScoringTool',
-                                                            SummaryTool  = InDetTrackSummaryTool)
+    InDetScoringToolCosmics = InDet__InDetCosmicScoringTool(name         = 'InDetCosmicScoringTool')
     ToolSvc += InDetScoringToolCosmics
     if (InDetFlags.doPrintConfigurables()):
         printfunc (     InDetScoringToolCosmics)
@@ -474,7 +472,7 @@ if InDetFlags.doVertexFinding() or InDetFlags.doVertexFindingForMonitoring() or 
                                                             minNSctHits = InDetPrimaryVertexingCuts.nHitSct(),
                                                             minNTrtHits = InDetPrimaryVertexingCuts.nHitTrt(),
                                                             minNSiHits = InDetPrimaryVertexingCuts.nHitSi(),
-                                                            TrackSummaryTool = InDetTrackSummaryTool,
+                                                            TrackSummaryTool = TrackingCommon.getInDetTrackSummaryTool(),
                                                             Extrapolator = InDetExtrapolator)
 
     ToolSvc += InDetTrackSelectorTool

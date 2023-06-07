@@ -12,7 +12,6 @@
 
 #include "AthenaPoolCnvSvc/IAthenaPoolCnvSvc.h"
 
-#include "GaudiKernel/IChronoStatSvc.h"
 #include "GaudiKernel/IClassIDSvc.h"
 #include "GaudiKernel/IIncidentListener.h"
 #include "GaudiKernel/IIoComponent.h"
@@ -22,6 +21,7 @@
 #include "StorageSvc/DbType.h"
 #include "AthenaBaseComps/AthCnvSvc.h"
 #include "AthenaKernel/IAthenaIPCTool.h"
+#include "PmbCxxUtils/BasicStopWatch.h"
 #include "PoolSvc/IPoolSvc.h"
 
 #include <vector>
@@ -190,7 +190,6 @@ private: // data
    pool::DbType                  m_dbType;  
    std::string                   m_lastInputFileName;
    ServiceHandle<IPoolSvc>       m_poolSvc{this,"PoolSvc","PoolSvc"};
-   ServiceHandle<IChronoStatSvc> m_chronoStatSvc{this,"ChronoStatSvc","ChronoStatSvc"};
    ServiceHandle<IClassIDSvc>    m_clidSvc{this,"ClassIDSvc","ClassIDSvc"};
    ServiceHandle<IAthenaSerializeSvc> m_serializeSvc{this,"AthenaRootSerializeSvc","AthenaRootSerializeSvc"};
    ToolHandle<IAthenaIPCTool>    m_inputStreamingTool{this,"InputStreamingTool",{}};
@@ -199,6 +198,9 @@ private: // data
    //ToolHandleArray<IAthenaIPCTool>    m_outputStreamingTool{this,"OutputStreamingTool", {} };
    std::size_t     m_streamServer=0;
    int m_metadataClient=0;
+
+   /// Map that holds chrono information
+   PMonUtils::BasicStopWatchResultMap_t m_chronoMap{};
 
 private: // properties
    /// UseDetailChronoStat, enable detailed output for time and size statistics for AthenaPOOL:
@@ -249,12 +251,6 @@ private: // properties
    StringProperty m_persSvcPerInputType{this,"PersSvcPerInputType",""};
    std::mutex  m_mutex;
   
-   /// SkipFirstChronoCommit, boolean property to skip the first commit in the chrono stats so the first
-   /// container being committed to disk is not 'tainted' with the POOL overhead
-   BooleanProperty m_skipFirstChronoCommit{this,"SkipFirstChronoCommit",false};
-   /// bool to activate the chrono stats, depending on the m_skipFirstChronoCommit data member
-   bool m_doChronoStat=true;
-
    /// For SharedWriter:
    /// To use MetadataSvc to merge data placed in a certain container
    StringProperty  m_metadataContainerProp{this,"OutputMetadataContainer","MetaData"};

@@ -7,6 +7,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
+from AthenaConfiguration.AccumulatorCache import AccumulatorCache
 
 
 # Get Rpc data decoder for MuFast data preparator
@@ -259,7 +260,7 @@ def muFastSteeringCfg( flags, roisKey="", setup="", **kwargs ):
         muFastAlg.Scale_Road_BarrelMiddle = 1
         muFastAlg.Scale_Road_BarrelOuter  = 1
 
-    if setup == 'MuonCalib':
+    if setup == 'Calib':
         muFastAlg.DoCalibrationStream = True
         muFastAlg.MuonCalDataScouting = False
         muFastAlg.MuonCalBufferSize   = 1024*1024
@@ -340,8 +341,8 @@ def AlignmentBarrelLUTSvcCfg( flags ):
 
     return acc, alignmentBarrelLUTSvc
 
-# In the future, above functions should be moved to TrigL2MuonSA package(?)
 
+@AccumulatorCache
 def l2MuFastAlgCfg( flags, roisKey, setup="", **kwargs ):
 
     acc = ComponentAccumulator()
@@ -365,15 +366,6 @@ def l2MuFastAlgCfg( flags, roisKey, setup="", **kwargs ):
     return acc
 
 
-
-def l2MuFastHypoCfg( flags, name="UNSPECIFIED", muFastInfo="UNSPECIFIED" ):
-
-    TrigMufastHypoAlg=CompFactory.TrigMufastHypoAlg
-    muFastHypo = TrigMufastHypoAlg( name )
-    muFastHypo.MuonL2SAInfoFromMuFastAlg = muFastInfo 
-
-    return muFastHypo
- 
 
 if __name__ == "__main__":
     from AthenaConfiguration.TestDefaults import defaultTestFiles

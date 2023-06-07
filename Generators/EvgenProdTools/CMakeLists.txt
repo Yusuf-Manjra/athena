@@ -11,7 +11,7 @@ atlas_add_library( EvgenProdToolsLib
                    src/*.cxx
                    PUBLIC_HEADERS EvgenProdTools
                    INCLUDE_DIRS ${ROOT_INCLUDE_DIRS} 
-                   LINK_LIBRARIES ${ROOT_LIBRARIES} AtlasHepMCLib AtlasHepMCsearchLib AthenaBaseComps TruthHelper GeneratorModulesLib GenInterfacesLib
+                   LINK_LIBRARIES ${ROOT_LIBRARIES} AtlasHepMCLib AtlasHepMCsearchLib AthenaBaseComps GeneratorModulesLib GenInterfacesLib
                    PRIVATE_LINK_LIBRARIES AthenaKernel EventInfo xAODEventInfo GaudiKernel TruthUtils IOVDbDataModel AthenaPoolUtilities PathResolver )
 
 atlas_add_component( EvgenProdTools
@@ -22,4 +22,4 @@ atlas_add_component( EvgenProdTools
 atlas_install_python_modules( python/*.py POST_BUILD_CMD ${ATLAS_FLAKE8} )
 atlas_install_joboptions( share/common/*.py POST_BUILD_CMD ${ATLAS_FLAKE8} --extend-ignore=F401,F821 )
 atlas_install_runtime( share/file/*.txt )
-atlas_install_scripts( scripts/simple_lhe_plotter.py POST_BUILD_CMD ${ATLAS_FLAKE8} )
+atlas_install_scripts( scripts/simple_lhe_plotter.py scripts/lhe_splitter.py POST_BUILD_CMD ${ATLAS_FLAKE8} )

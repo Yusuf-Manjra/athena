@@ -14,12 +14,9 @@ __doc__    = "InDetTrigConfigRecLoadToolsPost"
 # common things
 from AthenaCommon.AppMgr import ToolSvc
 from InDetTrigRecExample.InDetTrigFlags import InDetTrigFlags
-from InDetTrigRecExample.ConfiguredNewTrackingTrigCuts import EFIDTrackingCuts
-InDetTrigCutValues = EFIDTrackingCuts
 
 from InDetTrigRecExample.InDetTrigCommonTools import CAtoLegacyPublicToolWrapper
 
-from InDetTrigRecExample.InDetTrigConfigRecLoadTools import InDetTrigTestPixelLayerToolInner
 from TrkConfig.TrkTrackSummaryToolConfig import InDetTrigTrackSummaryToolCfg
 InDetTrigTrackSummaryTool = CAtoLegacyPublicToolWrapper(InDetTrigTrackSummaryToolCfg)
 
@@ -29,32 +26,10 @@ InDetTrigTrackSummaryTool = CAtoLegacyPublicToolWrapper(InDetTrigTrackSummaryToo
 # DoSharedSiHits = InDetTrigFlags.doSharedHits(),
 # AssociationMapName = "TrigInDetPRDtoTrackMap"
 
-from TrkParticleCreator.TrkParticleCreatorConf import Trk__TrackParticleCreatorTool
-InDetTrigParticleCreatorTool = \
-    Trk__TrackParticleCreatorTool( name = "InDetTrigParticleCreatorTool",
-                                   TrackSummaryTool = InDetTrigTrackSummaryTool,
-                                   KeepParameters = False,
-                                   DoSharedSiHits = False
-                                   #ForceTrackSummaryUpdate = False,
-                                   )
+from TrkConfig.TrkParticleCreatorConfig import InDetTrigParticleCreatorToolCfg,InDetTrigParticleCreatorToolTRTPidCfg
+InDetTrigParticleCreatorTool = CAtoLegacyPublicToolWrapper(InDetTrigParticleCreatorToolCfg)
+InDetTrigParticleCreatorToolTRTPid = CAtoLegacyPublicToolWrapper(InDetTrigParticleCreatorToolTRTPidCfg)
 
-ToolSvc += InDetTrigParticleCreatorTool
-if (InDetTrigFlags.doPrintConfigurables()):
-    print (InDetTrigParticleCreatorTool)
-
-InDetTrigParticleCreatorToolWithSummary = \
-    Trk__TrackParticleCreatorTool( name = "InDetTrigParticleCreatorToolWithSummary",
-                                   TrackSummaryTool = InDetTrigTrackSummaryTool,
-                                   TestPixelLayerTool = InDetTrigTestPixelLayerToolInner,
-                                   KeepParameters = True,
-                                   ComputeAdditionalInfo = True,
-                                   DoSharedSiHits = False
-                                   #ForceTrackSummaryUpdate = True,
-                                   )
-
-ToolSvc += InDetTrigParticleCreatorToolWithSummary
-if (InDetTrigFlags.doPrintConfigurables()):
-    print (InDetTrigParticleCreatorToolWithSummary)
 
 InDetTrigTRT_ElectronPidTool = None
 from AthenaCommon.DetFlags import DetFlags
@@ -87,20 +62,6 @@ if DetFlags.haveRIO.TRT_on() :
     if (InDetTrigFlags.doPrintConfigurables()):
         print (     InDetTrigTRT_ElectronPidTool)
 
-InDetTrigParticleCreatorToolWithSummaryTRTPid = \
-    Trk__TrackParticleCreatorTool( name = "InDetTrigParticleCreatorToolWithSummaryTRTPid",
-                                   TrackSummaryTool = InDetTrigTrackSummaryTool,
-                                   TestPixelLayerTool = InDetTrigTestPixelLayerToolInner,
-                                   KeepParameters = True,
-                                   ComputeAdditionalInfo = True,
-                                   TRT_ElectronPidTool   = InDetTrigTRT_ElectronPidTool,
-                                   DoSharedSiHits = False
-                                   #ForceTrackSummaryUpdate = True,
-                                   )
-
-ToolSvc += InDetTrigParticleCreatorToolWithSummaryTRTPid
-if (InDetTrigFlags.doPrintConfigurables()):
-    print (InDetTrigParticleCreatorToolWithSummaryTRTPid)
 
 from InDetRecExample.TrackingCommon import makePublicTool,makeName
 @makePublicTool

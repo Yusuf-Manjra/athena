@@ -159,6 +159,40 @@ private:
   std::unordered_map<int, GenParticlePtr> m_particleBC;
 };
 
+/// @brief Attribute for linking GenParticles between GenEvents
+///
+/// Variation of the AssociatedParticle Attribute, which allows
+/// GenParticles to be linked between GenEvents. For transient use
+/// only as the from_string(...) method is not defined
+class ShadowParticle : public HepMC3::Attribute {
+public:
+
+  /** @brief Default constructor */
+  ShadowParticle() {}
+
+  /** @brief Constructor initializing attribute value */
+  ShadowParticle(ConstGenParticlePtr p)
+    : Attribute(), m_shadow(p) {}
+
+  /** @brief Implementation of Attribute::from_string */
+  virtual bool from_string(const std::string &) override { return false; }
+
+  /** @brief Implementation of Attribute::to_string */
+  virtual bool to_string(std::string &att) const override
+  {
+    att =  "ShadowParticle";
+    return true;
+  }
+  /** @brief get a pointer to the shadow particle. */
+  ConstGenParticlePtr value() const {
+    return m_shadow;
+  }
+
+private:
+
+  ConstGenParticlePtr m_shadow; ///< The shadow particle.
+};
+
 inline bool set_ll_event_number(HepMC3::GenEvent* e, long long int num){
   e->add_attribute("long_long_event_number", std::make_shared<HepMC3::LongLongAttribute>(num));
   return true;
@@ -413,7 +447,7 @@ inline void set_mpi(GenEvent* e, const int i=0) {
 inline void set_random_states(GenEvent* e, std::vector<long int>& a) {
     e->add_attribute("random_states",std::make_shared<HepMC3::VectorLongIntAttribute>(a));
 }
-template <class T> void set_signal_process_vertex(GenEvent* e, T v) {
+template <class T> void set_signal_process_vertex(GenEvent* e, T& v) {
     if (!v || !e) return;
 /* AV: HepMC2 adds the vertex to event */
     e->add_vertex(v);
@@ -429,7 +463,7 @@ inline bool valid_beam_particles(const GenEvent* e) {
   return true;
 }
 
-template <class T> bool suggest_barcode(T p, int i) {
+template <class T> bool suggest_barcode(T& p, int i) {
   if (!p->parent_event()) return false;
   auto barcodes = p->parent_event()->template attribute<GenEventBarcodes> ("barcodes");
   if (!barcodes) {

@@ -100,6 +100,34 @@ def AthenaHiveEventLoopMgrCfg(flags):
     return cfg
 
 
+def AthenaMtesEventLoopMgrCfg(flags, mtEs=False, channel=''):
+    cfg = ComponentAccumulator()
+
+    hivesvc = CompFactory.SG.HiveMgrSvc("EventDataSvc",
+                                        NSlots = flags.Concurrency.NumConcurrentEvents)
+    cfg.addService( hivesvc )
+
+    arp = CompFactory.AlgResourcePool(TopAlg = ["AthMasterSeq"]) #this should enable control flow
+    cfg.addService( arp )
+
+    scheduler = cfg.getPrimaryAndMerge(AvalancheSchedulerSvcCfg(flags))
+
+    elmgr = CompFactory.AthenaMtesEventLoopMgr(
+        WhiteboardSvc = "EventDataSvc",
+        SchedulerSvc = scheduler.getName(),
+        EventRangeChannel = channel)
+
+    if mtEs:
+        from AthenaServices.OutputStreamSequencerSvcConfig import OutputStreamSequencerSvcCfg
+        cfg.merge(OutputStreamSequencerSvcCfg(flags,
+                                              incidentName="NextEventRange",
+                                              reportingOn = True))
+
+    cfg.addService( elmgr )
+
+    return cfg
+
+
 def MessageSvcCfg(flags):
     cfg = ComponentAccumulator()
     msgsvc = CompFactory.MessageSvc()
@@ -191,6 +219,9 @@ def addMainSequences(flags, cfg):
 
 
 def MainServicesCfg(flags, LoopMgr='AthenaEventLoopMgr'):
+    # Set the Python OutputLevel on the root logger
+    from AthenaCommon.Logging import log
+    log.setLevel(flags.Exec.OutputLevel)
 
     if flags.Exec.Interactive == "run":
         print ("Interactive mode, switch to PyAthenaEventLoopMgr")
@@ -201,7 +232,10 @@ def MainServicesCfg(flags, LoopMgr='AthenaEventLoopMgr'):
             if flags.Concurrency.NumConcurrentEvents==0:
                 raise Exception("Requested Concurrency.NumThreads>0 and Concurrency.NumConcurrentEvents==0, "
                                 "which will not process events!")
-            LoopMgr = "AthenaHiveEventLoopMgr"
+            if flags.Exec.MTEventService:
+                LoopMgr = "AthenaMtesEventLoopMgr"
+            else:
+                LoopMgr = "AthenaHiveEventLoopMgr"
 
         if flags.Concurrency.NumProcs > 0:
             LoopMgr = "AthMpEvtLoopMgr"
@@ -246,7 +280,10 @@ def MainServicesCfg(flags, LoopMgr='AthenaEventLoopMgr'):
 
     # Additional components needed for threaded jobs only:
     if flags.Concurrency.NumThreads > 0:
-        cfg.merge(AthenaHiveEventLoopMgrCfg(flags))
+        if flags.Exec.MTEventService:
+            cfg.merge(AthenaMtesEventLoopMgrCfg(flags,True,flags.Exec.MTEventServiceChannel))
+        else:
+            cfg.merge(AthenaHiveEventLoopMgrCfg(flags))
         # Setup SGCommitAuditor to sweep new DataObjects at end of Alg execute
         cfg.addAuditor( CompFactory.SGCommitAuditor() )
     elif LoopMgr == 'AthenaEventLoopMgr':
@@ -282,4 +319,4 @@ if __name__=="__main__":
     except ModuleNotFoundError:
         #  The McEventSelector package required by MainEvgenServicesCfg is not part of the AthAnalysis project
         cfg = MainServicesCfg(flags)
-    cfg._wasMerged = True   # to avoid errror that CA was not merged
+    cfg.wasMerged()   # to avoid errror that CA was not merged

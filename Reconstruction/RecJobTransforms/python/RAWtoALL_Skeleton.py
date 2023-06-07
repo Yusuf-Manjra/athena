@@ -82,12 +82,14 @@ def fromRunArgs(runArgs):
         flagString = 'Output.DAOD_IDTIDEFileName'
         flags.addFlag(flagString, runArgs.outputDAOD_IDTIDEFile)
         flags.Output.doWriteDAOD = True
+        flags.addFlag('Output.doWriteDAOD_IDTIDE', True)
         log.info("---------- Configured DAOD_IDTIDE output")
 
     if hasattr(runArgs, 'outputDESDM_MCPFile'):
         flagString = 'Output.DESDM_MCPFileName'
         flags.addFlag(flagString, runArgs.outputDESDM_MCPFile)
         flags.Output.doWriteDAOD = True
+        flags.addFlag('Output.doWriteDESDM_MCP', True)
         log.info("---------- Configured DESDM_MCP output")
     
     if hasattr(runArgs, 'outputDRAW_ZMUMUFile'):
@@ -106,19 +108,28 @@ def fromRunArgs(runArgs):
         flagString = 'Output.DAOD_L1CALO1FileName'
         flags.addFlag(flagString, runArgs.outputDAOD_L1CALO1File)
         flags.Output.doWriteDAOD = True
+        flags.addFlag('Output.doWriteDAOD_L1CALO1', True)
         log.info("---------- Configured DAOD_L1CALO1 output")
 
     if hasattr(runArgs, 'outputDAOD_L1CALO2File'):
         flagString = 'Output.DAOD_L1CALO2FileName'
         flags.addFlag(flagString, runArgs.outputDAOD_L1CALO2File)
         flags.Output.doWriteDAOD = True
+        flags.addFlag('Output.doWriteDAOD_L1CALO2', True)
         log.info("---------- Configured DAOD_L1CALO2 output")
 
     if hasattr(runArgs, 'outputDESDM_PHOJETFile'):
         flagString = 'Output.DESDM_PHOJETFileName'
         flags.addFlag(flagString, runArgs.outputDESDM_PHOJETFile)
         flags.Output.doWriteDAOD = True
+        flags.addFlag('Output.doWriteDESDM_PHOJET', True)
         log.info("---------- Configured DESDM_PHOJET output")
+
+    if hasattr(runArgs, 'outputDESDM_ALLCELLSFile'):
+        streamName = 'DESDM_ALLCELLS'
+        flags.addFlag(f'Output.{streamName}FileName', runArgs.outputDESDM_ALLCELLSFile)
+        flags.addFlag(f'Output.doWrite{streamName}', True)
+        log.info("---------- Configured "+streamName+" output")
 
     from AthenaConfiguration.Enums import ProductionStep
     flags.Common.ProductionStep=ProductionStep.Reconstruction
@@ -147,6 +158,9 @@ def fromRunArgs(runArgs):
 
     # Pre-exec
     processPreExec(runArgs, flags)
+
+    # To respect --athenaopts 
+    flags.fillFromArgs()
 
     # Lock flags
     flags.lock()
@@ -200,6 +214,12 @@ def fromRunArgs(runArgs):
         from PrimaryDPDMaker.DESDM_PHOJET import DESDM_PHOJETCfg
         cfg.merge(DESDM_PHOJETCfg(flags))
         log.info("---------- Configured PHOJET perfDPD")
+
+    # DESDM ALLCELLS
+    for flag in [key for key in flags._flagdict.keys() if ("Output.DESDM_ALLCELLSFileName" in key)]:
+        from PrimaryDPDMaker.DESDM_ALLCELLS import DESDM_ALLCELLSCfg
+        cfg.merge(DESDM_ALLCELLSCfg(flags))
+        log.info("---------- Configured ALLCELLS perfDPD")
 
     # Special message service configuration
     from Digitization.DigitizationSteering import DigitizationMessageSvcCfg

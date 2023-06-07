@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "PixelGeoModelXml/PixelDetectorTool.h"
@@ -39,7 +39,7 @@ StatusCode PixelDetectorTool::create()
 
   m_commonItems = std::make_unique<InDetDD::SiCommonItems>(idHelper);
    
-  const GeoModelIO::ReadGeoModel* sqlreader = getSqliteReader();
+  GeoModelIO::ReadGeoModel* sqlreader = getSqliteReader();
   
   // If we are not taking the geo from sqlite, check the availability of tables 
   // (or that we have a local geometry)
@@ -64,21 +64,23 @@ StatusCode PixelDetectorTool::create()
   // The & takes the address of the GeoVPhysVol
   GeoPhysVol *world = &*theExpt->getPhysVol();
   auto *manager = new InDetDD::PixelDetectorManager(&*detStore(), m_detectorName, "PixelID");
-  manager->addFolder(m_alignmentFolderName);
-
+  const std::string topFolder(m_alignmentFolderName);
+  manager->addFolder(topFolder);
   if (m_alignable) {
-    manager->addChannel("/Indet/Align/ID",     2, InDetDD::global);
-    manager->addChannel("/Indet/Align/PIX",    1, InDetDD::global);
-    manager->addChannel("/Indet/Align/PIXB1",  0, InDetDD::local);
-    manager->addChannel("/Indet/Align/PIXB2",  0, InDetDD::local);
-    manager->addChannel("/Indet/Align/PIXB3",  0, InDetDD::local);
-    manager->addChannel("/Indet/Align/PIXB4",  0, InDetDD::local);
-    manager->addChannel("/Indet/Align/PIXEA1", 0, InDetDD::local);
-    manager->addChannel("/Indet/Align/PIXEA2", 0, InDetDD::local);
-    manager->addChannel("/Indet/Align/PIXEA3", 0, InDetDD::local);
-    manager->addChannel("/Indet/Align/PIXEC1", 0, InDetDD::local);
-    manager->addChannel("/Indet/Align/PIXEC2", 0, InDetDD::local);
-    manager->addChannel("/Indet/Align/PIXEC3", 0, InDetDD::local);
+    InDetDD::AlignFolderType alignFolderType = InDetDD::static_run1 ;
+    manager->addAlignFolderType(alignFolderType);
+    manager->addChannel(topFolder +"/ID",     2, InDetDD::global);
+    manager->addChannel(topFolder +"/PIX",    1, InDetDD::global);
+    manager->addChannel(topFolder +"/PIXB1",  0, InDetDD::local);
+    manager->addChannel(topFolder +"/PIXB2",  0, InDetDD::local);
+    manager->addChannel(topFolder +"/PIXB3",  0, InDetDD::local);
+    manager->addChannel(topFolder +"/PIXB4",  0, InDetDD::local);
+    manager->addChannel(topFolder +"/PIXEA1", 0, InDetDD::local);
+    manager->addChannel(topFolder +"/PIXEA2", 0, InDetDD::local);
+    manager->addChannel(topFolder +"/PIXEA3", 0, InDetDD::local);
+    manager->addChannel(topFolder +"/PIXEC1", 0, InDetDD::local);
+    manager->addChannel(topFolder +"/PIXEC2", 0, InDetDD::local);
+    manager->addChannel(topFolder +"/PIXEC3", 0, InDetDD::local);
   }
   InDetDD::ITk::PixelGmxInterface gmxInterface(manager, m_commonItems.get(), &m_moduleTree);
 
@@ -87,6 +89,10 @@ StatusCode PixelDetectorTool::create()
   // empty strings are the (optional) containing detector and envelope names
   // allowed to pass a null sqlreader ptr - it will be used to steer the source of the geometry
   const GeoVPhysVol* topVolume = createTopVolume(world, gmxInterface, node, table,"","",sqlreader);
+  if(sqlreader){
+        ATH_MSG_INFO("Building Pixel Readout Geometry from SQLite using "<<m_geoDbTagSvc->getParamSvcName());
+        gmxInterface.buildReadoutGeometryFromSqlite(m_sqliteReadSvc.operator->(),sqlreader);
+  }
   if (topVolume) { //see that a valid pointer is returned
     manager->addTreeTop(topVolume);
     doNumerology(manager);

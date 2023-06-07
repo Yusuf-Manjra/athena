@@ -113,60 +113,60 @@ StatusCode TrigT1CTMonitoring::BSMonitoringAlgorithm::fillHistograms( const Even
     auto eventInfo = GetEventInfo(ctx);
 
     if (m_processMuctpi) {
-      ATH_MSG_DEBUG( "CTPMON fillHistograms() m_processMuctpi");
-      if(m_isRun3)
-      {
-          theMuCTPI_Phase1_RDO = SG::get(m_MuCTPI_Phase1_RDOKey, ctx);
-          if (!theMuCTPI_Phase1_RDO) {
-              ATH_MSG_WARNING( "Could not find \"" << m_MuCTPI_Phase1_RDOKey.key() << "\" in StoreGate");
-              validMuCTPI_Phase1_RDO = false;
-          }
-      }
-      else
-      {
-          theMuCTPI_RDO = SG::get(m_MuCTPI_RDOKey, ctx);
-          if (!theMuCTPI_RDO) {
-              ATH_MSG_WARNING( "Could not find \"" << m_MuCTPI_RDOKey.key() << "\" in StoreGate");
-              validMuCTPI_RDO = false;
-          }
-      }
-      // now try to get RPC and TGC SL output for comparisons
-      theRPCContainer = SG::get(m_RPCContainerKey, ctx);
-      if (!theRPCContainer) {
-	ATH_MSG_WARNING( "Could not find RPC container in StoreGate");
-	validRPCContainer = false;
-      }
-      theTGCContainer = SG::get(m_TGCContainerKey, ctx);
-      if (!theTGCContainer) {
-	ATH_MSG_WARNING( "Could not find TGC container in StoreGate");
-	validTGCContainer = false;
-      }
+		ATH_MSG_DEBUG( "CTPMON fillHistograms() m_processMuctpi");
+		if(m_isRun3)
+		{
+			theMuCTPI_Phase1_RDO = SG::get(m_MuCTPI_Phase1_RDOKey, ctx);
+			if (!theMuCTPI_Phase1_RDO) {
+				ATH_MSG_WARNING( "Could not find \"" << m_MuCTPI_Phase1_RDOKey.key() << "\" in StoreGate");
+				validMuCTPI_Phase1_RDO = false;
+			}
+		}
+		else
+		{
+			theMuCTPI_RDO = SG::get(m_MuCTPI_RDOKey, ctx);
+			if (!theMuCTPI_RDO) {
+				ATH_MSG_WARNING( "Could not find \"" << m_MuCTPI_RDOKey.key() << "\" in StoreGate");
+				validMuCTPI_RDO = false;
+			}
+		}
+		// now try to get RPC and TGC SL output for comparisons
+		theRPCContainer = SG::get(m_RPCContainerKey, ctx);
+		if (!theRPCContainer) {
+			ATH_MSG_WARNING( "Could not find RPC container in StoreGate");
+			validRPCContainer = false;
+		}
+		theTGCContainer = SG::get(m_TGCContainerKey, ctx);
+		if (!theTGCContainer) {
+			ATH_MSG_WARNING( "Could not find TGC container in StoreGate");
+			validTGCContainer = false;
+		}
     }
     
     if (m_processCTP) {
-      ATH_MSG_DEBUG( "CTPMON fillHistograms() m_processCTP");
-      theCTP_RDO = SG::get(m_CTP_RDOKey, ctx);
-      //ATH_MSG_INFO( "CTPMON theCTP_RDO->isValid()" << theCTP_RDO->isValid());
-      if (!theCTP_RDO) {
-	ATH_MSG_WARNING( "Could not find \"" << m_CTP_RDOKey.key() << "\" in StoreGate");
-	validCTP_RDO = false;
-      }
-      if (!m_runOnESD) {
-	theCTP_RIO = SG::get(m_CTP_RIOKey, ctx);
-	if (!theCTP_RIO) {
-	  ATH_MSG_WARNING( "Could not find \"" << m_CTP_RIOKey.key() << "\" in StoreGate");
-	  validCTP_RIO = false;
-	}
-        ATH_MSG_DEBUG( "validCTP_RIO: " << validCTP_RIO );
-      }
+		ATH_MSG_DEBUG( "CTPMON fillHistograms() m_processCTP");
+		theCTP_RDO = SG::get(m_CTP_RDOKey, ctx);
+		//ATH_MSG_INFO( "CTPMON theCTP_RDO->isValid()" << theCTP_RDO->isValid());
+		if (!theCTP_RDO) {
+			ATH_MSG_WARNING( "Could not find \"" << m_CTP_RDOKey.key() << "\" in StoreGate");
+			validCTP_RDO = false;
+		}
+		if (!m_runOnESD) {
+			theCTP_RIO = SG::get(m_CTP_RIOKey, ctx);
+			if (!theCTP_RIO) {
+				ATH_MSG_WARNING( "Could not find \"" << m_CTP_RIOKey.key() << "\" in StoreGate");
+				validCTP_RIO = false;
+			}
+			ATH_MSG_DEBUG( "validCTP_RIO: " << validCTP_RIO );
+		}
     }
     if (m_processRoIB && m_processMuctpiRIO) {
-      ATH_MSG_DEBUG( "CTPMON fillHistograms() m_processRoIB && m_processMuctpiRIO");
-      roIBResult = SG::get(m_RoIBResultKey, ctx);
-      if (!roIBResult) {
-	ATH_MSG_WARNING( "Could not find \"" << m_RoIBResultKey.key() << "\" in StoreGate");
-	validRoIBResult = false;
-      }
+		ATH_MSG_DEBUG( "CTPMON fillHistograms() m_processRoIB && m_processMuctpiRIO");
+		roIBResult = SG::get(m_RoIBResultKey, ctx);
+		if (!roIBResult) {
+			ATH_MSG_WARNING( "Could not find \"" << m_RoIBResultKey.key() << "\" in StoreGate");
+			validRoIBResult = false;
+		}
     }
 
     bool incompleteEvent = false;
@@ -216,20 +216,20 @@ StatusCode TrigT1CTMonitoring::BSMonitoringAlgorithm::fillHistograms( const Even
         dumpData(theCTP_RDO, /*theCTP_RIO,*/ theMuCTPI_RDO, roIBResult, ctx);
 
     if ( m_processCTP ) {
-      if ( validCTP_RDO ) {
-	const std::vector<uint32_t> &cDataWords = theCTP_RDO->getDataWords();
-	if ( cDataWords.size() == 0 ) {
-	  ATH_MSG_WARNING( "CTP_RDO is empty, ignoring CTP");
-	  validCTP_RDO = false;
-	}
-      }
+		if ( validCTP_RDO ) {
+			const std::vector<uint32_t> &cDataWords = theCTP_RDO->getDataWords();
+			if ( cDataWords.size() == 0 ) {
+				ATH_MSG_WARNING( "CTP_RDO is empty, ignoring CTP");
+				validCTP_RDO = false;
+			}
+		}
 
-      if ( validCTP_RIO ) {
-	if ( !m_runOnESD && (theCTP_RIO->getDetectorEventType() & 0xffff) == 0 ) {//LB == 0 only if RIO is empty
-	  ATH_MSG_WARNING( "CTP_RIO is not valid, ignoring CTP");
-	  validCTP_RIO = false;
-	}
-      }
+		if ( validCTP_RIO ) {
+			if ( !m_runOnESD && (theCTP_RIO->getDetectorEventType() & 0xffff) == 0 ) {//LB == 0 only if RIO is empty
+				ATH_MSG_WARNING( "CTP_RIO is not valid, ignoring CTP");
+				validCTP_RIO = false;
+			}
+		}
     }
 
     if ( m_processMuctpi && !m_isRun3) {
@@ -251,92 +251,92 @@ StatusCode TrigT1CTMonitoring::BSMonitoringAlgorithm::fillHistograms( const Even
 
     // if at least one fragment is missing/incomplete, print out a summary
     if (!validCTP_RDO || !validCTP_RIO || ( (!m_isRun3 && !validMuCTPI_RDO) || (m_isRun3 && !validMuCTPI_Phase1_RDO) ) || !validRoIBResult) {
-      ATH_MSG_WARNING( "At least one missing/invalid L1CT fragment detected");
-      ATH_MSG_WARNING( "CTP_RDO: " << validCTP_RDO << ", CTP_RIO: " << validCTP_RIO
-		       //<< ", MuCTPI_RIO: " << validMuCTPI_RIO << ", MuCTPI_RDO: " << validMuCTPI_RDO
-		       << ", RoIBResult: " << validRoIBResult);
-      //ATH_MSG_INFO( "Run number: " << eventInfo->runNumber() << ", Event: " << eventInfo->eventNumber() << ", LB: " << eventInfo->lumiBlock() );
-      if (validCTP_RIO) {
-	ATH_MSG_WARNING( "CTP_RIO says LB: " << (theCTP_RIO->getDetectorEventType() & 0xffff)
-                         << ", L1ID: " << std::dec << theCTP_RIO->getLvl1Id()
-                         << " (HEX: " << std::hex << theCTP_RIO->getLvl1Id() << ")" << std::dec
-                         << ", BCID: " << theCTP_RIO->getBCID());
-	ATH_MSG_WARNING( "CTP_RIO says LB: " << (theCTP_RIO->getDetectorEventType() & 0xffff));
-	ATH_MSG_WARNING( "CTP_RIO says L1ID: " << std::dec << theCTP_RIO->getLvl1Id());
-	ATH_MSG_WARNING( "CTP_RIO says HEX: " << std::hex << theCTP_RIO->getLvl1Id() << ")" << std::dec);
-	ATH_MSG_WARNING( "CTP_RIO says BCID: " << theCTP_RIO->getBCID());
-	ATH_MSG_WARNING("in: validCTP_RIO - survived this? crashing now?");
-      }
-      else if (eventInfo->runNumber()) {
-	ATH_MSG_WARNING( "CTP_RIO missing, EventInfo says LB: " << eventInfo->lumiBlock() 
-			 << ", BCID: " << eventInfo->bcid()); 
-      }
-      else {
-	ATH_MSG_WARNING( "Not printing event details since both CTP_RIO and EventInfo objects are missing");
-      }
+		ATH_MSG_WARNING( "At least one missing/invalid L1CT fragment detected");
+		ATH_MSG_WARNING( "CTP_RDO: " << validCTP_RDO << ", CTP_RIO: " << validCTP_RIO
+						 //<< ", MuCTPI_RIO: " << validMuCTPI_RIO << ", MuCTPI_RDO: " << validMuCTPI_RDO
+						 << ", RoIBResult: " << validRoIBResult);
+		//ATH_MSG_INFO( "Run number: " << eventInfo->runNumber() << ", Event: " << eventInfo->eventNumber() << ", LB: " << eventInfo->lumiBlock() );
+		if (validCTP_RIO) {
+			ATH_MSG_WARNING( "CTP_RIO says LB: " << (theCTP_RIO->getDetectorEventType() & 0xffff)
+							 << ", L1ID: " << std::dec << theCTP_RIO->getLvl1Id()
+							 << " (HEX: " << std::hex << theCTP_RIO->getLvl1Id() << ")" << std::dec
+							 << ", BCID: " << theCTP_RIO->getBCID());
+			ATH_MSG_WARNING( "CTP_RIO says LB: " << (theCTP_RIO->getDetectorEventType() & 0xffff));
+			ATH_MSG_WARNING( "CTP_RIO says L1ID: " << std::dec << theCTP_RIO->getLvl1Id());
+			ATH_MSG_WARNING( "CTP_RIO says HEX: " << std::hex << theCTP_RIO->getLvl1Id() << ")" << std::dec);
+			ATH_MSG_WARNING( "CTP_RIO says BCID: " << theCTP_RIO->getBCID());
+			ATH_MSG_WARNING("in: validCTP_RIO - survived this? crashing now?");
+		}
+		else if (eventInfo->runNumber()) {
+			ATH_MSG_WARNING( "CTP_RIO missing, EventInfo says LB: " << eventInfo->lumiBlock() 
+							 << ", BCID: " << eventInfo->bcid()); 
+		}
+		else {
+			ATH_MSG_WARNING( "Not printing event details since both CTP_RIO and EventInfo objects are missing");
+		}
 
-      // only fill error-per-LB histograms if L1CT fragments are missing and global incomplete-event flag
-      // from EventInfo does not say that the event is incomplete
-      if ( !incompleteEvent ) {
-	errorSummaryPerLumiBlockX = currentLumiBlock;
-	errorSummaryPerLumiBlockY = 15;
-	fill(m_packageName, errorSummaryPerLumiBlockX, errorSummaryPerLumiBlockY);
-	errorPerLumiBlockX = currentLumiBlock;
-	fill(m_packageName, errorPerLumiBlockX);
-      }
-      errorSummaryX = 15;
-      errorSummaryY = 1;
-      fill(m_packageName, errorSummaryX, errorSummaryY);
+		// only fill error-per-LB histograms if L1CT fragments are missing and global incomplete-event flag
+		// from EventInfo does not say that the event is incomplete
+		if ( !incompleteEvent ) {
+			errorSummaryPerLumiBlockX = currentLumiBlock;
+			errorSummaryPerLumiBlockY = 15;
+			fill(m_packageName, errorSummaryPerLumiBlockX, errorSummaryPerLumiBlockY);
+			errorPerLumiBlockX = currentLumiBlock;
+			fill(m_packageName, errorPerLumiBlockX);
+		}
+		errorSummaryX = 15;
+		errorSummaryY = 1;
+		fill(m_packageName, errorSummaryX, errorSummaryY);
 
-      if (!validCTP_RIO) {
-	incompleteFragmentTypeX = 0;
-	fill(m_packageName, incompleteFragmentTypeX);
-      }
-      if (!validCTP_RDO) {
-	incompleteFragmentTypeX = 1;
-	fill(m_packageName, incompleteFragmentTypeX);
-      }
-      /*
-      if (!validMuCTPI_RIO) {
-        incompleteFragmentTypeX = 2;
-	fill(m_packageName, incompleteFragmentTypeX);
-	}*/
-      if ( (!m_isRun3 && !validMuCTPI_RDO) || (m_isRun3 && !validMuCTPI_Phase1_RDO) ) {
-        incompleteFragmentTypeX = 2;
-	fill(m_packageName, incompleteFragmentTypeX);
-      }
-      if (!validRoIBResult) {
-        incompleteFragmentTypeX = 3;
-	fill(m_packageName, incompleteFragmentTypeX);
-      }
-      if (!validTGCContainer) {
-        incompleteFragmentTypeX = 4;
-	fill(m_packageName, incompleteFragmentTypeX);
-      }
-      if (!validRPCContainer) {
-        incompleteFragmentTypeX = 5;
-	fill(m_packageName, incompleteFragmentTypeX);
-      }
+		if (!validCTP_RIO) {
+			incompleteFragmentTypeX = 0;
+			fill(m_packageName, incompleteFragmentTypeX);
+		}
+		if (!validCTP_RDO) {
+			incompleteFragmentTypeX = 1;
+			fill(m_packageName, incompleteFragmentTypeX);
+		}
+		/*
+		  if (!validMuCTPI_RIO) {
+		  incompleteFragmentTypeX = 2;
+		  fill(m_packageName, incompleteFragmentTypeX);
+		  }*/
+		if ( (!m_isRun3 && !validMuCTPI_RDO) || (m_isRun3 && !validMuCTPI_Phase1_RDO) ) {
+			incompleteFragmentTypeX = 2;
+			fill(m_packageName, incompleteFragmentTypeX);
+		}
+		if (!validRoIBResult) {
+			incompleteFragmentTypeX = 3;
+			fill(m_packageName, incompleteFragmentTypeX);
+		}
+		if (!validTGCContainer) {
+			incompleteFragmentTypeX = 4;
+			fill(m_packageName, incompleteFragmentTypeX);
+		}
+		if (!validRPCContainer) {
+			incompleteFragmentTypeX = 5;
+			fill(m_packageName, incompleteFragmentTypeX);
+		}
     }
     else { // since errorSummary holds error _rate_, also fill when there are no errors
-      errorSummaryX = 15;
-      fill(m_packageName, errorSummaryX);
+		errorSummaryX = 15;
+		fill(m_packageName, errorSummaryX);
     }
 
     // if the event is incomplete (missing L1CT objects or according to EventInfo), skip filling the rest of the histograms
     if ( !validCTP_RDO || !validCTP_RIO || ( (!m_isRun3 && !validMuCTPI_RDO) || (m_isRun3 && !validMuCTPI_Phase1_RDO) ) || !validRoIBResult || incompleteEvent ) {
-      ATH_MSG_WARNING( "Event incomplete, will skip filling of all non-error histograms");
-      //comment patrick: why was this here if later the single validities are checked?
-      //bc of validCTP_RIO
-      //return StatusCode::SUCCESS;
+		ATH_MSG_WARNING( "Event incomplete, will skip filling of all non-error histograms");
+		//comment patrick: why was this here if later the single validities are checked?
+		//bc of validCTP_RIO
+		//return StatusCode::SUCCESS;
     }
 
     /*
      * Process and fill data
      */
     if (m_processCTP && validCTP_RDO && validCTP_RIO) {
-      ATH_MSG_DEBUG( "CTPMON before begin doCtp()");
-      doCtp(theCTP_RDO, theCTP_RIO, ctx);
+		ATH_MSG_DEBUG( "CTPMON before begin doCtp()");
+		doCtp(theCTP_RDO, theCTP_RIO, ctx);
     }
 
     if(!m_isRun3)
@@ -451,20 +451,20 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
   auto candSliceVsSLFWY = Monitored::Scalar<int>("candSliceVsSLFWY",0);
   auto candSliceCandTobDifferenceX = Monitored::Scalar<int>("candSliceCandTobDifferenceX");
   auto candSliceCandTobDifferenceY = Monitored::Scalar<int>("candSliceCandTobDifferenceY");
-  auto candEtaPhi_NSWMonFlagX_EC = Monitored::Scalar<int>("candEtaPhi_NSWMonitoringFlagX_EC",0);
-  auto candEtaPhi_NSWMonFlagY_EC = Monitored::Scalar<int>("candEtaPhi_NSWMonitoringFlagY_EC",0);
-  auto candEtaPhi_NSWMonFlagX_FW = Monitored::Scalar<int>("candEtaPhi_NSWMonitoringFlagX_FW",0);
-  auto candEtaPhi_NSWMonFlagY_FW = Monitored::Scalar<int>("candEtaPhi_NSWMonitoringFlagY_FW",0);
-  auto candEtaPhi_Gt1CandRoiX_BA = Monitored::Scalar<int>("candEtaPhi_Gt1CandRoiX_BA",0);
-  auto candEtaPhi_Gt1CandRoiY_BA = Monitored::Scalar<int>("candEtaPhi_Gt1CandRoiY_BA",0);
-  auto candEtaPhi_PhiOverlapX_BA = Monitored::Scalar<int>("candEtaPhi_PhiOverlapX_BA",0);
-  auto candEtaPhi_PhiOverlapY_BA = Monitored::Scalar<int>("candEtaPhi_PhiOverlapY_BA",0);
-  auto candEtaPhi_SectorFlagGtNX_BA = Monitored::Scalar<int>("candEtaPhi_SectorFlagGtNX_BA",0); // BA: N>2, EC,FW: N>4
-  auto candEtaPhi_SectorFlagGtNY_BA = Monitored::Scalar<int>("candEtaPhi_SectorFlagGtNY_BA",0);
-  auto candEtaPhi_SectorFlagGtNX_EC = Monitored::Scalar<int>("candEtaPhi_SectorFlagGtNX_EC",0);
-  auto candEtaPhi_SectorFlagGtNY_EC = Monitored::Scalar<int>("candEtaPhi_SectorFlagGtNY_EC",0);
-  auto candEtaPhi_SectorFlagGtNX_FW = Monitored::Scalar<int>("candEtaPhi_SectorFlagGtNX_FW",0);
-  auto candEtaPhi_SectorFlagGtNY_FW = Monitored::Scalar<int>("candEtaPhi_SectorFlagGtNY_FW",0);
+  auto candEtaPhi_NSWMonFlagX_EC = Monitored::Scalar<float>("candEtaPhi_NSWMonFlagX_EC",0);
+  auto candEtaPhi_NSWMonFlagY_EC = Monitored::Scalar<float>("candEtaPhi_NSWMonFlagY_EC",0);
+  auto candEtaPhi_NSWMonFlagX_FW = Monitored::Scalar<float>("candEtaPhi_NSWMonFlagX_FW",0);
+  auto candEtaPhi_NSWMonFlagY_FW = Monitored::Scalar<float>("candEtaPhi_NSWMonFlagY_FW",0);
+  auto candEtaPhi_Gt1CandRoiX_BA = Monitored::Scalar<float>("candEtaPhi_Gt1CandRoiX_BA",0);
+  auto candEtaPhi_Gt1CandRoiY_BA = Monitored::Scalar<float>("candEtaPhi_Gt1CandRoiY_BA",0);
+  auto candEtaPhi_PhiOverlapX_BA = Monitored::Scalar<float>("candEtaPhi_PhiOverlapX_BA",0);
+  auto candEtaPhi_PhiOverlapY_BA = Monitored::Scalar<float>("candEtaPhi_PhiOverlapY_BA",0);
+  auto candEtaPhi_SectorFlagGtNX_BA = Monitored::Scalar<float>("candEtaPhi_SectorFlagGtNX_BA",0); // BA: N>2, EC,FW: N>4
+  auto candEtaPhi_SectorFlagGtNY_BA = Monitored::Scalar<float>("candEtaPhi_SectorFlagGtNY_BA",0);
+  auto candEtaPhi_SectorFlagGtNX_EC = Monitored::Scalar<float>("candEtaPhi_SectorFlagGtNX_EC",0);
+  auto candEtaPhi_SectorFlagGtNY_EC = Monitored::Scalar<float>("candEtaPhi_SectorFlagGtNY_EC",0);
+  auto candEtaPhi_SectorFlagGtNX_FW = Monitored::Scalar<float>("candEtaPhi_SectorFlagGtNX_FW",0);
+  auto candEtaPhi_SectorFlagGtNY_FW = Monitored::Scalar<float>("candEtaPhi_SectorFlagGtNY_FW",0);
   auto candSliceVsSLBAFirstInTrainX = Monitored::Scalar<int>("candSliceVsSLBAFirstInTrainX",0);
   auto candSliceVsSLBAFirstInTrainY = Monitored::Scalar<int>("candSliceVsSLBAFirstInTrainY",0);
   auto candSliceVsSLECFirstInTrainX = Monitored::Scalar<int>("candSliceVsSLECFirstInTrainX",0);
@@ -536,8 +536,6 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
   auto tobPtVsPhiYdecoded_EC = Monitored::Scalar<float>("tobPtVsPhiYdecoded_EC",0);
   auto tobPtVsPhiYdecoded_FW = Monitored::Scalar<float>("tobPtVsPhiYdecoded_FW",0);
   auto tobCount = Monitored::Scalar<int>("tobCount");
-  auto tobCandDifferenceX = Monitored::Scalar<int>("tobCandDifferenceX",0);
-  auto tobCandDifferenceY = Monitored::Scalar<int>("tobCandDifferenceY",0);
 
   //mlt
   auto multThrX      = Monitored::Scalar<int>("multThrX",0);
@@ -554,6 +552,9 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 
   //get muctpi fragment data in the form of a vector of timeslices
   const std::vector<LVL1::MuCTPIBits::Slice> &slices = theMuCTPI_Phase1_RDO->slices();
+
+  //count veto'd candidates, to be able to adjust the comparison between candidates and TOBs later
+  uint n_cand_veto,n_cand_A,n_cand_C;
 
   //https://gitlab.cern.ch/atlas/athena/-/blob/master/Trigger/TrigT1/TrigT1Result/src/MuCTPI_DataWord_Decoder.cxx
   //https://gitlab.cern.ch/atlas/athena/-/blob/master/Trigger/TrigT1/TrigT1Result/TrigT1Result/MuCTPI_DataWord_Decoder.h
@@ -594,7 +595,7 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
       //decoded thresholds
       for(uint iThr=0;iThr<slices[iSlice].mlt.cnt.size();iThr++)
       {
-          bool thr = slices[iSlice].mlt.cnt[iThr] & 0x1;
+          bool thr = slices[iSlice].mlt.cnt[iThr];//this is a counter value [1-7], but only keeping whether it fired at all
           if(thr)
           {
               multThrX = iThr;
@@ -627,8 +628,8 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 	  {
 		  errorSummaryMUCTPI=2;
 		  fill(m_packageName, errorSummaryMUCTPI);
-		  errorSummaryPerLumiBlockMUCTPIX=2;
-		  errorSummaryPerLumiBlockMUCTPIY=currentLumiBlock;
+          errorSummaryPerLumiBlockMUCTPIY=2;
+          errorSummaryPerLumiBlockMUCTPIX=currentLumiBlock;
 		  fill(m_packageName, errorSummaryPerLumiBlockMUCTPIX, errorSummaryPerLumiBlockMUCTPIY);
 	  }
 
@@ -639,6 +640,10 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 		  candCount = header_candCount;
 		  fill(m_packageName,candCount);
 	  }
+
+      n_cand_veto=0;
+      n_cand_A=0;
+      n_cand_C=0;
 
 	  for(uint iCand=0;iCand<slices[iSlice].cand.size();iCand++)
 	  {
@@ -660,6 +665,11 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 		  float candEta = slices[iSlice].cand[iCand].eta;
 		  float candPhi = slices[iSlice].cand[iCand].phi;
 		  bool vetoFlag = slices[iSlice].cand[iCand].vetoFlag;
+          bool side     = slices[iSlice].cand[iCand].side;
+          if(side) n_cand_A++; else n_cand_C++;//only needed to make sure we have less than 16 cands/side for later check against TOB words
+
+          if(vetoFlag)
+              n_cand_veto++;
 		  
 		  if(slices[iSlice].cand[iCand].type==LVL1::MuCTPIBits::SubsysID::Barrel)
 		  {
@@ -807,7 +817,7 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 			  {
 				  candRoiVsSLECCentralSliceX = num;
 				  candRoiVsSLECCentralSliceY = slices[iSlice].cand[iCand].roi;
-				  fill(m_packageName, candRoiVsSLECCentralSliceX, candRoiVsSLECCentralSliceY);
+				  fill(m_packageName, candRoiVsSLECCentralSliceX,candRoiVsSLECCentralSliceY);
 
 				  candCandFlagsVsSLECCentralSliceX = num;
 				  candCandFlagsVsSLECCentralSliceY = 0;
@@ -833,7 +843,7 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 			  }
 			  else
 			  {
-				  candRoiVsSLECOtherSliceX = slices[iSlice].cand[iCand].num + 48*(1-slices[iSlice].cand[iCand].side);//offset side C
+				  candRoiVsSLECOtherSliceX = num;//offset side C
 				  candRoiVsSLECOtherSliceY = slices[iSlice].cand[iCand].roi;
 				  fill(m_packageName, candRoiVsSLECOtherSliceX, candRoiVsSLECOtherSliceY);
 			  }
@@ -913,7 +923,7 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 
 				  candCandFlagsVsSLFWCentralSliceY = 3;
 				  if(slices[iSlice].cand[iCand].candFlag_GoodMF)
-					  fill(m_packageName, candCandFlagsVsSLFWCentralSliceX, candCandFlagsVsSLECCentralSliceY);
+					  fill(m_packageName, candCandFlagsVsSLFWCentralSliceX, candCandFlagsVsSLFWCentralSliceY);
 
 				  candErrorFlagVsSLFWCentralSlicePerLBX = currentLumiBlock;
 				  candErrorFlagVsSLFWCentralSlicePerLBY = num;
@@ -949,9 +959,9 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 	  if(header_tobCount != slices[iSlice].tob.size())
 	  {
 		  errorSummaryMUCTPI=3;
-		  fill(m_packageName, errorSummaryMUCTPI);
-		  errorSummaryPerLumiBlockMUCTPIX=3;
-		  errorSummaryPerLumiBlockMUCTPIY=currentLumiBlock;
+          fill(m_packageName, errorSummaryMUCTPI);
+          errorSummaryPerLumiBlockMUCTPIY=3;
+          errorSummaryPerLumiBlockMUCTPIX=currentLumiBlock;
 		  fill(m_packageName, errorSummaryPerLumiBlockMUCTPIX, errorSummaryPerLumiBlockMUCTPIY);
 	  }
 
@@ -962,17 +972,12 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 		  tobCount  = slices[iSlice].tob.size();
 		  fill(m_packageName,tobCount);
 
-		  //Histogramming the difference between candidates and TOBs for each side per lumiblock
-		  tobCandDifferenceX = currentLumiBlock;
-		  tobCandDifferenceY = slices[iSlice].cand.size() - slices[iSlice].tob.size();
-		  fill(m_packageName, tobCandDifferenceX, tobCandDifferenceY);
-
 		  if(slices[iSlice].bcid != currentBCID)
 		  {
 			  errorSummaryMUCTPI=1;
 			  fill(m_packageName, errorSummaryMUCTPI);
-			  errorSummaryPerLumiBlockMUCTPIX=1;
-			  errorSummaryPerLumiBlockMUCTPIY=currentLumiBlock;
+              errorSummaryPerLumiBlockMUCTPIY=1;
+              errorSummaryPerLumiBlockMUCTPIX=currentLumiBlock;
 			  fill(m_packageName, errorSummaryPerLumiBlockMUCTPIX, errorSummaryPerLumiBlockMUCTPIY);
 		  }
 	  }
@@ -1041,6 +1046,8 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 				  tobPtVsPhiXdecoded_BA = phiDecoded;
 				  tobPtVsPhiYdecoded_BA = pt;
 				  fill(m_packageName, tobPtVsPhiXdecoded_BA, tobPtVsPhiYdecoded_BA);
+
+				  slices[iSlice].tob[iTOB].print();
 
 				  break;
 			  }
@@ -1181,6 +1188,8 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 				  tobPtVsPhiYdecoded_BA = pt;
 				  fill(m_packageName, tobPtVsPhiXdecoded_BA, tobPtVsPhiYdecoded_BA);
 
+				  slices[iSlice].tob[iTOB].print();
+
 				  break;
 			  }
 
@@ -1198,7 +1207,7 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 				  tobPtVsPhiXdecoded_FW = phiDecoded;
 				  tobPtVsPhiYdecoded_FW = pt;
 				  fill(m_packageName, tobPtVsPhiXdecoded_FW, tobPtVsPhiYdecoded_FW);
-				  
+
 				  if(slices[iSlice].tob[iTOB].candFlag_GoodMF) {
 					  tobEtaPhi_GoodMFXdecoded_FW = etaDecoded;
 					  tobEtaPhi_GoodMFYdecoded_FW = phiDecoded;
@@ -1270,59 +1279,60 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 			  }
 		  }//side C
 		  
-
-		  // We loop over the vector of tobs and check that every tob has its
-		  // counterpart in the candidates vector, which has been filled 
-		  // with non-vetoed candidates only.
-		  // Once a good candidate is found we remove it from the vector of
-		  // candidates. Once the vector of candidates is zero we stop the loop.
+          bool found_match{false};//used at the end of every cand iteration, to notify in case TOB equivalent not found
+		  // We loop over the list of candidates to search a match with the TOB
 		  for(uint j=0; j<slices[iSlice].cand.size(); ++j)
 		  {
-			  if( slices[iSlice].tob[iTOB].side      == slices[iSlice].cand[j].side      &&
-			      slices[iSlice].tob[iTOB].subsystem == slices[iSlice].cand[j].subsystem &&
-				  slices[iSlice].tob[iTOB].sec       == slices[iSlice].cand[j].num       &&
-				  slices[iSlice].tob[iTOB].pt        == slices[iSlice].cand[j].mappedPt )
-			  {
-				  if( slices[iSlice].tob[iTOB].etaDecoded == slices[iSlice].cand[j].eta &&
-					  slices[iSlice].tob[iTOB].phiDecoded == slices[iSlice].cand[j].phi )
-				  {
-					  ATH_MSG_DEBUG("Found the correspondence tob/cand");
-				  }
-				  else 
-				  {
-					  ATH_MSG_WARNING("(Eta,Phi) coordinates not matching between TOB word and Candidate word.  LB="<<std::dec<<currentLumiBlock);
-					  ATH_MSG_WARNING("TOB  (Eta,Phi): (" << slices[iSlice].tob[iTOB].etaDecoded << "," << slices[iSlice].tob[iTOB].phiDecoded << ")");
-					  ATH_MSG_WARNING("cand (Eta,Phi): (" << slices[iSlice].cand[j].eta << "," << slices[iSlice].cand[j].phi << ")");
+              //skip candidate if veto'd (if veto'd => there is no corresponding TOB)
+              if(slices[iSlice].cand[j].vetoFlag)
+                  continue;
 
-					  errorSummaryMUCTPI=5;
-					  fill(m_packageName, errorSummaryMUCTPI);
-					  errorSummaryPerLumiBlockMUCTPIX=currentLumiBlock;
-					  errorSummaryPerLumiBlockMUCTPIY=5;
-					  fill(m_packageName, errorSummaryPerLumiBlockMUCTPIX, errorSummaryPerLumiBlockMUCTPIY);
-				  }
+			  if( slices[iSlice].tob[iTOB].side       == slices[iSlice].cand[j].side      &&
+			      slices[iSlice].tob[iTOB].subsystem  == slices[iSlice].cand[j].subsystem &&
+				  slices[iSlice].tob[iTOB].sec        == slices[iSlice].cand[j].num       &&
+				  slices[iSlice].tob[iTOB].pt         == slices[iSlice].cand[j].mappedPt  &&
+				  slices[iSlice].tob[iTOB].etaDecoded == slices[iSlice].cand[j].eta       &&
+				  slices[iSlice].tob[iTOB].phiDecoded == slices[iSlice].cand[j].phi )
+              {
+                  found_match = true;
+				  ATH_MSG_DEBUG("Found the correspondence tob/cand in the same ROI");
+				  break;
 			  }
-		  }
+          }//cand loop
 
-
+		  //if didn't exceed 16 cand/side, then topo should match cand words and should always have a match
+		  //(otherwise, there will be cand words without TOB word equivalent)
+		  if(n_cand_A<=16 && n_cand_C<=16)
+			  if(!found_match)
+			  {
+				  ATH_MSG_WARNING("Mismatch tob/cand words");
+				  errorSummaryMUCTPI=5;
+				  fill(m_packageName, errorSummaryMUCTPI);
+				  errorSummaryPerLumiBlockMUCTPIX=currentLumiBlock;
+				  errorSummaryPerLumiBlockMUCTPIY=5;
+				  fill(m_packageName, errorSummaryPerLumiBlockMUCTPIX, errorSummaryPerLumiBlockMUCTPIY);
+			  }
 	  }//TOB for loop
 
       //-------------------------------------------------
       //combined
       //-------------------------------------------------
-
-      ///if topo<=32, check if equal number of words
-      ///todo: maybe should move this check in the RDO building actually...?
-      if(slices[iSlice].tob.size()<=32) {
-		  if(slices[iSlice].cand.size()!=slices[iSlice].tob.size())
+      if(n_cand_A<=16 && n_cand_C<=16)
+      {
+          if(slices[iSlice].cand.size()-n_cand_veto!=slices[iSlice].tob.size())
 		  {
-			  ATH_MSG_DEBUG("MUCTPI DQ DEBUG: Cand & TOB #words not equal. LB="<<std::dec<<currentLumiBlock);
+              ATH_MSG_INFO("MUCTPI DQ INFO: Cand & TOB #words not equal. LB="
+                           <<std::dec<<currentLumiBlock
+                           <<". Cand.size="<<slices[iSlice].cand.size()
+                           <<" n_cand_veto="<<n_cand_veto
+                           <<" tob.size="<<slices[iSlice].tob.size());
 			  errorSummaryMUCTPI=4;
 			  fill(m_packageName, errorSummaryMUCTPI);
 			  errorSummaryPerLumiBlockMUCTPIY=4;
 			  errorSummaryPerLumiBlockMUCTPIX=currentLumiBlock;
 			  fill(m_packageName, errorSummaryPerLumiBlockMUCTPIX, errorSummaryPerLumiBlockMUCTPIY);
 		  }
-	  }
+	   }
 
 	  // Check if Muon candidate count in the Timeslice header matches
 	  // the number of candidate words.
@@ -1331,14 +1341,20 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_Phase1_RDO* the
 	  {
 		  errorSummaryMUCTPI = 2;
 		  fill(m_packageName,errorSummaryMUCTPI);
+          errorSummaryPerLumiBlockMUCTPIY=2;
+          errorSummaryPerLumiBlockMUCTPIX=currentLumiBlock;
+          fill(m_packageName, errorSummaryPerLumiBlockMUCTPIX, errorSummaryPerLumiBlockMUCTPIY);
 	  }
 
 	  if(slices[iSlice].nTOB != slices[iSlice].tob.size())
 	  {
 		  errorSummaryMUCTPI = 3;
 		  fill(m_packageName,errorSummaryMUCTPI);
+          errorSummaryPerLumiBlockMUCTPIY=3;
+          errorSummaryPerLumiBlockMUCTPIX=currentLumiBlock;
+          fill(m_packageName, errorSummaryPerLumiBlockMUCTPIX, errorSummaryPerLumiBlockMUCTPIY);
 	  }
-
+	  
 
   }// slice for loop
 
@@ -1446,7 +1462,6 @@ TrigT1CTMonitoring::BSMonitoringAlgorithm::doMuctpi(const MuCTPI_RDO* theMuCTPI_
   std::map <std::string,MuCTPI_DataWord_Decoder> muctpiCandidates;
   std::map <std::string, const RpcSLTriggerHit* > rpcCandidates;
   std::map <std::string, const Muon::TgcCoinData* > tgcCandidates;
-
 
   // Get the data
   MuCTPI_MultiplicityWord_Decoder multWord(theMuCTPI_RDO->candidateMultiplicity(), m_inclusiveTriggerThresholds);

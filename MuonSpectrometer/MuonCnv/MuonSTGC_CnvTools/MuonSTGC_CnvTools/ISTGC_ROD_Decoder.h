@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -16,8 +16,7 @@ namespace Muon
 {
   class STGC_RawDataContainer;
 
-  static const InterfaceID IID_ISTGC_ROD_Decoder("Muon::ISTGC_ROD_Decoder", 1, 0);
-
+  
    /** @class ISTGC_ROD_Decoder, based on the respective class for TGCs.
    *   The interface for AlgTool which decodes an STGC ROB fragment into STGC RDO. 
    *   @author Stelios Angelidakis <sangelid@cern.ch>
@@ -26,11 +25,15 @@ namespace Muon
   class ISTGC_ROD_Decoder : virtual public IAlgTool
   {
     public:
-      /** Provide interface ID of ISTGC_ROD_Decoder */
-      static const InterfaceID& interfaceID() { return IID_ISTGC_ROD_Decoder; }
+      virtual ~ISTGC_ROD_Decoder() = default;
+
+      DeclareInterfaceID(Muon::ISTGC_ROD_Decoder, 1, 0);
 
       /** Convert ROBFragments to RDOs */
-      virtual StatusCode fillCollection(const OFFLINE_FRAGMENTS_NAMESPACE::ROBFragment&, const std::vector<IdentifierHash>&, std::unordered_map<IdentifierHash, std::unique_ptr<STGC_RawDataCollection>>&  ) const = 0;
+      virtual StatusCode fillCollection(const EventContext& ctx,
+                                        const OFFLINE_FRAGMENTS_NAMESPACE::ROBFragment&, 
+                                        const std::vector<IdentifierHash>&, 
+                                        std::unordered_map<IdentifierHash, std::unique_ptr<STGC_RawDataCollection>>&  ) const = 0;
   };
 
 } // end of namespace

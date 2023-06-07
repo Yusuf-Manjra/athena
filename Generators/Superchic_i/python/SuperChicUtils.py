@@ -1,4 +1,4 @@
-#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 
 import subprocess, os, shlex, re
@@ -35,6 +35,9 @@ class SuperChicConfig:
         self.rn = 6.7
         self.dn = 0.55
         self.ionqcd = 'coh'
+        self.ionbreakup = True
+        self.fAA = '00'
+        self.fracsigX = 1
         self.ncall = 10000
         self.itmx = 10
         self.prec = 0.5
@@ -97,7 +100,8 @@ class SuperChicConfig:
         self.mneut = 80
         self.wlp = 'el'
         self.wlm = 'el'
-
+        self.tau = 0.04
+        self.mxs = 100
 
     def toFortran(self):
 
@@ -138,6 +142,9 @@ class SuperChicConfig:
         conf+=fortDouble(self.rn) + "                                  ! [rn] : Ion neutron density - radius \n"
         conf+=fortDouble(self.dn) + "                                  ! [dn] : Ion neutron density - skin thickness \n"
         conf+=fortStr(self.ionqcd) + "                               ! [ionqcd] : Coherent ('coh') or incoherent ('incoh') for QCD-induced processes \n"
+        conf+=fortBool(self.ionbreakup) + "                            ! [ionbreakup] \n"
+        conf+=fortStr(self.fAA) + "                                    ! [fAA] \n"
+        conf+=fortDouble(self.fracsigX) + "                            ! [fracsigX] : multiply sig_(gamA) by this factor (1d0 - default) \n"
         conf+="***********************************************************************************\n"
         conf+="*************Integration parameters************************************************\n"
         conf+="***********************************************************************************\n"
@@ -207,7 +214,7 @@ class SuperChicConfig:
         conf+=fortDouble(self.etabmax) + "                               ! [etabmax] \n"
         conf+=fortDouble(self.etacmin) + "                               ! [etacmin] \n"
         conf+=fortDouble(self.etacmax) + "                               ! [etacmax] \n"
-        conf+=fortDouble(self.etadmin) + "                               ! [etacmin] \n"
+        conf+=fortDouble(self.etadmin) + "                               ! [etadmin] \n"
         conf+=fortDouble(self.etadmax) + "                               ! [etadmax] \n"
         conf+="***********************************************************************************\n"
         conf+="****** 6 body final states : p(a) + p(b) + p(c) + p(d) + p(e) + p(f) **************\n"
@@ -263,6 +270,12 @@ class SuperChicConfig:
         conf+="***********************************************************************************\n"
         conf+=fortStr(self.wlp) + "                                  ! [wlp] : leptonic decay (either 'mu' or 'el') for Wplus \n"
         conf+=fortStr(self.wlm) + "                                  ! [wlm] : leptonic decay (either 'mu' or 'el') for Wminus \n"
+
+        conf+="****************************************************************************************\n"
+        conf+="****** V+X simplified model \n"   
+        conf+="****************************************************************************************\n" 
+        conf+=fortDouble(self.tau) + "                                   ! [tau] : mass distribution decay constant (GeV^-1) \n"
+        conf+=fortDouble(self.mxs) + "                                 ! [mxs] : mass of MX \n"
 
 
         return conf 
