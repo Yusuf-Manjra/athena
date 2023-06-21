@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 # @file PyUtils.RootUtils
 # @author Sebastien Binet
@@ -231,7 +231,7 @@ class RootFileDumper(object):
 
         return
 
-    def dump(self, tree_name, itr_entries, leaves=None):
+    def dump(self, tree_name, itr_entries, leaves=None, retvecs=False, sortleaves=True):
 
         ROOT = import_root()
         import AthenaPython.PyAthena as PyAthena
@@ -275,6 +275,11 @@ class RootFileDumper(object):
         else:
             itr_entries = range(itr_entries)
                 
+        list_ = list
+        map_ = map
+        str_ = str
+        isinstance_ = isinstance
+
         for ientry in itr_entries:
             hdr = ":: entry [%05i]..." % (ientry,)
             #print (hdr)
@@ -313,15 +318,19 @@ class RootFileDumper(object):
                 if not (val is None):
                     #print ("-->",val,br_name)
                     try:
-                        vals = _pythonize(val, py_name, True)
+                        vals = _pythonize(val, py_name, True, retvecs)
                     except Exception as err:
                         print ("**err** for branch [%s] val=%s (type=%s)" % (
                             br_name, val, type(val),
                             ))
                         self.allgood = False
                         print (err)
-                    for o in sorted(vals, key = lambda x: '.'.join(s for s in x[0] if isinstance(s, str))):
-                        n = list(map(str, o[0]))
+                    if sortleaves:
+                        viter = sorted(vals, key = lambda x: '.'.join(s for s in x[0] if isinstance_(s, str_)))
+                    else:
+                        viter = vals
+                    for o in viter:
+                        n = list_(map_(str_, o[0]))
                         v = o[1]
                         yield tree_name, ientry, n, v
 

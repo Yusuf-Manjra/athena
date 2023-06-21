@@ -12,6 +12,7 @@
 namespace {
   // Cut values on pt bein exploited throughout the monitoring
   constexpr double pt_30_cut = 30. * Gaudi::Units::GeV;
+  constexpr double pt_20_cut = 20. * Gaudi::Units::GeV;
   constexpr double pt_15_cut = 15. * Gaudi::Units::GeV;
   constexpr double pt_10_cut = 10. * Gaudi::Units::GeV;
   constexpr double pt_4_cut = 4. * Gaudi::Units::GeV;
@@ -1971,7 +1972,7 @@ return (m.muon->charge()>0);
 	    if ( data->detectorElementOut() == nullptr ) n_TgcCoin_detElementIsNull++;
 	    if ( data->posOutPtr() == nullptr ) n_TgcCoin_postOutPtrIsNull++;
 
-	    int slsector = (data->isForward()) ? ( (data->phi() + 1) % 24 + 1) : ( (data->phi() + 1) % 48 + 1); // translation from the phi index to trigger sector
+	    int slsector = (data->isForward()) ? ( data->phi() % 24 + 1) : ( (data->phi() + 1) % 48 + 1); // translation from the phi index to trigger sector
 	    if(!data->isAside()) slsector *= -1;
 
 	    if(data->type() == Muon::TgcCoinData::TYPE_UNKNOWN){ // inner muon detectors (EI/FI/Tile/NSW/RPCBIS78)
@@ -2043,7 +2044,7 @@ return (m.muon->charge()>0);
 
 	      tgcTrig.muonMatched = 0;
 	      for(const auto& ext : extpositions_pivot){
-		if(ext.muon->pt() < pt_15_cut )continue;
+		if(ext.muon->pt() < pt_20_cut )continue;
 		if(data->isAside() && ext.extPos.z()<0)continue;
 		if(!data->isAside()&& ext.extPos.z()>0)continue;
 		if( Amg::deltaR(posOut,ext.extPos) > m_l1trigMatchWindowPt15.value() )continue;
@@ -2203,8 +2204,8 @@ return (m.muon->charge()>0);
 	    inner.goodBcid1 = (std::abs(inner.deltaBcid)<=1 || (16-std::abs(inner.deltaBcid))<=1);
 	    inner.goodBcid2 = (std::abs(inner.deltaBcid)<=2 || (16-std::abs(inner.deltaBcid))<=2);
 	    inner.goodTiming = (inner.bunch==sl.bunch && sl.bunch==0 && sl.muonMatched==1 && sl.isBiased==0);
+	    sl.nsw.push_back(&inner);
 	  }
-	  sl.nsw.push_back(&inner);
 	}
 	for(auto& inner : tgcTrigTileMap){
 	  if( sl.isForward == 1 )break;
@@ -2365,6 +2366,10 @@ return (m.muon->charge()>0);
       tgcCoin_variables.push_back(coin_inner_tgc_coinflagC);
 
       // RPC
+      auto coin_inner_tgc_anyBcRpc=Monitored::Collection("coin_inner_tgc_anyBcRpc",tgcTrigMap_SL,[](const TgcTrig&m) -> double{
+	  return (m.rpc.size()>0);
+	});
+      tgcCoin_variables.push_back(coin_inner_tgc_anyBcRpc);
       auto coin_inner_tgc_prevBcRpc=Monitored::Collection("coin_inner_tgc_prevBcRpc",tgcTrigMap_SL,[](const TgcTrig&m){
 	  for(const auto& inner : m.rpc){
 	    if(inner->bunch == -1) return 1.;
@@ -2438,6 +2443,10 @@ return (m.muon->charge()>0);
       tgcCoin_variables.push_back(coin_inner_tgc_nextnextBcRpc_goodBcid0);
 
       // NSW
+      auto coin_inner_tgc_anyBcNsw=Monitored::Collection("coin_inner_tgc_anyBcNsw",tgcTrigMap_SL,[](const TgcTrig&m) -> double{
+	  return (m.nsw.size()>0);
+	});
+      tgcCoin_variables.push_back(coin_inner_tgc_anyBcNsw);
       auto coin_inner_tgc_prevBcNsw=Monitored::Collection("coin_inner_tgc_prevBcNsw",tgcTrigMap_SL,[](const TgcTrig&m){
 	  for(const auto& inner : m.nsw){
 	    if(inner->bunch == -1) return 1.;
@@ -2511,6 +2520,10 @@ return (m.muon->charge()>0);
       tgcCoin_variables.push_back(coin_inner_tgc_nextnextBcNsw_goodBcid0);
 
       // Tile
+      auto coin_inner_tgc_anyBcTile=Monitored::Collection("coin_inner_tgc_anyBcTile",tgcTrigMap_SL,[](const TgcTrig&m) -> double{
+	  return (m.tile.size()>0);
+	});
+      tgcCoin_variables.push_back(coin_inner_tgc_anyBcTile);
       auto coin_inner_tgc_prevBcTile=Monitored::Collection("coin_inner_tgc_prevBcTile",tgcTrigMap_SL,[](const TgcTrig&m){
 	  for(const auto& inner : m.tile){
 	    if(inner->bunch == -1) return 1.;
@@ -2584,6 +2597,10 @@ return (m.muon->charge()>0);
       tgcCoin_variables.push_back(coin_inner_tgc_nextnextBcTile_goodBcid0);
 
       // EIFI
+      auto coin_inner_tgc_anyBcEifi=Monitored::Collection("coin_inner_tgc_anyBcEifi",tgcTrigMap_SL,[](const TgcTrig&m) -> double{
+	  return (m.eifi.size()>0);
+	});
+      tgcCoin_variables.push_back(coin_inner_tgc_anyBcEifi);
       auto coin_inner_tgc_prevBcEifi=Monitored::Collection("coin_inner_tgc_prevBcEifi",tgcTrigMap_SL,[](const TgcTrig&m){
 	  for(const auto& inner : m.eifi){
 	    if(inner->bunch == -1) return 1.;
@@ -2754,6 +2771,14 @@ return (m.muon->charge()>0);
 	  return m.currBc;
 	});
       tgcCoin_variables.push_back(coin_inner_nsw_currBc);
+      auto coin_inner_nsw_endcap_currBc=Monitored::Collection("coin_inner_nsw_endcap_currBc",tgcTrigNswMap,[](const TgcTrigNsw&m){
+	  return (m.isForward==0 && m.currBc==1);
+	});
+      tgcCoin_variables.push_back(coin_inner_nsw_endcap_currBc);
+      auto coin_inner_nsw_forward_currBc=Monitored::Collection("coin_inner_nsw_forward_currBc",tgcTrigNswMap,[](const TgcTrigNsw&m){
+	  return (m.isForward==1 && m.currBc==1);
+	});
+      tgcCoin_variables.push_back(coin_inner_nsw_forward_currBc);
       auto coin_inner_nsw_goodBcid0=Monitored::Collection("coin_inner_nsw_goodBcid0",tgcTrigNswMap,[](const TgcTrigNsw&m){
 	  return m.goodBcid0;
 	});
@@ -2804,6 +2829,22 @@ return (m.muon->charge()>0);
 	  return (m.goodTiming==1 && m.goodBcid2==1);
 	});
       tgcCoin_variables.push_back(coin_inner_nsw_goodTimingBcid2);
+      auto coin_inner_nsw_BcPrev=Monitored::Collection("coin_inner_nsw_BcPrev",tgcTrigNswMap,[](const TgcTrigNsw&m){
+	  return m.deltaTiming==-1;
+	});
+      tgcCoin_variables.push_back(coin_inner_nsw_BcPrev);
+      auto coin_inner_nsw_BcCurr=Monitored::Collection("coin_inner_nsw_BcCurr",tgcTrigNswMap,[](const TgcTrigNsw&m){
+	  return m.deltaTiming==0;
+	});
+      tgcCoin_variables.push_back(coin_inner_nsw_BcCurr);
+      auto coin_inner_nsw_BcNext=Monitored::Collection("coin_inner_nsw_BcNext",tgcTrigNswMap,[](const TgcTrigNsw&m){
+	  return m.deltaTiming==1;
+	});
+      tgcCoin_variables.push_back(coin_inner_nsw_BcNext);
+      auto coin_inner_nsw_BcNextNext=Monitored::Collection("coin_inner_nsw_BcNextNext",tgcTrigNswMap,[](const TgcTrigNsw&m){
+	  return m.deltaTiming==2;
+	});
+      tgcCoin_variables.push_back(coin_inner_nsw_BcNextNext);
 
       // Tile inner coincidence
       auto coin_inner_tile_slSector=Monitored::Collection("coin_inner_tile_slSector",tgcTrigTileMap,[](const TgcTrigTile&m){
@@ -3006,7 +3047,7 @@ void TgcRawDataMonitorAlgorithm::fillTgcCoinEff(const std::string & type,
 						std::vector<Monitored::ObjectsCollection<std::vector<ExtTrigInfo>, double>>& varowner,
 						MonVariables& variables) const {
   for(const auto& ext : extpositions_pivot){
-    if(ext.muon->pt() < pt_15_cut )continue;
+    if(ext.muon->pt() < pt_20_cut )continue;
     bool matched = false;
     bool matchedQ = false;
     bool matchedF = false;

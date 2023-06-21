@@ -47,12 +47,12 @@ if __name__ == "__main__":
         "Muon"     : ["^Muon", "^TileMuObj", "^MS", "^SlowMuons", ".*Stau", "(.*)MuonTrackParticles$", "MUCTPI_RDO", "^RPC", "^TGC", "^MDT", "^CSC", "^sTGC", "^MM", ".*MuonMeasurements$", "^ExtrapolatedMuonTracks", "^CombinedMuonTracks", "^NCB_MuonSegments", "^UnAssocMuonSegments", "^EMEO_Muons", "^EMEO_MuonSpectrometerTrackParticles", "^xAODNSWSegments"],
         "BTag"     : ["^BTag"],
         "HGTD"     : ["^HGTD"],
-        "InDet"    : ["^InDet", "^PrimaryVertices", "^ComTime_TRT", "^Pixel", "^TRT", "^SCT", "^BCM", "^CTP", "^Tracks", "^ResolvedForwardTracks", "^SplitClusterAmbiguityMap", "^SoftBVrt"],
+        "InDet"    : ["^InDet", "^PrimaryVertices", "^ComTime_TRT", "^Pixel", "^TRT", "^SCT", "^BCM", "^CTP", "^Tracks", "^ResolvedForwardTracks", "^SplitClusterAmbiguityMap", "^SoftBVrt","^BLMHits"],
         "ITk"      : ["^ITk"],
         "Jet"      : ["^CamKt", "^AntiKt", "^Jet(?!.*ParticleFlowObjects$)","^LCOriginTopoClusters","^EMOriginTopoClusters"],
         "CaloTopo" : ["CaloCalTopoCluster", "CaloCalFwdTopoTowers"],
-        "Calo"     : ["^LAr", "^AllCalo", "^AODCellContainer", "^MBTSContainer", "^CaloCompactCellContainer", "^CaloEntryLayer", "^E4prContainer", "^TileHitVec", "^TileCellVec", "^TileDigits"],
-        "Truth"    : ["^Truth", "Truth$", "TruthMap$", "TruthCollection$", "^PRD_MultiTruth", "TracksTruth$", ".*TrackTruth$", "TrackTruthCollection", "^HardScatter", "BornLeptons"],
+        "Calo"     : ["^LAr", "^AllCalo", "^AODCellContainer", "^MBTSContainer", "^CaloCompactCellContainer", "^CaloEntryLayer", "^E4prContainer", "^TileHitVec", "^TileCellVec", "^TileDigits", "^MBTSHits"],
+        "Truth"    : ["^Truth", "Truth$", "TruthMap$", "TruthCollection$", "^PRD_MultiTruth", "TracksTruth$", ".*TrackTruth$", "TrackTruthCollection", "^HardScatter", "BornLeptons",".*ExitLayer$",".*EntryLayer$"],
         "AFP"      : ["^AFP"],
         "LRT"      : ["^LRT", "(.*)LRT$", "(.*)LRTTrackParticles$", "(.*)LargeD0TrackParticles$"],
         "caloringer"      : ["(.*)Ring"],
@@ -210,8 +210,12 @@ if __name__ == "__main__":
                 for pattern in categoryStrings[ categ ]:
                     # print d.name, d_name, pair, type(d.name), type(d_name), type(pair[0])
                     m = None
+                    d_name_c=d_name
+                    mbkg = re.match("(.*)Bkg_",d_name)
+                    if mbkg:
+                       d_name_c   = re.sub("Bkg_","",d_name)
                     try:
-                        m = re.match(pattern, d_name)
+                        m = re.match(pattern, d_name_c)
                     except TypeError:
                         pass
                     if m:

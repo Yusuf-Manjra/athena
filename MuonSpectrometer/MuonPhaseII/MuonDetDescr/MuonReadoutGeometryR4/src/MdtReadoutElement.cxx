@@ -76,6 +76,13 @@ const Acts::Surface& MdtReadoutElement::surface() const{
    return *dummy;
 }
 
+Acts::Surface& MdtReadoutElement::surface() {
+   std::shared_ptr<Acts::Surface> dummy{Acts::Surface::makeShared<Acts::PlaneSurface>(Amg::Vector3D::UnitX(), 
+                                                                                      Amg::Vector3D::UnitY())};
+   ATH_MSG_WARNING(__FILE__<<":"<<__LINE__<<"I am a dummy method ");
+   return *dummy;
+}
+
 Amg::Vector3D MdtReadoutElement::globalTubePos(const ActsGeometryContext& ctx,
                                 const IdentifierHash& hash) const {
     return localToGlobalTrans(ctx) * localTubePos(hash);
@@ -102,6 +109,10 @@ Amg::Transform3D MdtReadoutElement::toChamberLayer(const IdentifierHash& hash) c
 Amg::Transform3D MdtReadoutElement::toTubeFrame(const IdentifierHash& hash) const {
    static const Amg::Transform3D rotation{Amg::getRotateY3D(-M_PI_2) * Amg::getRotateZ3D(-M_PI_2)};
    return Amg::Translation3D{localTubePos(hash)}*rotation;
+}
+double MdtReadoutElement::tubeLength(const IdentifierHash& hash) const {
+  MdtCutOuts::const_iterator cut_itr = m_pars.cutouts.find(hash);
+  return 2.*m_pars.shortHalfX - (cut_itr != m_pars.cutouts.end() ? cut_itr->leftX + cut_itr->rightX : 0. );
 }
 
         

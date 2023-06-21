@@ -46,9 +46,6 @@ def addCommonP1Signatures(chains):
         # ATR-21355 - cannot be moved to the calibSlice because they need to configure the photon/ sequence
         ChainProp(name='HLT_g12_loose_LArPEBHLT_L1EM10VH', stream=['LArCells'], groups=['PS:Online']+SinglePhotonGroup+SupportLegGroup),
         ChainProp(name='HLT_g20_loose_LArPEBHLT_L1EM15', stream=['LArCells'], groups=['PS:Online']+SinglePhotonGroup+SupportLegGroup),
-        ChainProp(name='HLT_g40_loose_LArPEBHLT_L1EM22VHI', stream=['LArCells'], groups=['PS:Online']+SinglePhotonGroup+SupportLegGroup),
-        ChainProp(name='HLT_g60_loose_LArPEBHLT_L1EM22VHI', stream=['LArCells'], groups=['PS:Online']+SinglePhotonGroup+SupportLegGroup),
-        ChainProp(name='HLT_g80_loose_LArPEBHLT_L1EM22VHI', stream=['LArCells'], groups=['PS:Online']+SinglePhotonGroup+SupportLegGroup),
         #ATR-27253, Phase-I
         ChainProp(name='HLT_g12_loose_LArPEBHLT_L1eEM12L', stream=['LArCells'], groups=['PS:Online']+SinglePhotonGroup+SupportPhIGroup),
         ChainProp(name='HLT_g20_loose_LArPEBHLT_L1eEM18', stream=['LArCells'], groups=['PS:Online']+SinglePhotonGroup+SupportPhIGroup),
@@ -92,7 +89,6 @@ def addCommonP1Signatures(chains):
 
         ChainProp(name='HLT_noalg_LArPEBCalib_L1EM10VH', l1SeedThresholds=['FSNOSEED'], stream=['LArCells'], groups=['PS:Online','RATE:Calibration','BW:Detector']+SupportLegGroup),
         ChainProp(name='HLT_noalg_LArPEBCalib_L1EM15', l1SeedThresholds=['FSNOSEED'], stream=['LArCells'], groups=['PS:Online','RATE:Calibration','BW:Detector']+SupportLegGroup),
-        ChainProp(name='HLT_noalg_LArPEBCalib_L1EM22VHI', l1SeedThresholds=['FSNOSEED'], stream=['LArCells'], groups=['PS:Online','RATE:Calibration','BW:Detector']+SupportLegGroup),
         ChainProp(name='HLT_noalg_LArPEBCalib_L1J15', l1SeedThresholds=['FSNOSEED'], stream=['LArCells'], groups=['PS:Online','RATE:Calibration','BW:Detector']+SupportLegGroup),
         ChainProp(name='HLT_noalg_LArPEBCalib_L1J15p31ETA49', l1SeedThresholds=['FSNOSEED'], stream=['LArCells'], groups=['PS:Online','RATE:Calibration','BW:Detector']+SupportLegGroup),
         ChainProp(name='HLT_noalg_LArPEBCalib_L1J20', l1SeedThresholds=['FSNOSEED'], stream=['LArCells'], groups=['PS:Online','RATE:Calibration','BW:Detector']+SupportLegGroup),
@@ -295,6 +291,10 @@ def addHighMuP1Signatures(chains):
         ChainProp(name='HLT_g3_loose_LArPEBHLT_L1eEM5', stream=['LArCells'], groups=['PS:Online']+SinglePhotonGroup+SupportPhIGroup),
     ]
 
+    chainsP1['Muon'] = [    
+        ChainProp(name='HLT_mu0_muoncalib_L1MU18VFCH', stream=['Muon_Calibration'], groups=['PS:Online','RATE:Muon_Calibration','BW:Muon']),
+    ]
+
     chainsP1['Calib'] = [
         # Phase I jet inputs ATR-24411, seed needs to be checked
         #ChainProp(name='HLT_larpsall_L1jJ40', l1SeedThresholds=['jJ40'], stream=['CosmicCalo'],groups=['PS:Online','Support:PhaseI','RATE:Calibration','BW:Detector']),
@@ -323,7 +323,7 @@ def addHighMuP1Signatures(chains):
 
         # Lumi items for vdM programme
         ChainProp(name='HLT_noalg_LumiPEB_L1RD0_BGRP15', l1SeedThresholds=['FSNOSEED'], stream=['PixelBeam'], groups=['PS:Online']+SupportGroup),
-        ChainProp(name='HLT_noalg_vdm_LumiPEB_L1RD0_BGRP10', l1SeedThresholds=['FSNOSEED'], stream=['VdM'], groups=['PS:Online']+SupportGroup),
+        ChainProp(name='HLT_noalg_LumiPEB_L1RD0_BGRP10', l1SeedThresholds=['FSNOSEED'], stream=['PixelBeam'], groups=['PS:Online']+SupportGroup),
         ChainProp(name='HLT_noalg_vdm_LumiPEB_L1MBTS_2_BGRP11', l1SeedThresholds=['FSNOSEED'], stream=['VdM'], groups=['PS:Online']+SupportGroup),
         ChainProp(name='HLT_noalg_vdm_LumiPEB_L1MBTS_1_1_BGRP11', l1SeedThresholds=['FSNOSEED'], stream=['VdM'], groups=['PS:Online']+SupportGroup),
         ChainProp(name='HLT_noalg_vdm_LumiPEB_L1LUCID_A_BGRP11', l1SeedThresholds=['FSNOSEED'], stream=['VdM'], groups=['PS:Online']+SupportGroup),
@@ -368,6 +368,8 @@ def addHighMuP1Signatures(chains):
         ChainProp(name='HLT_noalg_L1FIRSTEMPTY_noPS', l1SeedThresholds=['FSNOSEED'], stream=['EnhancedBias'], groups=['PS:Online']+ ["RATE:EnhancedBias", "BW:Detector"]+SupportLegGroup ),
         ChainProp(name='HLT_noalg_L1UNPAIRED_ISO_noPS', l1SeedThresholds=['FSNOSEED'], stream=['EnhancedBias'], groups=['PS:Online']+ ["RATE:EnhancedBias", "BW:Detector"]+SupportLegGroup ),
         ChainProp(name='HLT_noalg_L1UNPAIRED_NONISO_noPS', l1SeedThresholds=['FSNOSEED'], stream=['EnhancedBias'], groups=['PS:Online']+ ["RATE:EnhancedBias", "BW:Detector"]+SupportLegGroup),
+
+        ChainProp(name='HLT_noalg_eb_L1All', l1SeedThresholds=['FSNOSEED'], stream=['EnhancedBias'], groups=['PS:Online']+["RATE:EnhancedBias", "BW:Detector"]+SupportGroup ),
     ]
 
     chainsP1['Beamspot'] = [

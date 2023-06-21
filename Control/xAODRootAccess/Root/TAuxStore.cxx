@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sstream>
 #include <stdexcept>
-#include "boost/algorithm/string/predicate.hpp"
+#include "CxxUtils/starts_with.h"
 
 // ROOT include(s):
 #include <TError.h>
@@ -1577,7 +1577,7 @@ namespace xAOD {
          // resource usage that implies, that can lead to crashes in dbg
          // builds due to cling bugs.
          std::string tn = Utils::getTypeName( *ti );
-         if (boost::starts_with (tn, "std::vector<"))
+         if (CxxUtils::starts_with (tn, "std::vector<"))
            tn.erase (0, 5);
          std::string fac_class_name = "SG::AuxTypeVectorFactory<" +
              tn + ",allocator<" + tn;
@@ -1808,12 +1808,12 @@ namespace xAOD {
       // general experience with the ROOT code, I'm going to say no...
       TClass* aux_vec_cl =
          TClass::GetClass( Utils::getTypeName( *aux_vec_ti ).c_str() );
-      if( aux_vec_cl && aux_vec_cl->GetConversionStreamerInfo( cl, 0 ) ) {
+      if( aux_vec_cl && aux_vec_cl->GetConversionStreamerInfo( cl, cl->GetClassVersion() ) ) {
          return kTRUE;
       }
       TClass* aux_obj_cl =
          TClass::GetClass( Utils::getTypeName( *aux_obj_ti ).c_str() );
-      if( aux_obj_cl && aux_obj_cl->GetConversionStreamerInfo( cl, 0 ) ) {
+      if( aux_obj_cl && aux_obj_cl->GetConversionStreamerInfo( cl, cl->GetClassVersion() ) ) {
          return kFALSE;
       }
 

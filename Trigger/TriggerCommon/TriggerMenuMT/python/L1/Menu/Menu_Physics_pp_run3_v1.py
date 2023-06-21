@@ -14,10 +14,10 @@ def defineMenu():
         ##
         # single EM
         ##
-        'L1_EM3','L1_EM7','L1_EM12', 'L1_EM8VH', 'L1_EM10VH', 'L1_EM15', 'L1_EM15VH', 'L1_EM15VHI', 'L1_EM18VHI',
-        'L1_EM20VH', 'L1_EM20VHI', 'L1_EM22VH', 'L1_EM22VHI', 'L1_EM24VHI',
-        'L1_EM3_EMPTY', 'L1_EM7_EMPTY', 'L1_EM7_UNPAIRED_ISO', 'L1_EM7_FIRSTEMPTY',
-        'L1_EM20VH_FIRSTEMPTY',
+        'L1_EM3',
+        'L1_EM10VH', 'L1_EM15', 
+        'L1_EM3_EMPTY', 'L1_EM7_EMPTY', 
+        'L1_EM7_FIRSTEMPTY',
         # new calo
         'L1_eEM5', 'L1_eEM7', 'L1_eEM9', 'L1_eEM10L',
         'L1_eEM12L', 'L1_eEM15', 'L1_eEM18',  'L1_eEM18L',  'L1_eEM18M', 
@@ -36,7 +36,7 @@ def defineMenu():
         'L1_MU8F_2MU5VF',
 
         'L1_2MU14FCH_OVERLAY',
-        'L1_MU3V_EMPTY', 'L1_MU5VF_EMPTY', 'L1_MU3V_FIRSTEMPTY', 'L1_MU8VF_EMPTY',
+        'L1_MU3V_EMPTY', 'L1_2MU5VF_EMPTY', 'L1_MU3V_FIRSTEMPTY', 'L1_MU8VF_EMPTY',
         'L1_MU3V_UNPAIRED_ISO',        
 
         # test
@@ -45,14 +45,8 @@ def defineMenu():
         'L1_MU12FCH', 'L1_MU14EOF', 'L1_MU15VFCHR', 'L1_MU18VFCH', 'L1_MU20VFC', 
 
         ##
-        # combined lepton (e and mu)
-        ##
-        'L1_2EM3', 'L1_2EM7', 'L1_2EM15', 'L1_2EM15VH', 'L1_2EM15VHI',
-        'L1_2EM20VH', 'L1_EM20VH_3EM10VH',
-        'L1_2EM8VH_MU8F', 'L1_EM15VH_MU8F',  'L1_EM7_MU8F',
-
         # Combined lepton, new calo (for ATR-24182)
-        'L1_2eEM18L', 'L1_2eEM18M', 'L1_2eEM24L', 'L1_3eEM12L', 'L1_eEM24L_3eEM12L',
+        'L1_2eEM18', 'L1_2eEM18L', 'L1_2eEM18M', 'L1_2eEM24L', 'L1_3eEM12L', 'L1_eEM24L_3eEM12L',
         'L1_eEM18L_MU8F', 'L1_2eEM10L_MU8F',
         # ATR-27156
         'L1_2eEM9',
@@ -148,10 +142,10 @@ def defineMenu():
         'L1_jEM20', 'L1_jEM20M',   
 
         # gJ
-        'L1_gJ20', 'L1_gJ30', 'L1_gJ40', 'L1_gJ50', 'L1_gJ100', 'L1_gJ160',
+        'L1_gJ20p0ETA25', 'L1_gJ20p0ETA25_EMPTY', 'L1_gJ20p25ETA49', 'L1_gJ50p0ETA25', 'L1_gJ100p0ETA25', 'L1_gJ400p0ETA25',
 
         # gLJ
-        'L1_gLJ80', 'L1_gLJ100', 'L1_gLJ140', 'L1_gLJ160',
+        'L1_gLJ80p0ETA25', 'L1_gLJ100p0ETA25', 'L1_gLJ140p0ETA25', 'L1_gLJ160p0ETA25',
 
         # LAr saturation
         'L1_LArSaturation',
@@ -221,7 +215,8 @@ def defineMenu():
         'L1_AFP_A','L1_AFP_C', 'L1_AFP_A_AND_C',
         #'L1_AFP_A_OR_C_J5','L1_AFP_A_AND_C_J5', # J5 not available in legacy menu. Need to update to jJ threshold for low-mu
         'L1_AFP_A_OR_C_J12','L1_AFP_A_AND_C_J12',
-        'L1_MU5VF_AFP_A_OR_C','L1_MU5VF_AFP_A_AND_C','L1_EM7_AFP_A_OR_C','L1_EM7_AFP_A_AND_C',
+        'L1_MU5VF_AFP_A_OR_C','L1_MU5VF_AFP_A_AND_C',
+        # 'L1_EM7_AFP_A_OR_C','L1_EM7_AFP_A_AND_C',# ATR-27654
         'L1_eEM9_AFP_A_OR_C','L1_eEM9_AFP_A_AND_C',
         # med-priority (low mu)
         'L1_AFP_A_OR_C','L1_AFP_A_OR_C_MBTS_2', 'L1_AFP_A_AND_C_MBTS_2',

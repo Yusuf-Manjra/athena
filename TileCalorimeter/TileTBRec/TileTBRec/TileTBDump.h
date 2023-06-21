@@ -45,7 +45,8 @@
 #include "TileByteStream/TileRawChannel2Bytes2.h" 
 #include "TileByteStream/TileRawChannel2Bytes4.h" 
 #include "TileByteStream/TileRawChannel2Bytes5.h" 
-
+#include <vector>
+#include <map>
 
 class IROBDataProviderSvc;
 class TileCablingService;
@@ -53,7 +54,7 @@ class TileCondToolOfcCool;
 class TileCondToolTiming;
 class TileCondToolEmscale;
 
-#include <vector>
+
 
 class TileTBDump: public AthAlgorithm {
   public:
@@ -75,6 +76,7 @@ class TileTBDump: public AthAlgorithm {
     ServiceHandle<IROBDataProviderSvc> m_RobSvc;
 
     const TileCablingService* m_cabling;
+    int m_runPeriod;
 
     std::vector<std::string> m_drawerList; // list of frag IDs in correct order
     std::vector<int> m_drawerType; // type of every drawer 1-4: B+, B-, EB+, EB-

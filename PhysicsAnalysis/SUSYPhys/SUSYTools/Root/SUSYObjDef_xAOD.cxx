@@ -146,7 +146,6 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
     m_autoconfigPRWFile(""),
     m_autoconfigPRWCombinedmode(false),
     m_autoconfigPRWRPVmode(false),
-    m_autoconfigPRWHFFilter(""),
     m_autoconfigPRWRtags(""),
     m_mcCampaign(""),
     m_mcChannel(-99),
@@ -337,6 +336,8 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
     //
     m_elecEfficiencySFTool_reco(""),
     m_elecEfficiencySFTool_id(""),
+    m_elecEfficiencySFTool_trig_singleLep(""),
+    m_elecEfficiencySFTool_trigEff_singleLep(""),
     m_elecEfficiencySFTool_iso(""),
     m_elecEfficiencySFTool_isoHighPt(""),
     //
@@ -373,23 +374,27 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
     m_trig2016combination_singleLep(""),
     m_trig2017combination_singleLep(""),
     m_trig2018combination_singleLep(""),
+    m_trig2022combination_singleLep(""),
     m_trigNToys_diLep(-99),
     m_trig2015combination_diLep(""),
     m_trig2016combination_diLep(""),
     m_trig2017combination_diLep(""),
     m_trig2018combination_diLep(""),
+    m_trig2022combination_diLep(""),
     m_trigGlobalEffCorrTool_diLep(""),
     m_trigNToys_multiLep(-99),
     m_trig2015combination_multiLep(""),
     m_trig2016combination_multiLep(""),
     m_trig2017combination_multiLep(""),
     m_trig2018combination_multiLep(""),
+    m_trig2022combination_multiLep(""),
     m_trigGlobalEffCorrTool_multiLep(""),
     m_trigNToys_diPhoton(-99),
     m_trig2015combination_diPhoton(""),
     m_trig2016combination_diPhoton(""),
     m_trig2017combination_diPhoton(""),
     m_trig2018combination_diPhoton(""),
+    m_trig2022combination_diPhoton(""),
     m_trigGlobalEffCorrTool_diPhoton(""),
     m_trigConfTool(""),
     m_trigDecTool(""),
@@ -592,7 +597,6 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
   declareProperty( "AutoconfigurePRWToolFile", m_autoconfigPRWFile ); // e.g. DSID407xxx/pileup_mc16a_dsid407352_FS.root
   declareProperty( "AutoconfigurePRWToolCombinedmode", m_autoconfigPRWCombinedmode );
   declareProperty( "AutoconfigurePRWToolRPVmode", m_autoconfigPRWRPVmode );
-  declareProperty( "AutoconfigurePRWToolHFFilter", m_autoconfigPRWHFFilter );
   declareProperty( "AutoconfigurePRWToolRtags", m_autoconfigPRWRtags );
   declareProperty( "mcCampaign",           m_mcCampaign );
   declareProperty( "mcChannel",            m_mcChannel );
@@ -600,6 +604,7 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
   declareProperty( "PRWLumiCalcFiles",     m_prwLcalcFiles );
   declareProperty( "PRWActualMu2017File",  m_prwActualMu2017File );
   declareProperty( "PRWActualMu2018File",  m_prwActualMu2018File );
+  declareProperty( "PRWActualMu2022File",  m_prwActualMu2022File );
   declareProperty( "PRWDataScaleFactor",   m_prwDataSF);
   declareProperty( "PRWDataScaleFactorUP", m_prwDataSF_UP);
   declareProperty( "PRWDataScaleFactorDOWN", m_prwDataSF_DW);
@@ -660,6 +665,7 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
   m_muonLRTORTool.declarePropertyFor( this, "MuonLRTOverlapRemovalTool", "Prompt/LRT muon OR Tool" );
   //
   m_elecEfficiencySFTool_reco.declarePropertyFor( this, "ElectronEfficiencyCorrectionTool_reco", "The ElectronEfficiencyCorrectionTool for reconstruction SFs" );
+  m_elecEfficiencySFTool_trig_singleLep.declarePropertyFor( this, "ElectronEfficiencyCorrectionTool_trig_singleLep", "The ElectronEfficiencyCorrectionTool for single-e triggers" );
   m_elecEfficiencySFTool_id.declarePropertyFor( this, "ElectronEfficiencyCorrectionTool_id", "The ElectronEfficiencyCorrectionTool for ID SFs" );
   m_elecEfficiencySFTool_iso.declarePropertyFor( this, "ElectronEfficiencyCorrectionTool_iso" , "The ElectronEfficiencyCorrectionTool for iso SFs" );
   m_elecEfficiencySFTool_isoHighPt.declarePropertyFor( this, "ElectronEfficiencyCorrectionTool_isoHigPt" , "The ElectronEfficiencyCorrectionTool for iso high-pt SFs" );
@@ -910,10 +916,10 @@ StatusCode SUSYObjDef_xAOD::initialize() {
 
   // autoconfigure PRW tool if m_autoconfigPRW==true
   if (m_autoconfigPRWPath == "dev/PileupReweighting/share/")
-    ATH_CHECK( autoconfigurePileupRWTool(m_autoconfigPRWPath, m_autoconfigPRWFile, true, m_autoconfigPRWRPVmode, m_autoconfigPRWCombinedmode, m_autoconfigPRWHFFilter) );
+    ATH_CHECK( autoconfigurePileupRWTool(m_autoconfigPRWPath, m_autoconfigPRWFile, true, m_autoconfigPRWRPVmode, m_autoconfigPRWCombinedmode) );
   else
     // need to set a full path if you don't use the one in CVMFS
-    ATH_CHECK( autoconfigurePileupRWTool(m_autoconfigPRWPath, m_autoconfigPRWFile, false, m_autoconfigPRWRPVmode, m_autoconfigPRWCombinedmode, m_autoconfigPRWHFFilter) );
+    ATH_CHECK( autoconfigurePileupRWTool(m_autoconfigPRWPath, m_autoconfigPRWFile, false, m_autoconfigPRWRPVmode, m_autoconfigPRWCombinedmode) );
 
   ATH_CHECK( m_outElectronLocation.initialize() );
   ATH_CHECK( m_outMuonLocation.initialize() );
@@ -928,7 +934,7 @@ StatusCode SUSYObjDef_xAOD::initialize() {
   return StatusCode::SUCCESS;
 }
 
-StatusCode SUSYObjDef_xAOD::autoconfigurePileupRWTool(const std::string& PRWfilesDir, const std::string& PRWfileName, bool usePathResolver, bool RPVLLmode, bool Combinedmode, const std::string& HFFilter ) {
+StatusCode SUSYObjDef_xAOD::autoconfigurePileupRWTool(const std::string& PRWfilesDir, const std::string& PRWfileName, bool usePathResolver, bool RPVLLmode, bool Combinedmode, const std::string& /*  HFFilter */ ) {
 
   std::string prwConfigFile("");
 
@@ -944,9 +950,9 @@ StatusCode SUSYObjDef_xAOD::autoconfigurePileupRWTool(const std::string& PRWfile
     const xAOD::FileMetaData* fmd = nullptr;
 
     // configure PRW rtag options from m_autoconfigPRWRtags string
-    // e.g. "mc16a:r9364_r11505_r11285,mc16c:r9781,mc16d:r10201_r11506_r11279,mc16e:r10724_r11507_r11249,mc16ans:r10740_r10832_r10847_r11008_r11036,mc16dns:r10739_r10833_r10848_r11009_r11037,mc16ens:r10790_r11038_r11265"
+    // e.g. "mc20a:r13167_r13297,mc20d_r13144_r13298,mc20e:r13145,mc21a:r13829,mc23a:r14622"
     std::map<std::string,std::vector<std::string>> PRWRtags = {};
-    std::string allcampaigns = "mc16a.mc16c.mc16d.mc16e.mc20a.mc20d.mc20e.mc21a.mc16ans.mc16dns.mc16ens";
+    std::string allcampaigns = "mc20a.mc20d.mc20e.mc21a.mc23a";
     bool standard_like = true;
     for ( const auto& campaign_rtags : split( m_autoconfigPRWRtags, "," ) ) {                                          // split string by ","
        std::string icampaign = campaign_rtags.substr(0, campaign_rtags.find(":"));                              // first field = campaign, split by ":"
@@ -1000,7 +1006,7 @@ StatusCode SUSYObjDef_xAOD::autoconfigurePileupRWTool(const std::string& PRWfile
       return StatusCode::FAILURE;
 #else
 
-      if ( m_mcCampaign == "mc16a" || m_mcCampaign == "mc16c" || m_mcCampaign == "mc16d" || m_mcCampaign == "mc16e") {
+      if ( m_mcCampaign == "mc20a" || m_mcCampaign == "mc20d" || m_mcCampaign == "mc20e" || m_mcCampaign == "mc21a" || m_mcCampaign == "mc23a") {
 	// First see if the user set the mcCampaign/run number by property (hopefully temporary workaround)
 	if ( m_mcChannel > 0) {
 	  ATH_MSG_WARNING( "autoconfigurePileupRWTool(): access to FileMetaData failed -> getting the mc channel number (DSID) and campaign from configuration." );
@@ -1040,45 +1046,36 @@ StatusCode SUSYObjDef_xAOD::autoconfigurePileupRWTool(const std::string& PRWfile
     if (RPVLLmode) prwConfigFile = TString(prwConfigFile).ReplaceAll(".root","_rpvll.root").Data();
 
     // PRW file specified by user
-    // e.g. DSID407xxx/pileup_mc16a_dsid407352_FS.root
+    // e.g. DSID700xxx/pileup_mc20a_dsid700015_FS.root
     if (!PRWfileName.empty()) {
       prwConfigFile = PRWfilesDir + PRWfileName;
       ATH_MSG_INFO( "autoconfigurePileupRWTool(): PRW file was specifed by user: " << prwConfigFile.data() );
-    }
-
-    // Patch for MC16 Znunu metadata bug  (updated 2019.05.30)
-    if (!HFFilter.empty() && dsid>=366001 && dsid<= 366008) {
-      ATH_MSG_WARNING ("Samples metadata for Znunu samples is corrupted! Remapping to grab the correct RPW file. Only MC16e is supported for now.");
-      if (HFFilter == "BFilter") {
-        prwConfigFile = TString(prwConfigFile).ReplaceAll(std::to_string(DSID_INT),std::to_string(DSID_INT+9)).Data();
-      } else if (HFFilter == "CFilterBVeto") {
-        prwConfigFile = TString(prwConfigFile).ReplaceAll(std::to_string(DSID_INT),std::to_string(DSID_INT+18)).Data();
-      } else if (HFFilter == "CVetoBVeto") {
-        prwConfigFile = TString(prwConfigFile).ReplaceAll(std::to_string(DSID_INT),std::to_string(DSID_INT+27)).Data();
-      } else {
-        ATH_MSG_ERROR ("Heavy flavor filter naming is wrong and cannot re-map dsid! SHould be BFilter, CFilterBVeto, or CVetoBVeto.");
-        return StatusCode::FAILURE;
-      }
     }
 
     m_prwConfFiles.clear();
 
     // Combined mode can be only used when running with full data with the same MC samples
     if (Combinedmode) {
-      prwConfigFile = TString(prwConfigFile).ReplaceAll(mcCampaignMD,"mc16a").Data();
+      if (mcCampaignMD.find("mc20") == std::string::npos) {
+        ATH_MSG_ERROR( "autoconfigurePileupRWTool(): combined mode currently onlys supported for mc20! Impossible to autoconfigure PRW. Aborting." );
+        return StatusCode::FAILURE;
+      }
+      prwConfigFile = TString(prwConfigFile).ReplaceAll(mcCampaignMD,"mc20a").Data();
       m_prwConfFiles.push_back( prwConfigFile );
-      prwConfigFile = TString(prwConfigFile).ReplaceAll("mc16a","mc16d").Data();
+      prwConfigFile = TString(prwConfigFile).ReplaceAll("mc20a","mc20d").Data();
       m_prwConfFiles.push_back( prwConfigFile );
-      prwConfigFile = TString(prwConfigFile).ReplaceAll("mc16d","mc16e").Data();
+      prwConfigFile = TString(prwConfigFile).ReplaceAll("mc20d","mc20e").Data();
       m_prwConfFiles.push_back( prwConfigFile );
       m_prwConfFiles.push_back( PathResolverFindCalibFile(m_prwActualMu2017File) );
       m_prwConfFiles.push_back( PathResolverFindCalibFile(m_prwActualMu2018File) );
     } else {
       m_prwConfFiles.push_back( prwConfigFile );
-      if ( mcCampaignMD == "mc16c" || mcCampaignMD == "mc16d") {
+      if ( mcCampaignMD == "mc20d") {
         m_prwConfFiles.push_back( PathResolverFindCalibFile(m_prwActualMu2017File) );
-      } else if (mcCampaignMD == "mc16e") {
+      } else if (mcCampaignMD == "mc20e") {
         m_prwConfFiles.push_back( PathResolverFindCalibFile(m_prwActualMu2018File) );
+      } else if (mcCampaignMD == "mc21a" || mcCampaignMD == "mc23a") {
+        m_prwConfFiles.push_back( PathResolverFindCalibFile(m_prwActualMu2022File) );
       }
     }
     prwConfigFile = usePathResolver ? PathResolverFindCalibFile(prwConfigFile) : prwConfigFile;
@@ -1360,21 +1357,25 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   configFromFile(m_trig2016combination_singleLep, "Trig.Singlelep2016", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50");
   configFromFile(m_trig2017combination_singleLep, "Trig.Singlelep2017", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50");
   configFromFile(m_trig2018combination_singleLep, "Trig.Singlelep2018", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50");
+  configFromFile(m_trig2022combination_singleLep, "Trig.Singlelep2022", rEnv, "e26_lhtight_ivarloose_L1EM22VHI_OR_e60_lhmedium_L1EM22VHI_OR_e140_lhloose_L1EM22VHI || HLT_mu24_ivarmedium_L1MU14FCH_OR_HLT_mu50_L1MU14FCH");
   configFromFile(m_trigNToys_diLep, "Trig.DilepNToys", rEnv, 250); // 0 means calculate from formula instead - needs to be supported for the trigger combination
   configFromFile(m_trig2015combination_diLep, "Trig.Dilep2015", rEnv, "e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose || mu20_iloose_L1MU15_OR_mu50 || 2e12_lhloose_L12EM10VH || e17_lhloose_mu14 || e7_lhmedium_mu24 || mu18_mu8noL1 || 2mu10");
   configFromFile(m_trig2016combination_diLep, "Trig.Dilep2016", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e17_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_L1EM22VHI_mu8noL1 || mu22_mu8noL1 || 2mu14");
   configFromFile(m_trig2017combination_diLep, "Trig.Dilep2017", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || mu22_mu8noL1 || 2mu14");
   configFromFile(m_trig2018combination_diLep, "Trig.Dilep2018", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || mu22_mu8noL1 || 2mu14");
+  // configFromFile(m_trig2022combination_diLep, "Trig.Dilep2022", rEnv, "");
   configFromFile(m_trigNToys_multiLep, "Trig.MultiNToys", rEnv, 250); // 0 means calculate from formula instead - needs to be supported for the trigger combination
   configFromFile(m_trig2015combination_multiLep, "Trig.Multi2015", rEnv, "e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose || mu20_iloose_L1MU15_OR_mu50 || 2e12_lhloose_L12EM10VH || e17_lhloose_2e9_lhloose || 2e12_lhloose_mu10 || e12_lhloose_2mu10 || e17_lhloose_mu14 || e7_lhmedium_mu24 || mu18_mu8noL1 || 2mu10 || 3mu6");
   configFromFile(m_trig2016combination_multiLep, "Trig.Multi2016", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e17_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_L1EM22VHI_mu8noL1 || e17_lhloose_nod0_2e9_lhloose_nod0 || e12_lhloose_nod0_2mu10 || 2e12_lhloose_nod0_mu10 || mu22_mu8noL1 || 2mu14 || 3mu6");
   configFromFile(m_trig2017combination_multiLep, "Trig.Multi2017", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || e24_lhvloose_nod0_2e12_lhvloose_nod0_L1EM20VH_3EM10VH || e12_lhloose_nod0_2mu10 || 2e12_lhloose_nod0_mu10 || mu22_mu8noL1 || 2mu14 || 3mu6");
   configFromFile(m_trig2018combination_multiLep, "Trig.Multi2018", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50 || 2e24_lhvloose_nod0 || e17_lhloose_nod0_mu14 || e7_lhmedium_nod0_mu24 || e26_lhmedium_nod0_mu8noL1 || e24_lhvloose_nod0_2e12_lhvloose_nod0_L1EM20VH_3EM10VH || e12_lhloose_nod0_2mu10 || 2e12_lhloose_nod0_mu10 || mu22_mu8noL1 || 2mu14 || 3mu6");
+  // configFromFile(m_trig2022combination_multiLep, "Trig.Multi2022", rEnv, "");
   configFromFile(m_trigNToys_diPhoton, "Trig.DiphotonNToys", rEnv, 250); // 0 means calculate from formula instead - needs to be supported for the trigger combination
   configFromFile(m_trig2015combination_diPhoton, "Trig.Diphoton2015", rEnv, "g35_loose_g25_loose");
   configFromFile(m_trig2016combination_diPhoton, "Trig.Diphotonp2016", rEnv, "g35_loose_g25_loose");
   configFromFile(m_trig2017combination_diPhoton, "Trig.Diphotonp2017", rEnv, "g35_medium_g25_medium_L12EM20VH");
   configFromFile(m_trig2018combination_diPhoton, "Trig.Diphotonp2018", rEnv, "g35_medium_g25_medium_L12EM20VH");
+  // configFromFile(m_trig2018combination_diPhoton, "Trig.Diphotonp2022", rEnv, "");
   //
   configFromFile(m_muBaselinePt, "MuonBaseline.Pt", rEnv, 10000.);
   configFromFile(m_muBaselineEta, "MuonBaseline.Eta", rEnv, 2.7);
@@ -1436,7 +1437,7 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   configFromFile(m_JvtWP, "Jet.JvtWP", rEnv, "FixedEffPt"); // https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/PileupJetRecommendations
   configFromFile(m_JvtPtMax, "Jet.JvtPtMax", rEnv, 60.0e3);
   configFromFile(m_JvtConfig, "Jet.JvtConfig", rEnv, "Moriond2018/");
-  configFromFile(m_jetUncertaintiesConfig, "Jet.UncertConfig", rEnv, "rel22/Winter2023_PreRec/R4_CategoryReduction_FullJER.config"); // https://twiki.cern.ch/twiki/bin/view/AtlasProtected/JetUncertaintiesRel22/
+  configFromFile(m_jetUncertaintiesConfig, "Jet.UncertConfig", rEnv, "rel22/Summer2023_PreRec/R4_CategoryReduction_FullJER.config"); // https://twiki.cern.ch/twiki/bin/view/AtlasProtected/JetUncertaintiesRel22/
   configFromFile(m_jetUncertaintiesAnalysisFile, "Jet.AnalysisFile", rEnv, "default"); // https://twiki.cern.ch/twiki/bin/view/AtlasProtected/JetUncertaintiesRel21Summer2018SmallR
   configFromFile(m_jetUncertaintiesCalibArea, "Jet.UncertCalibArea", rEnv, "default"); // Defaults to default area set by tool
   configFromFile(m_jetUncertaintiesPDsmearing, "Jet.UncertPDsmearing", rEnv, false); // for non "SimpleJER" config, run the PDSmear systematics. This are labelled with an __2 if they are being used, but otherwise will have the same tree name as the JET_JER systematic trees.
@@ -1560,6 +1561,7 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   //
   configFromFile(m_prwActualMu2017File, "PRW.ActualMu2017File", rEnv, "GoodRunsLists/data17_13TeV/20180619/physics_25ns_Triggerno17e33prim.actualMu.OflLumi-13TeV-010.root");
   configFromFile(m_prwActualMu2018File, "PRW.ActualMu2018File", rEnv, "GoodRunsLists/data18_13TeV/20190219/purw.actualMu.root");
+  configFromFile(m_prwActualMu2022File, "PRW.ActualMu2022File", rEnv, "GoodRunsLists/data22_13p6TeV/20230207/purw.actualMu.2022.root");
   configFromFile(m_prwDataSF, "PRW.DataSF", rEnv, 1./1.03); // default for mc16, see: https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/ExtendedPileupReweighting#Tool_Properties
   configFromFile(m_prwDataSF_UP, "PRW.DataSF_UP", rEnv, 1./0.99); // mc16 uncertainty? defaulting to the value in PRWtool
   configFromFile(m_prwDataSF_DW, "PRW.DataSF_DW", rEnv, 1./1.07); // mc16 uncertainty? defaulting to the value in PRWtool
@@ -1568,8 +1570,7 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   configFromFile(m_autoconfigPRWFile, "PRW.autoconfigPRWFile", rEnv, "None");
   configFromFile(m_autoconfigPRWCombinedmode, "PRW.autoconfigPRWCombinedmode", rEnv, false);
   configFromFile(m_autoconfigPRWRPVmode, "PRW.autoconfigPRWRPVmode", rEnv, false);
-  configFromFile(m_autoconfigPRWHFFilter, "PRW.autoconfigPRWHFFilter", rEnv, "None");
-  configFromFile(m_autoconfigPRWRtags, "PRW.autoconfigPRWRtags", rEnv, "mc16a:r9364_r11505_r11285,mc16c:r9781,mc16d:r10201_r11506_r11279,mc16e:r10724_r11507_r11249,mc20a:r13167,mc20d:r13144,mc20e:r13145,mc21a:r13829,mc16ans:r10740_r10832_r10847_r11008_r11036,mc16dns:r10739_r10833_r10848_r11009_r11037,mc16ens:r10790_r11038_r11265");
+  configFromFile(m_autoconfigPRWRtags, "PRW.autoconfigPRWRtags", rEnv, "mc20a:r13167,mc20d:r13144,mc20e:r13145,mc21a:r13752_r13829,mc23a:r14622");
   //
   configFromFile(m_strictConfigCheck, "StrictConfigCheck", rEnv, false);
 
@@ -1633,23 +1634,28 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   ATH_CHECK( validConfig(m_strictConfigCheck) );
 
   //** cache trigger chains for electron matching
-  GetTriggerTokens(m_electronTriggerSFStringSingle, m_v_trigs15_cache_singleEle, m_v_trigs16_cache_singleEle, m_v_trigs17_cache_singleEle, m_v_trigs18_cache_singleEle);
+  GetTriggerTokens(m_electronTriggerSFStringSingle, m_v_trigs15_cache_singleEle, m_v_trigs16_cache_singleEle, m_v_trigs17_cache_singleEle, m_v_trigs18_cache_singleEle,m_v_trigs22_cache_singleEle);
 
   //** cache trigger chains for matching (both electrons and muons)
-  GetTriggerTokens(m_electronTriggerSFStringSingle, m_v_trigs15_cache_singleEle, m_v_trigs16_cache_singleEle, m_v_trigs17_cache_singleEle, m_v_trigs18_cache_singleEle);
+  GetTriggerTokens(m_electronTriggerSFStringSingle, m_v_trigs15_cache_singleEle, m_v_trigs16_cache_singleEle, m_v_trigs17_cache_singleEle, m_v_trigs18_cache_singleEle,m_v_trigs22_cache_singleEle);
 
   m_v_trigs15_cache_singleLep = GetTriggerOR(m_trig2015combination_singleLep);
   m_v_trigs16_cache_singleLep = GetTriggerOR(m_trig2016combination_singleLep);
   m_v_trigs17_cache_singleLep = GetTriggerOR(m_trig2017combination_singleLep);
   m_v_trigs18_cache_singleLep = GetTriggerOR(m_trig2018combination_singleLep);
+  m_v_trigs22_cache_singleLep = GetTriggerOR(m_trig2022combination_singleLep);
+
   m_v_trigs15_cache_diLep = GetTriggerOR(m_trig2015combination_diLep);
   m_v_trigs16_cache_diLep = GetTriggerOR(m_trig2016combination_diLep);
   m_v_trigs17_cache_diLep = GetTriggerOR(m_trig2017combination_diLep);
   m_v_trigs18_cache_diLep = GetTriggerOR(m_trig2018combination_diLep);
+  m_v_trigs22_cache_diLep = GetTriggerOR(m_trig2022combination_diLep);
+
   m_v_trigs15_cache_multiLep = GetTriggerOR(m_trig2015combination_multiLep);
   m_v_trigs16_cache_multiLep = GetTriggerOR(m_trig2016combination_multiLep);
   m_v_trigs17_cache_multiLep = GetTriggerOR(m_trig2017combination_multiLep);
   m_v_trigs18_cache_multiLep = GetTriggerOR(m_trig2018combination_multiLep);
+  m_v_trigs22_cache_multiLep = GetTriggerOR(m_trig2022combination_multiLep);
 
   return StatusCode::SUCCESS;
 }
@@ -2134,6 +2140,24 @@ StatusCode SUSYObjDef_xAOD::applySystematicVariation( const CP::SystematicSet& s
       ATH_MSG_VERBOSE("AsgElectronEfficiencyCorrectionTool (id) configured for systematic var. " << systConfig.name() );
     }
   }
+  if (!m_elecEfficiencySFTool_trig_singleLep.empty()) {
+    StatusCode ret = m_elecEfficiencySFTool_trig_singleLep->applySystematicVariation(systConfig);
+    if (ret != StatusCode::SUCCESS) {
+      ATH_MSG_ERROR("Cannot configure AsgElectronEfficiencyCorrectionTool (trigger) for systematic var. " << systConfig.name() );
+      return ret;
+    } else {
+      ATH_MSG_VERBOSE("AsgElectronEfficiencyCorrectionTool (trigger) configured for systematic var. " << systConfig.name() );
+    }
+  }
+  if (!m_elecEfficiencySFTool_trigEff_singleLep.empty()) {
+    StatusCode ret = m_elecEfficiencySFTool_trigEff_singleLep->applySystematicVariation(systConfig);
+    if (ret != StatusCode::SUCCESS) {
+      ATH_MSG_ERROR("Cannot configure AsgElectronEfficiencyCorrectionTool (trigger SFTool) for systematic var. " << systConfig.name() );
+      return ret;
+    } else {
+      ATH_MSG_VERBOSE("AsgElectronEfficiencyCorrectionTool (trigger SFTool) configured for systematic var. " << systConfig.name() );
+    }
+  }
   if (!m_trigGlobalEffCorrTool_diLep.empty()) {
     StatusCode ret = m_trigGlobalEffCorrTool_diLep->applySystematicVariation(systConfig);
     for(auto &sfop : m_elecTrigEffTools){
@@ -2447,6 +2471,20 @@ ST::SystInfo SUSYObjDef_xAOD::getSystInfo(const CP::SystematicVariation& sys) co
     if ( m_muonCalibTool->isAffectedBySystematic(sys) ) {
       sysInfo.affectsKinematics = true;
       sysInfo.affectsType = SystObjType::Muon;
+    }
+  }
+  if (!m_elecEfficiencySFTool_trig_singleLep.empty()) {
+    if ( m_elecEfficiencySFTool_trig_singleLep->isAffectedBySystematic(sys) ) {
+      sysInfo.affectsWeights = true;
+      sysInfo.affectsType = SystObjType::Electron;
+      sysInfo.affectedWeights.insert(ST::Weights::Electron::Trigger);
+    }
+  }
+  if (!m_elecEfficiencySFTool_trigEff_singleLep.empty()) {
+    if ( m_elecEfficiencySFTool_trigEff_singleLep->isAffectedBySystematic(sys) ) {
+      sysInfo.affectsWeights = true;
+      sysInfo.affectsType = SystObjType::Electron;
+      sysInfo.affectedWeights.insert(ST::Weights::Electron::Trigger);
     }
   }
   if (!m_muonEfficiencySFTool.empty()) {

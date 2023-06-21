@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 # @file PyUtils.scripts.diff_root_files
 # @purpose check that 2 ROOT files have same content (containers and sizes).
@@ -35,6 +35,42 @@ def _is_summary():
 def _is_exit_early():
     global g_args
     return g_args.error_mode == 'bailout'
+
+# Possibly compare two vectors.  If nan_equal, then consider NaNs to be equal.
+# Returns None if we have two matching vectors.
+# If we have two vectors that differ at some element, return that index.
+# Otherwise return -1 (inputs not vectors, etc).
+_vectypes = {'std::vector<float>',
+             'std::vector<double>',
+             'std::vector<int>',
+             'std::vector<unsigned int>',
+             'std::vector<long>',
+             'std::vector<unsigned long>',
+             'std::vector<short>',
+             'std::vector<unsigned short>',
+             'std::vector<char>',
+             'std::vector<unsigned char>',
+             'std::vector<long long>',
+             'std::vector<unsigned long long>'}
+def _vecdiff (v1, v2, nan_equal):
+    if getattr(type(type(v1)), '__cpp_name__', None) not in _vectypes:
+        return -1
+    if type(v1) is not type(v2): return -1
+    sz = v1.size()
+    if sz != v2.size(): return -1
+    if nan_equal:
+        isnan_ = isnan
+        for i in range (sz):
+            val1 = v1[i]
+            val2 = v2[i]
+            if val1 != val2 and not all(
+                    [isinstance(_, Real) and isnan_(_) for _ in (val1, val2)]):
+                return i
+    else:
+        for i in range (sz):
+            if v1[i] != v2[i]:
+                return i
+    return None
 
 @acmdlib.command(name='diff-root')
 @acmdlib.argument('old',
@@ -111,6 +147,12 @@ def main(args):
 
     global g_args
     g_args = args
+
+    # We allocate many python objects at once.
+    # Running GC less often by jacking up the threshold speeds things up
+    # considerably.
+    import gc
+    gc.set_threshold (100000)
     
     import PyUtils.RootUtils as ru
     root = ru.import_root()  # noqa: F841
@@ -184,7 +226,6 @@ def main(args):
                                                'EventInfo_p4_McEventInfo',
                                                'EventInfo_p4_ByteStreamEventInfo']}
 
-        @cache
         def find_attrs():
             """Find the relevant attributes for reading the event number"""
             for ii, jj in eiDict.items():
@@ -194,18 +235,26 @@ def main(args):
             else:
                 return None, None
 
+        tree.GetEntry(0)
+        attr1, attr2 = find_attrs()
+        if attr1 is None or attr2 is None:
+            msg.error('Cannot read event info, will bail out.')
+            msg.error(f"Tried attributes {attr1} and {attr2}")
+            return []
+        attrs = [attr1] + attr2.split()
+
+        tree.SetBranchStatus ('*', 0)
+        tree.SetBranchStatus (attr1, 1)
+
         for idx in range(0, nevts):
             if idx % 100 == 0:
                 msg.debug('Read {} events from the input so far'.format(idx))
             tree.GetEntry(idx)
-            attr1, attr2 = find_attrs()
-            if attr1 is None or attr2 is None:
-                msg.error('Cannot read event info, will bail out.')
-                msg.error(f"Tried attributes {attr1} and {attr2}")
-                break
-            event_number = reduce(getattr, [attr1] + attr2.split(), tree)
+            event_number = reduce(getattr, attrs, tree)
             msg.debug('Idx : EvtNum {:10d} : {}'.format(idx,event_number))
             dict_in[idx] = event_number
+
+        tree.SetBranchStatus ('*', 1)
 
         # Sort the dictionary by event numbers
         dict_out = OrderedDict(sorted(dict_in.items(), key=operator.itemgetter(1), reverse = reverse_order))
@@ -258,6 +307,11 @@ def main(args):
             else:
                 return False
 
+        @cache
+        def skip_leaf_entry(entry2, skip_leaves):
+            leafname = '.'.join([s for s in entry2 if not s.isdigit()])
+            return skip_leaf (leafname, skip_leaves)
+
         skipset = frozenset(args.ignore_leaves)
         old_leaves = infos['old']['leaves'] - infos['new']['leaves']
         old_leaves = set(
@@ -292,6 +346,7 @@ def main(args):
         skip_leaves = [ l.rstrip('.') for l in old_leaves | new_leaves | set(args.ignore_leaves) ]
         for l in skip_leaves:
             msg.debug('skipping [%s]', l)
+        skip_leaves = frozenset (skip_leaves)
         
         oldBranches = set(b.GetName().rstrip('\0') for b in fold.tree.GetListOfBranches())
         newBranches = set(b.GetName().rstrip('\0') for b in fnew.tree.GetListOfBranches())
@@ -370,8 +425,10 @@ def main(args):
             itr_entries_new = itr_entries
 
         branches = sorted(branches)
-        old_dump_iter = fold.dump(args.tree_name, itr_entries_old, branches)
-        new_dump_iter = fnew.dump(args.tree_name, itr_entries_new, branches)
+        old_dump_iter = fold.dump(args.tree_name, itr_entries_old, branches, True, False)
+        new_dump_iter = fnew.dump(args.tree_name, itr_entries_new, branches, True, False)
+        old_skip_dict = {}
+        new_skip_dict = {}
 
         def leafname_fromdump(entry):
             if entry is None:
@@ -385,18 +442,34 @@ def main(args):
             else:
                 return [int(s) for s in entry[2] if s.isdigit()]
 
-        def reach_next(dump_iter, skip_leaves, leaves_prefix=None):
+        def reach_next(dump_iter, skip_leaves, skip_dict, leaves_prefix=None):
             keep_reading = True
             while keep_reading:
                 try:
                     entry = next(dump_iter)
                 except StopIteration:
                     return None
+
+                # Calling leafname_fromdump is expensive.  When we can,
+                # try to make the skip decision using just the first element
+                # in entry[2].  skip_dict maps from entry[2] values to either
+                # -1 if some branch with this entry prefix is being skipped
+                # or the event index at which we first saw this value.
+                # If we get to a different index and no branches with
+                # this prefix have been skipped, then we can assume that
+                # none of them are.
+                entry2_orig = entry[2][0]
+                skip = skip_dict.setdefault (entry2_orig, entry[1])
+                if skip > 0 and skip != entry[1]:
+                    # Old entry --- we can assume no skipping.
+                    return entry
+
                 entry[2][0] = entry[2][0].rstrip('.\0')  # clean branch name
                 if leaves_prefix:
                     entry[2][0] = entry[2][0].replace(leaves_prefix, '')
-                if not skip_leaf(leafname_fromdump(entry), tuple(set(skip_leaves))):
+                if not skip_leaf(leafname_fromdump(entry), skip_leaves):
                     return entry
+                skip_dict[entry2_orig] = -1
                 msg.debug('SKIP: {}'.format(leafname_fromdump(entry)))
             pass
 
@@ -407,9 +480,9 @@ def main(args):
         
         while True:
             if read_old:
-                d_old = reach_next(old_dump_iter, skip_leaves, args.leaves_prefix)
+                d_old = reach_next(old_dump_iter, skip_leaves, old_skip_dict, args.leaves_prefix)
             if read_new:
-                d_new = reach_next(new_dump_iter, skip_leaves, args.leaves_prefix)
+                d_new = reach_next(new_dump_iter, skip_leaves, new_skip_dict, args.leaves_prefix)
                 
             if not d_new and not d_old:
                 break
@@ -425,6 +498,16 @@ def main(args):
                 tree_name, ientry, iname, iold = d_old
             if d_new:
                 tree_name, jentry, jname, inew = d_new
+
+            idiff = _vecdiff (iold, inew, args.nan_equal)
+            if idiff is None:
+                n_good += 1
+                continue
+            elif idiff >= 0:
+                iold = iold[idiff]
+                inew = inew[idiff]
+                iname = iname[:-1] + [idiff] + iname[-1:]
+                jname = jname[:-1] + [idiff] + jname[-1:]
 
             # for regression testing we should have NAN == NAN
             if args.nan_equal:

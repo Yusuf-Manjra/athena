@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 
 from collections import OrderedDict as odict
 
@@ -6,6 +6,7 @@ from AthenaCommon.Logging import logging
 log = logging.getLogger(__name__)
 
 from ..Base.ThresholdType import ThrType
+from .FexThresholdParameters import eta_dependent_cuts
 
 # eFEX conversions based on https://indico.cern.ch/event/1026972/contributions/4312070/attachments/2226175/3772176/Copy%20of%20Reta_Threshold_Setting.pdf
 # ATR-23596
@@ -26,7 +27,7 @@ def cTAUfwToFlowConversion(fw):
     decimal = fw/1024
     return float("{:.2f}".format(decimal))
 
-def getTypeWideThresholdConfig(ttype):
+def getTypeWideThresholdConfig(ttype,do_HI_tob_thresholds=False):
     if isinstance(ttype, str):
         ttype = ThrType[ttype]
 
@@ -59,9 +60,9 @@ def getTypeWideThresholdConfig(ttype):
     if ttype == ThrType.gTE:
         return getConfig_gTE()
     if ttype == ThrType.EM:
-        return getConfig_EM()
+        return getConfig_EM(do_HI_tob_thresholds)
     if ttype == ThrType.TAU:
-        return getConfig_TAU()
+        return getConfig_TAU(do_HI_tob_thresholds)
     if ttype == ThrType.JET:
         return getConfig_JET()
     if ttype == ThrType.XS:
@@ -185,19 +186,35 @@ def getConfig_eEM():
                ("wstot_fw", 0), ("wstot", 0), 
                ("rhad_fw", rhad_fw_tight), ("rhad", eFEXfwToFloatConversion(rhad_fw_tight,bitshift_rhad)), 
                ("etamin",  24), ("etamax", 49), ("priority", 0)]),
-        # Exclude crack region
-        odict([("reta_fw", reta_fw_tight), ("reta", eFEXfwToFloatConversion(reta_fw_tight,bitshift_reta)), 
-               ("wstot_fw", 0), ("wstot", 0), 
-               ("rhad_fw", rhad_fw_tight), ("rhad", eFEXfwToFloatConversion(rhad_fw_tight,bitshift_rhad)), 
-               ("etamin", -15), ("etamax", -14), ("priority", 1)]),
-        odict([("reta_fw", reta_fw_tight), ("reta", eFEXfwToFloatConversion(reta_fw_tight,bitshift_reta)), 
-               ("wstot_fw", 0), ("wstot", 0), 
-               ("rhad_fw", rhad_fw_tight), ("rhad", eFEXfwToFloatConversion(rhad_fw_tight,bitshift_rhad)), 
-               ("etamin", 14), ("etamax", 15), ("priority", 1)]),
+        # More granular cuts are specified in FexThresholdParameters
     ]
-    confObj["ptMinToTopo"] = 3 
+    confObj["ptMinToTopo"] = 3
     confObj["maxEt"] = 60
     confObj["resolutionMeV"] = 100
+
+    # Add any eta-dependent cuts that are defined for specific working points
+    # with higher priority than the low-granularity values above
+    eEM_eta_cuts = eta_dependent_cuts["eEM"]
+    for wp in confObj["workingPoints"]:
+        if wp in eEM_eta_cuts:
+            # Check that all cut vector lengths are matching
+            # the eta range
+            etarange = eEM_eta_cuts[wp]["etarange"]
+            stride = etarange[2]
+            n_eta_bins = (etarange[1]-etarange[0]) / stride
+            assert len(eEM_eta_cuts[wp]["rhad"]) == n_eta_bins
+            assert len(eEM_eta_cuts[wp]["rhad"]) == n_eta_bins
+            assert len(eEM_eta_cuts[wp]["wstot"]) == n_eta_bins
+            for ieta, etalow in enumerate(range(*etarange)):
+                reta_cut  = eEM_eta_cuts[wp]["reta"][ieta]
+                rhad_cut  = eEM_eta_cuts[wp]["rhad"][ieta]
+                wstot_cut = eEM_eta_cuts[wp]["wstot"][ieta]
+                confObj["workingPoints"][wp].append(
+                    odict([("reta_fw", reta_cut), ("reta", eFEXfwToFloatConversion(reta_cut,bitshift_reta)), 
+                    ("wstot_fw", wstot_cut), ("wstot", wstot_cut),
+                    ("rhad_fw", rhad_cut), ("rhad", eFEXfwToFloatConversion(rhad_cut,bitshift_rhad)), 
+                    ("etamin", etalow), ("etamax", etalow+stride), ("priority", 2)])
+                )
 
     # Check that FW values are integers
     for wp in confObj["workingPoints"]:
@@ -483,7 +500,7 @@ def getConfig_gTE():
 
 # LEGACY
 
-def getConfig_EM():
+def getConfig_EM(do_HI_tob_thresholds):
     confObj = odict()
     confObj["isolation"] = odict()
     confObj["isolation"]["HAIsoForEMthr"] = odict([ ( "thrtype", "HAIsoForEMthr" ), ("Parametrization", []) ])
@@ -502,12 +519,12 @@ def getConfig_EM():
         odict([ ("etamax", 49), ("etamin", -49), ("isobit", 4), ("mincut", 10), ("offset", -20), ("priority", 0), ("slope", 80), ("upperlimit", 50)]),
         odict([ ("etamax", 49), ("etamin", -49), ("isobit", 5), ("mincut", 20), ("offset", -18), ("priority", 0), ("slope", 80), ("upperlimit", 50)]),
     ]
-    confObj["ptMinToTopo"] = 3
+    confObj["ptMinToTopo"] = 8 if do_HI_tob_thresholds else 3
     confObj["resolutionMeV"] = 500
     return confObj
 
 
-def getConfig_TAU():
+def getConfig_TAU(do_HI_tob_thresholds):
     confObj = odict()
     confObj["isolation"] = odict()
     confObj["isolation"]["EMIsoForTAUthr"] =  odict([ ( "thrtype", "EMIsoForTAUthr" ), ("Parametrization", []) ])
@@ -518,7 +535,7 @@ def getConfig_TAU():
         odict([ ("etamax", 49), ("etamin", -49), ("isobit", 4), ("mincut", 0), ("offset", 40), ("priority", 0), ("slope",   0), ("upperlimit", 124)]),
         odict([ ("etamax", 49), ("etamin", -49), ("isobit", 5), ("mincut", 0), ("offset", 30), ("priority", 0), ("slope", 100), ("upperlimit",  60)])
     ]
-    confObj["ptMinToTopo"] = 8
+    confObj["ptMinToTopo"] = 1 if do_HI_tob_thresholds else 8
     confObj["resolutionMeV"] = 500
     return confObj
 

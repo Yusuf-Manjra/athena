@@ -114,8 +114,6 @@ StatusCode InDet::TRT_TrackSegmentsMaker_ECcosmics::initialize()
 {
   StatusCode sc = AthAlgTool::initialize(); 
 
-  
-  
   // Initialize ReadHandle
   ATH_CHECK(m_trtname.initialize());
 
@@ -130,9 +128,8 @@ StatusCode InDet::TRT_TrackSegmentsMaker_ECcosmics::initialize()
   if( m_riomakerD.retrieve().isFailure()) {
     ATH_MSG_FATAL("Failed to retrieve tool "<< m_riomakerD);
     return StatusCode::FAILURE;
-  } else {
-    ATH_MSG_INFO("Retrieved tool " << m_riomakerD);
   }
+  ATH_MSG_DEBUG("Retrieved tool " << m_riomakerD);
 
   // Get RIO_OnTrack creator without drift time information
   //
@@ -140,9 +137,8 @@ StatusCode InDet::TRT_TrackSegmentsMaker_ECcosmics::initialize()
   if( m_riomakerN.retrieve().isFailure()) {
     ATH_MSG_FATAL("Failed to retrieve tool "<< m_riomakerN);
     return StatusCode::FAILURE;
-  } else {
-    ATH_MSG_INFO("Retrieved tool " << m_riomakerN);
   }
+  ATH_MSG_DEBUG("Retrieved tool " << m_riomakerN);
 
   // optional PRD to track association map
   //
@@ -1473,13 +1469,7 @@ void InDet::TRT_TrackSegmentsMaker_ECcosmics::create_segment(std::vector<const I
     //add a pseudomeasurement for the first and the last hit constraining loc_z
     if(count==1 || (size_t)count==seed->size()){
       Trk::DefinedParameter dp(locz,Trk::locZ);
-
-      std::vector<Trk::DefinedParameter> defPar;
-      defPar.push_back(dp);
-
-      Trk::LocalParameters par(defPar);
-
-   
+      Trk::LocalParameters par(dp);
       Amg::MatrixX cov(1,1); 
       cov<<1.;
 
@@ -1522,12 +1512,7 @@ void InDet::TRT_TrackSegmentsMaker_ECcosmics::create_segment(std::vector<const I
   Trk::DefinedParameter dp3(Theta,Trk::theta);
   Trk::DefinedParameter dp4(0.00002,Trk::qOverP);
 
-  std::vector<Trk::DefinedParameter> defPar;
-  defPar.push_back(dp0);
-  defPar.push_back(dp1);
-  defPar.push_back(dp2);
-  defPar.push_back(dp3);
-  defPar.push_back(dp4);
+  std::array<Trk::DefinedParameter,5> defPar = {dp0,dp1,dp2,dp3,dp4};
 
   Trk::LocalParameters par(defPar);
 

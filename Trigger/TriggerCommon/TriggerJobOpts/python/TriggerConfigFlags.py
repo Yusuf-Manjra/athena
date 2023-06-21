@@ -64,10 +64,10 @@ def createTriggerFlags(doTriggerRecoFlags):
     flags.addFlag('Trigger.L1MuonSim.EmulateNSW', False)
 
     # Enable NSW MM trigger
-    flags.addFlag('Trigger.L1MuonSim.doMMTrigger', False)
+    flags.addFlag('Trigger.L1MuonSim.doMMTrigger', True)
 
     # Enable NSW sTGC pad trigger
-    flags.addFlag('Trigger.L1MuonSim.doPadTrigger', False)
+    flags.addFlag('Trigger.L1MuonSim.doPadTrigger', True)
 
     # Enable NSW sTGC strip trigger
     flags.addFlag('Trigger.L1MuonSim.doStripTrigger', False)
@@ -82,10 +82,10 @@ def createTriggerFlags(doTriggerRecoFlags):
     flags.addFlag('Trigger.L1MuonSim.WritesTGCBranches', False)
 
     # Enable the veto mode of the NSW-TGC coincidence
-    flags.addFlag('Trigger.L1MuonSim.NSWVetoMode', False)
+    flags.addFlag('Trigger.L1MuonSim.NSWVetoMode', True)
 
     # Enable TGC-RPC BIS78 coincidence
-    flags.addFlag('Trigger.L1MuonSim.doBIS78', False)
+    flags.addFlag('Trigger.L1MuonSim.doBIS78', True)
 
     # Offline CondDB tag for RPC/TGC coincidence window in rerunLVL1 on data
     flags.addFlag('Trigger.L1MuonSim.CondDBOffline', 'OFLCOND-MC16-SDR-RUN2-04')
@@ -101,6 +101,9 @@ def createTriggerFlags(doTriggerRecoFlags):
 
     # Enable additional validation histograms
     flags.addFlag('Trigger.doValidationMonitoring', False)
+
+    # Enable ZDC System
+    flags.addFlag('Trigger.doZDC', False)
 
     # Checks the validity of each Decision Object produced by a HypoAlg, including all of its
     # parents all the way back to the HLTSeeding. Potentially CPU expensive.
@@ -202,6 +205,9 @@ def createTriggerFlags(doTriggerRecoFlags):
     # replace Topo3 with ALFA in CTP inputs
     flags.addFlag('Trigger.L1.doAlfaCtpin', False)
 
+    # modify min-pt-to-Topo threshold for TOBs to HI values
+    flags.addFlag('Trigger.L1.doHeavyIonTobThresholds', lambda prevFlags: 'HI' in prevFlags.Trigger.triggerMenuSetup)
+
     # partition name used to determine online vs offline BS result writing
     flags.addFlag('Trigger.Online.partitionName', os.getenv('TDAQ_PARTITION') or '')
 
@@ -275,9 +281,9 @@ def createTriggerFlags(doTriggerRecoFlags):
             elif hasLocal:
                 # When running reco (doHLT == False) from RAW in a directory which already has a full suite of JSONs, assume that the user has just run the trigger manually
                 # and now wants to reconstruct the output using the menu files created when the trigger was executed, rather than reading the DB configuration for the run.
-                # A number of ART tests chain trigger then reco like this. 
+                # A number of ART tests chain trigger then reco like this.
                 _log.debug("Autoconfigured default value for running reconstruction with a pre-supplied set of trigger configuration JSON files: 'FILE'")
-                return 'FILE' 
+                return 'FILE'
             elif flags.GeoModel.Run >= LHCPeriod.Run3:
                 # When reconstructing Run 3 data the default config source is the database
                 _log.debug("Autoconfigured default value for reconstruction of Run 3 data: 'DB'")
@@ -311,9 +317,6 @@ def createTriggerFlags(doTriggerRecoFlags):
 
     # name of the trigger menu
     flags.addFlag('Trigger.triggerMenuSetup', 'MC_pp_run3_v1_BulkMCProd_prescale')
-
-    # modify the slection of chains that are run (default run all), see more in GenerateMenuMT_newJO
-    flags.addFlag('Trigger.triggerMenuModifier', ['all'])
 
     # debug output from control flow generation
     flags.addFlag('Trigger.generateMenuDiagnostics', False)
@@ -399,7 +402,7 @@ def createTriggerRecoFlags():
         from TrigCaloRec.TrigCaloConfigFlags import createTrigCaloConfigFlags
         return createTrigCaloConfigFlags()
     flags.addFlagsCategory( 'Trigger.Calo', __trigCalo )
-     
+
     # NB: Longer term it may be worth moving these into a PF set of config flags, but right now the only ones that exist do not seem to be used in the HLT.
     # When we use component accumulators for this in the HLT maybe we should revisit this
     # PFO-muon removal option for the full-scan hadronic signatures.
@@ -410,7 +413,7 @@ def createTriggerRecoFlags():
     flags.addFlag("Trigger.FSHad.PFOMuonRemoval", "Calo")
 
     # the minimum pT threshold to use for the muon removal
-    flags.addFlag("Trigger.FSHad.PFOMuonRemovalMinPt", 10 * GeV)   
+    flags.addFlag("Trigger.FSHad.PFOMuonRemovalMinPt", 10 * GeV)
 
     # enable fast b-tagging for all fully calibrated HLT PFlow jets
     flags.addFlag("Trigger.Jet.fastbtagPFlow", True)
@@ -429,11 +432,11 @@ def createTriggerRecoFlags():
     # Change tolerance in STEP Propagator
     flags.addFlag("Trigger.Jet.PFlowTolerance", 1e-2)
 
-    def __httFlags():
+    def __fpgatracksimFlags():
         """Additional function delays import"""
-        from TrigHTTConfTools.HTTConfigFlags import createHTTConfigFlags
-        return createHTTConfigFlags()
-    flags.addFlagsCategory("Trigger.HTT", __httFlags, prefix=True )
+        from FPGATrackSimConfTools.FPGATrackSimConfigFlags import createFPGATrackSimConfigFlags
+        return createFPGATrackSimConfigFlags() 
+    flags.addFlagsCategory("Trigger.FPGATrackSim", __fpgatracksimFlags, prefix=True )
 
     # L1 MUCTPI trigger flags
     def __muctpiFlags():
